@@ -3,11 +3,11 @@ import React from "react";
 const Landing = () => {
   return (
     <div className="min-h-screen pt-40 text-gray-700 font-mons">
-      <div className="md:text-5xl text-4xl font-extrabold pt-28 md:leading-relaxed leading-relaxed text-center md:px-72 px-10">Run, manage, share & publish scientific analyses</div>
+      <div className="md:text-5xl text-4xl font-extrabold pt-28 md:leading-relaxed leading-relaxed text-center lg:px-80 px-10">Run, manage, share & publish life science analyses</div>
       <div className="text-center md:text-xl text-lg pt-4">
         By{" "}
-        <a href="https://elixir-cloud-aai-github-io.vercel.app/" className="text-color3 hover:underline font-bold cursor-pointer">
-          Elixir Cloud & AAI
+        <a href="https://elixir-cloud.dcc.sib.swiss/" className="text-color3 hover:underline font-bold cursor-pointer">
+          ELIXIR Cloud & AAI
         </a>
       </div>
       <div className="flex justify-center mt-5">

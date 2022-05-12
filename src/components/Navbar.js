@@ -18,7 +18,7 @@ const Navbar = ({ scroll, toggleDarkMode, darkMode }) => {
               transition: "all 0.5s",
             }
       }
-      className={scroll <= 1 ? "z-10 fixed w-full py-5 pt-10 md:px-32 px-10 flex justify-between items-center" : "z-10 fixed w-full shadow-lg  py-5 pt-10 md:px-32 px-10 flex justify-between items-center"}
+      className={scroll <= 1 ? "z-10 fixed w-full py-5 pt-10 md:px-32 px-10 flex justify-between items-center bg-white" : "bg-white z-10 fixed w-full shadow-lg  py-5 pt-10 md:px-32 px-10 flex justify-between items-center"}
     >
       {/* <div className=""> */}
       <Link to="/">
