@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter } from "react-router-dom";
 import Layout from "./components/Layout";
 
-const App = () => {
+const App = (props) => {
   return (
     <BrowserRouter>
       <Layout></Layout>

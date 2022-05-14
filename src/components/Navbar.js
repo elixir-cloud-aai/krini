@@ -1,7 +1,48 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import Avatar from "react-avatar";
+import { Menu, MenuItem, MenuButton, MenuDivider } from "@szhsin/react-menu";
+import { host_uri } from "../config";
+import { confirmAlert } from "react-confirm-alert";
 
-const Navbar = ({ scroll, toggleDarkMode, darkMode }) => {
+const Navbar = ({ scroll, toggleDarkMode, darkMode, isLoggedIn, userData, setIsLoggedIn }) => {
+  const [showOption, setShowOption] = useState(false);
+
+  const handleLogout = async () => {
+    const params = JSON.parse(localStorage.getItem("params"));
+    localStorage.removeItem("params");
+    window.location.href = `https://login.elixir-czech.org/oidc/endsession?id_token_hint=${params.id_token}&post_logout_redirect_uri=${host_uri}`;
+    setIsLoggedIn("false");
+  };
+
+  const handleLogoutClick = () => {
+    confirmAlert({
+      customUI: ({ onClose }) => {
+        return (
+          <div className="bg-white rounded-xl p-10 shadow-xl font-open ">
+            <h1 className="mb-8">
+              Are you sure to logout from <span className="font-mons font-semibold">KRINI</span>?
+            </h1>
+            <div className="flex justify-between items-center px-10">
+              <button onClick={onClose} className="w-20 py-1 rounded-lg border bg-red-500 text-white hover:shadow-lg">
+                No
+              </button>
+              <button
+                className="w-20 py-1 rounded-lg border bg-color3 text-white hover:shadow-lg"
+                onClick={() => {
+                  handleLogout();
+                  onClose();
+                }}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        );
+      },
+    });
+  };
+
   return (
     <div
       id="navbar"
@@ -29,15 +70,54 @@ const Navbar = ({ scroll, toggleDarkMode, darkMode }) => {
           <div className="text-2xl tracking-wider font-bold font-mons">KRINI</div>
         </div>
       </Link>
-      <div className="flex">
-        <Link to="/register">
-          <div className="cursor-pointer rounded-xl px-5 py-1.5 tracking-wider mr-3">Register</div>
-        </Link>
+      {isLoggedIn === "loading" ? (
+        <div className="w-40">
+          <div class="animate-pulse flex space-x-4 items-center">
+            <div class="flex-1 space-y-6 py-1">
+              <div class="h-3 bg-slate-500 rounded"></div>
+            </div>
+            <div class="rounded-full bg-slate-500 h-9 w-9"></div>
+          </div>
+        </div>
+      ) : isLoggedIn === "false" ? (
+        <div className="flex">
+          <Link to="/register">
+            <div className="cursor-pointer rounded-xl px-5 py-1.5 tracking-wider mr-3">Register</div>
+          </Link>
 
-        <Link to="/login">
-          <div className="bg-color3 text-gray-100 cursor-pointer rounded-xl px-5 py-1.5 hover:shadow-lg tracking-wider">Login</div>
-        </Link>
-      </div>
+          <Link to="/login">
+            <div className="bg-color3 text-gray-100 cursor-pointer rounded-xl px-5 py-1.5 hover:shadow-lg tracking-wider">Login</div>
+          </Link>
+        </div>
+      ) : (
+        <div>
+          <Menu
+            menuButton={
+              <MenuButton>
+                <div
+                  className="w-max flex justify-between items-center font-open cursor-pointer"
+                  onClick={() => {
+                    console.log(showOption);
+                    setShowOption(!showOption);
+                  }}
+                >
+                  <div className="pr-3">{userData.name}</div>
+                  <Avatar name={userData.name} round={true} size={40} textMarginRatio={0.1} />
+                </div>
+              </MenuButton>
+            }
+            transition
+          >
+            <MenuItem>Profile</MenuItem>
+            <MenuItem>
+              <div onClick={() => handleLogoutClick()} className="w-full h-max">
+                Log out
+              </div>
+            </MenuItem>
+          </Menu>
+        </div>
+      )}
+
       {/* </div> */}
     </div>
   );

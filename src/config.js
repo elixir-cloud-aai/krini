@@ -1,2 +1,4 @@
 const elixirBackend = "https://stormy-hamlet-10250.herokuapp.com";
-export { elixirBackend };
+// const host_uri = "https://krini.rahtiapp.fi/";
+const host_uri = "http://localhost:3000/";
+export { elixirBackend, host_uri };
