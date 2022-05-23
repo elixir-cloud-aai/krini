@@ -11,9 +11,9 @@ const Landing = ({ isLoggedIn }) => {
           ELIXIR Cloud & AAI
         </a>
       </div>
-      <div className="flex justify-center mt-5">
-        <Link to={isLoggedIn === "loading" ? "/" : isLoggedIn === "false" ? "/register" : "/manage"} className="cursor-pointer text-lg bg-color3 text-white text-center w-max rounded-xl py-3 px-8 hover:shadow-lg font-mons">
-          Get Started
+      <div className={`flex justify-center mt-5 ${isLoggedIn === "loading" ? "hidden" : ""}`}>
+        <Link to={isLoggedIn === "loading" ? "/" : isLoggedIn === "false" ? "/register" : "/run"} className="cursor-pointer text-lg bg-color3 text-white text-center w-max rounded-xl py-3 px-8 hover:shadow-lg font-mons">
+          {isLoggedIn === "loading" ? "" : isLoggedIn === "false" ? "Get Started" : "Run workflow"}
         </Link>
       </div>
       {/* <div className="flex px-20 space-x-10 mt-80 mb-20 h-60">

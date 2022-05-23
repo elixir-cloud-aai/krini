@@ -19,7 +19,7 @@ const Navbar = ({ scroll, toggleDarkMode, darkMode, isLoggedIn, userData, setIsL
     confirmAlert({
       customUI: ({ onClose }) => {
         return (
-          <div className="bg-white rounded-xl p-10 shadow-xl font-open ">
+          <div className="bg-white rounded-lg p-10 shadow-xl font-open ">
             <h1 className="mb-8">
               Are you sure to logout from <span className="font-mons font-semibold">KRINI</span>?
             </h1>
@@ -82,11 +82,11 @@ const Navbar = ({ scroll, toggleDarkMode, darkMode, isLoggedIn, userData, setIsL
       ) : isLoggedIn === "false" ? (
         <div className="flex">
           <Link to="/register">
-            <div className="cursor-pointer rounded-xl px-5 py-1.5 tracking-wider mr-3">Register</div>
+            <div className="cursor-pointer rounded-lg px-5 py-1.5 tracking-wider mr-3">Register</div>
           </Link>
 
           <Link to="/login">
-            <div className="bg-color3 text-gray-100 cursor-pointer rounded-xl px-5 py-1.5 hover:shadow-lg tracking-wider">Login</div>
+            <div className="bg-color3 text-gray-100 cursor-pointer rounded-lg px-5 py-1.5 hover:shadow-lg tracking-wider">Login</div>
           </Link>
         </div>
       ) : (

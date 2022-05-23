@@ -9,6 +9,7 @@ import Footer from "./Footer";
 import Login from "./Login";
 import Register from "./Register";
 import axios from "axios";
+import RunWorkflow from "./RunWorkflow";
 
 const Layout = () => {
   const [scroll, setScroll] = useState(0);
@@ -88,6 +89,7 @@ const Layout = () => {
               <Route path="/privacy" element={<Privacy></Privacy>} />
               <Route path="/login" element={<Login isLoggedIn={isLoggedIn}></Login>} />
               <Route path="/register" element={<Register isLoggedIn={isLoggedIn}></Register>} />
+              <Route path="/run" element={<RunWorkflow isLoggedIn={isLoggedIn}></RunWorkflow>} />
             </Routes>
           </DarkModeProvider>
         </main>
