@@ -3,6 +3,7 @@ import validator from "validator";
 import yaml from "js-yaml";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import CodeEditor from "@uiw/react-textarea-code-editor";
 
 const RunWorkflow = ({ isLoggedIn }) => {
   const [workflow_type, set_workflow_type] = useState("CWL");
@@ -44,8 +45,8 @@ const RunWorkflow = ({ isLoggedIn }) => {
           return (
             <>
               <div className="flex my-2 items-center">
-                <input type="string" id="workflow_params" value={tag.key} onChange={(e) => handleChangeTag(true, i, e)} class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 mr-3" />
-                <input type="string" id="workflow_params" value={tag.value} onChange={(e) => handleChangeTag(false, i, e)} class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                <input type="string" id="workflow_params" value={tag.key} onChange={(e) => handleChangeTag(true, i, e)} class="bg-gray-100 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 mr-3" placeholder="Please enter a key." />
+                <input type="string" id="workflow_params" value={tag.value} onChange={(e) => handleChangeTag(false, i, e)} class="bg-gray-100 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="Please enter a value." />
                 <span className="p-2.5 rounded-lg cursor-pointer" onClick={() => handleRemoveTag(i)}>
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -123,6 +124,8 @@ const RunWorkflow = ({ isLoggedIn }) => {
       set_workflow_params_error("Workflow parameters is not a valid YAML!");
       return;
     }
+    console.log(workflow_params);
+    console.log(workflow_params_json);
     workflow_params_json = JSON.stringify(workflow_params_json);
     formData.append("workflow_params", workflow_params_json);
     // workflow_params end
@@ -150,6 +153,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
       try {
         workflow_engine_params_json = yaml.load(workflow_engine_params);
       } catch (e) {
+        showAdvance(true);
         set_workflow_engine_params_error("Workflow engine parameters is not a valid YAML!");
         return;
       }
@@ -164,12 +168,14 @@ const RunWorkflow = ({ isLoggedIn }) => {
       if (tags[i].key === "") {
         var temp_tags_error = Array.from({ length: tags.length }, (v, k) => "");
         temp_tags_error[i] = "Tag key is required!";
+        showAdvance(true);
         set_tags_error(temp_tags_error);
         return;
       }
       if (tags[i].value === "") {
         temp_tags_error = Array.from({ length: tags.length }, (v, k) => "");
         temp_tags_error[i] = "Tag value is required!";
+        showAdvance(true);
         set_tags_error(temp_tags_error);
         return;
       }
@@ -182,7 +188,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
     //workflow_tag end
 
     try {
-      const res = await axios.post("https://wes.rahtiapp.fi/ga4gh/wes/v1/runs", formData, {
+      const res = await axios.post("https://wes-prod.cerit-sc.cz/ga4gh/wes/v1//runs", formData, {
         headers: {
           "content-type": "multipart/form-data",
           Accept: "application/json",
@@ -214,7 +220,27 @@ const RunWorkflow = ({ isLoggedIn }) => {
       </div>
     );
   };
-
+  if (isLoggedIn === "loading") {
+    return (
+      <div className="mt-32 w-screen">
+        <div className="flex justify-center mt-5 font-semibold">
+          <div className="flex w-48 items-center justify-between text-lg bg-white text-gray-700 text-center rounded-xl py-3 pl-7 pr-8 font-mons">
+            <svg role="status" class="w-7 h-7 mr-2 text-gray-200 animate-spin fill-color3" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+                fill="currentColor"
+              />
+              <path
+                d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+                fill="currentFill"
+              />
+            </svg>
+            Loading...
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="pt-36 md:px-32 px-10" style={{ transition: "all 0.5s" }}>
       <form>
@@ -224,7 +250,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
             Workflow type *
           </label>
           {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
-          <select id="workflow_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" onChange={(e) => handleTypeChange(e)} value={workflow_type}>
+          <select id="workflow_type" class="bg-gray-100 text-gray-900 text-sm rounded-lg block w-full p-2.5" onChange={(e) => handleTypeChange(e)} value={workflow_type}>
             <option value="CWL">Common Workflow Language</option>
             <option value="SMK">Snakemake</option>
             <option value="NFL">Nextflow</option>
@@ -235,7 +261,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
             Workflow type version *
           </label>
           {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
-          <select id="workflow_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" onChange={(e) => set_workflow_version(e.target.value)} value={workflow_version}>
+          <select id="workflow_type" class="bg-gray-100 text-gray-900 text-sm rounded-lg block w-full p-2.5" onChange={(e) => set_workflow_version(e.target.value)} value={workflow_version}>
             {workflow_type === "CWL" ? (
               <>
                 <option value="v1.0">v1.0</option>
@@ -257,7 +283,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
             Workflow URL *
           </label>
           {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
-          <input type="string" id="workflow_url" class={`bg-gray-50 border ${workflow_url_error === "" ? "border-gray-300" : "border-red-600"} text-gray-900 text-sm rounded-lg block w-full p-2.5`} onChange={(e) => set_workflow_url(e.target.value)} value={workflow_url} />
+          <input type="string" id="workflow_url" class={`bg-gray-100 ${workflow_url_error === "" ? "" : "border border-red-600"} text-gray-900 text-sm rounded-lg block w-full p-2.5`} onChange={(e) => set_workflow_url(e.target.value)} value={workflow_url} placeholder="Please enter valid URL." />
           {workflow_url_error !== "" ? <div className="text-red-600 text-xs p-1">{workflow_url_error}</div> : <></>}
         </div>{" "}
         <div class="mb-6">
@@ -265,13 +291,23 @@ const RunWorkflow = ({ isLoggedIn }) => {
             Workflow parameters *
           </label>
           {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
-          <textarea type="string" id="workflow_params" class={`bg-gray-50 border ${workflow_params_error === "" ? "border-gray-300" : "border-red-600"} text-gray-900 text-sm rounded-lg block w-full p-2.5`} onChange={(e) => set_workflow_params(e.target.value)} value={workflow_params} />
+          <CodeEditor
+            value={workflow_params}
+            language="yaml"
+            placeholder="Please enter YAML/JSON."
+            onChange={(evn) => set_workflow_params(evn.target.value)}
+            padding={15}
+            style={{
+              fontFamily: "ui-monospace,SFMono-Regular,SF Mono,Consolas,Liberation Mono,Menlo,monospace",
+            }}
+            className={`${workflow_params_error === "" ? "" : "border border-red-600"} bg-100 rounded-lg text-xs w-full block text-gray-900`}
+          />
           {workflow_params_error !== "" ? <div className="text-red-600 text-xs p-1">{workflow_params_error}</div> : <></>}
         </div>
         <div class="mb-6">
           <label for="workflow_attachments" class="block mb-2 text-sm font-medium text-gray-900">
             Workflow attachments
-            <div className="text-white bg-green-400 hover:bg-green-600 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm pl-4 pr-4 py-2 mt-1.5 text-center flex items-center cursor-pointer w-full md:w-36">
+            <div className="text-white bg-green-400 hover:bg-green-600 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm pl-4 pr-4 py-2 mt-1.5 text-center flex items-center justify-center cursor-pointer w-full md:w-36">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
@@ -303,10 +339,21 @@ const RunWorkflow = ({ isLoggedIn }) => {
               <div class={`mb-6 ${showAdvance ? "opacity-100" : "opacity-0"}`} style={{ transition: "all 0.5s" }}>
                 <label for="workflow_engine_params" class="block mb-2 text-sm font-medium text-gray-900">
                   Workflow engine parameters
-                  {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
-                  <textarea type="string" id="workflow_engine_params" class={`bg-gray-50 border ${workflow_engine_params_error === "" ? "border-gray-300" : "border-red-600"} text-gray-900 text-sm rounded-lg block w-full p-2.5`} value={workflow_engine_params} onChange={(e) => set_workflow_engine_params(e.target.value)} />
-                  {workflow_engine_params_error !== "" ? <div className="text-red-600 text-xs p-1">{workflow_engine_params_error}</div> : <></>}
                 </label>
+                {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
+                <CodeEditor
+                  value={workflow_engine_params}
+                  language="yaml"
+                  placeholder="Please enter YAML/JSON."
+                  onChange={(evn) => set_workflow_engine_params(evn.target.value)}
+                  padding={15}
+                  style={{
+                    fontFamily: "ui-monospace,SFMono-Regular,SF Mono,Consolas,Liberation Mono,Menlo,monospace",
+                  }}
+                  className={`${workflow_engine_params_error === "" ? "" : "border border-red-600"} rounded-lg text-xs w-full block text-gray-900`}
+                />
+                {/* <textarea type="string" id="workflow_engine_params" class={`bg-gray-50 border ${workflow_engine_params_error === "" ? "border-gray-300" : "border-red-600"} text-gray-900 text-sm rounded-lg block w-full p-2.5`} value={workflow_engine_params} onChange={(e) => set_workflow_engine_params(e.target.value)} /> */}
+                {workflow_engine_params_error !== "" ? <div className="text-red-600 text-xs p-1">{workflow_engine_params_error}</div> : <></>}
               </div>
               <div class={`mb-6 text-gray-900 ${showAdvance ? "opacity-100" : "opacity-0"}`} style={{ transition: "all 0.5s" }}>
                 <label for="tags" class="mb-2 text-sm font-medium text-gray-900 flex items-center justify-between">

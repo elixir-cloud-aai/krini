@@ -108,7 +108,11 @@ const Navbar = ({ scroll, toggleDarkMode, darkMode, isLoggedIn, userData, setIsL
             }
             transition
           >
-            <MenuItem>Profile</MenuItem>
+            <MenuItem>
+              <Link to="/profile" className="w-full h-max">
+                Profile
+              </Link>
+            </MenuItem>
             <MenuItem>
               <div onClick={() => handleLogoutClick()} className="w-full h-max">
                 Log out

@@ -10,6 +10,7 @@ import Login from "./Login";
 import Register from "./Register";
 import axios from "axios";
 import RunWorkflow from "./RunWorkflow";
+import Profile from "./Profile";
 
 const Layout = () => {
   const [scroll, setScroll] = useState(0);
@@ -34,6 +35,7 @@ const Layout = () => {
   }
 
   useEffect(() => {
+    document.documentElement.setAttribute("data-color-mode", "light");
     let param = [...params.entries()];
     if (!param || param.length === 0) {
       param = JSON.parse(localStorage.getItem("params"));
@@ -90,6 +92,7 @@ const Layout = () => {
               <Route path="/login" element={<Login isLoggedIn={isLoggedIn}></Login>} />
               <Route path="/register" element={<Register isLoggedIn={isLoggedIn}></Register>} />
               <Route path="/run" element={<RunWorkflow isLoggedIn={isLoggedIn}></RunWorkflow>} />
+              <Route path="/profile" element={<Profile></Profile>} />
             </Routes>
           </DarkModeProvider>
         </main>
