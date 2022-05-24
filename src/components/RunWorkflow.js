@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import validator from "validator";
 import yaml from "js-yaml";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const RunWorkflow = ({ isLoggedIn }) => {
   const [workflow_type, set_workflow_type] = useState("CWL");
@@ -10,6 +11,8 @@ const RunWorkflow = ({ isLoggedIn }) => {
   const [workflow_url_error, set_workflow_url_error] = useState("");
   const [workflow_params, set_workflow_params] = useState("");
   const [workflow_params_error, set_workflow_params_error] = useState("");
+  const [workflow_attachments, set_workflow_attachments] = useState({ length: 0 });
+  const [workflow_attachments_error, set_workflow_attachments_error] = useState("");
   const [showAdvance, setShowAdvance] = useState(false);
   const [workflow_engine_params, set_workflow_engine_params] = useState("");
   const [workflow_engine_params_error, set_workflow_engine_params_error] = useState("");
@@ -91,7 +94,13 @@ const RunWorkflow = ({ isLoggedIn }) => {
     set_workflow_url_error("");
     set_workflow_params_error("");
     set_workflow_engine_params_error("");
+    set_workflow_attachments_error("");
 
+    const formData = new FormData();
+    formData.append("workflow_type", workflow_type);
+    formData.append("workflow_type_version", workflow_version);
+
+    // workflow_url
     if (workflow_url === "") {
       set_workflow_url_error("Workflow URL is required!");
       return;
@@ -99,6 +108,10 @@ const RunWorkflow = ({ isLoggedIn }) => {
       set_workflow_url_error("Workflow URL is not a valid URL!");
       return;
     }
+    formData.append("workflow_url", workflow_url);
+    // workflow_url end
+
+    // workflow_params
     if (workflow_params === "") {
       set_workflow_params_error("Workflow parameters is required!");
       return;
@@ -111,7 +124,27 @@ const RunWorkflow = ({ isLoggedIn }) => {
       return;
     }
     workflow_params_json = JSON.stringify(workflow_params_json);
+    formData.append("workflow_params", workflow_params_json);
+    // workflow_params end
 
+    // workflow_attachment
+    if (workflow_attachments.length > 20) {
+      set_workflow_attachments_error("Workflow attachments must be less that 20.");
+      return;
+    }
+    var i = 0;
+    for (const item of Object.entries(workflow_attachments)) {
+      if (item[1].size / 1000 > 20) {
+        set_workflow_attachments_error("Workflow attachments must be less that 20 KB.");
+        return;
+      } else {
+        formData.append(`workflow_attachment[${i}]`, item[1]);
+      }
+      i++;
+    }
+    // workflow_attachment end
+
+    // workflow_engine_params
     var workflow_engine_params_json = "";
     if (workflow_engine_params !== "") {
       try {
@@ -122,7 +155,10 @@ const RunWorkflow = ({ isLoggedIn }) => {
       }
     }
     workflow_engine_params_json = JSON.stringify(workflow_engine_params_json);
+    formData.append("workflow_engine_parameters", workflow_engine_params_json);
+    // workflow_engine_params end
 
+    //workflow_tag
     var tags_json = {};
     for (let i = 0; i < tags.length; i++) {
       if (tags[i].key === "") {
@@ -142,6 +178,41 @@ const RunWorkflow = ({ isLoggedIn }) => {
       tags_json = Object.assign(...tags.map((tag) => ({ [tag.key]: tag.value })));
     }
     tags_json = JSON.stringify(tags_json);
+    formData.append("tags", tags_json);
+    //workflow_tag end
+
+    try {
+      const res = await axios.post("https://wes.rahtiapp.fi/ga4gh/wes/v1/runs", formData, {
+        headers: {
+          "content-type": "multipart/form-data",
+          Accept: "application/json",
+        },
+      });
+      console.log(res);
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  function toFixed(num, fixed) {
+    var re = new RegExp("^-?\\d+(?:.\\d{0," + (fixed || -1) + "})?");
+    return num.toString().match(re)[0];
+  }
+
+  const renderFiles = () => {
+    if (workflow_attachments.length <= 0) {
+      return;
+    }
+    return (
+      <div className="text-xs">
+        <div>{workflow_attachments.length} files added</div>
+        <div>
+          {Object.entries(workflow_attachments).map((file) => {
+            return <div>{"- " + file[1].name + " ( " + toFixed(file[1].size / 1000, 2) + " KB )"}</div>;
+          })}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -176,7 +247,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
               </>
             ) : (
               <>
-                <option value="<=6.10.0">=6.10.0</option>
+                <option value="<=6.10.0">&lt;=6.10.0</option>
               </>
             )}
           </select>
@@ -196,6 +267,21 @@ const RunWorkflow = ({ isLoggedIn }) => {
           {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
           <textarea type="string" id="workflow_params" class={`bg-gray-50 border ${workflow_params_error === "" ? "border-gray-300" : "border-red-600"} text-gray-900 text-sm rounded-lg block w-full p-2.5`} onChange={(e) => set_workflow_params(e.target.value)} value={workflow_params} />
           {workflow_params_error !== "" ? <div className="text-red-600 text-xs p-1">{workflow_params_error}</div> : <></>}
+        </div>
+        <div class="mb-6">
+          <label for="workflow_attachments" class="block mb-2 text-sm font-medium text-gray-900">
+            Workflow attachments
+            <div className="text-white bg-green-400 hover:bg-green-600 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm pl-4 pr-4 py-2 mt-1.5 text-center flex items-center cursor-pointer w-full md:w-36">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Upload files
+            </div>
+            {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
+            <input type="file" id="workflow_attachments" multiple onChange={(e) => set_workflow_attachments(e.target.files)} hidden></input>
+            {workflow_attachments_error !== "" ? <div className="text-red-600 text-xs pl-0 p-1">{workflow_attachments_error}</div> : <></>}
+          </label>
+          {renderFiles()}
         </div>
         <div>
           <div className="flex items-center justify-between border-b py-2 mb-5 cursor-pointer" onClick={() => setShowAdvance(!showAdvance)}>
@@ -217,10 +303,10 @@ const RunWorkflow = ({ isLoggedIn }) => {
               <div class={`mb-6 ${showAdvance ? "opacity-100" : "opacity-0"}`} style={{ transition: "all 0.5s" }}>
                 <label for="workflow_engine_params" class="block mb-2 text-sm font-medium text-gray-900">
                   Workflow engine parameters
+                  {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
+                  <textarea type="string" id="workflow_engine_params" class={`bg-gray-50 border ${workflow_engine_params_error === "" ? "border-gray-300" : "border-red-600"} text-gray-900 text-sm rounded-lg block w-full p-2.5`} value={workflow_engine_params} onChange={(e) => set_workflow_engine_params(e.target.value)} />
+                  {workflow_engine_params_error !== "" ? <div className="text-red-600 text-xs p-1">{workflow_engine_params_error}</div> : <></>}
                 </label>
-                {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
-                <textarea type="string" id="workflow_engine_params" class={`bg-gray-50 border ${workflow_engine_params_error === "" ? "border-gray-300" : "border-red-600"} text-gray-900 text-sm rounded-lg block w-full p-2.5`} value={workflow_engine_params} onChange={(e) => set_workflow_engine_params(e.target.value)} />
-                {workflow_engine_params_error !== "" ? <div className="text-red-600 text-xs p-1">{workflow_engine_params_error}</div> : <></>}
               </div>
               <div class={`mb-6 text-gray-900 ${showAdvance ? "opacity-100" : "opacity-0"}`} style={{ transition: "all 0.5s" }}>
                 <label for="tags" class="mb-2 text-sm font-medium text-gray-900 flex items-center justify-between">
