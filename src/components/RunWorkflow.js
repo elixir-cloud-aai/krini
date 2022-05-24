@@ -14,6 +14,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
   const [workflow_engine_params, set_workflow_engine_params] = useState("");
   const [workflow_engine_params_error, set_workflow_engine_params_error] = useState("");
   const [tags, setTags] = useState([]);
+  const [tags_error, set_tags_error] = useState([]);
   let navigate = useNavigate();
 
   useEffect(() => {
@@ -38,15 +39,18 @@ const RunWorkflow = ({ isLoggedIn }) => {
       <>
         {tags.map((tag, i) => {
           return (
-            <div className="flex my-2 items-center">
-              <input type="string" id="workflow_params" value={tag.key} onChange={(e) => handleChangeTag(true, i, e)} class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 mr-3" />
-              <input type="string" id="workflow_params" value={tag.value} onChange={(e) => handleChangeTag(false, i, e)} class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
-              <span className="p-2.5 rounded-lg cursor-pointer" onClick={() => handleRemoveTag(i)}>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </span>
-            </div>
+            <>
+              <div className="flex my-2 items-center">
+                <input type="string" id="workflow_params" value={tag.key} onChange={(e) => handleChangeTag(true, i, e)} class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 mr-3" />
+                <input type="string" id="workflow_params" value={tag.value} onChange={(e) => handleChangeTag(false, i, e)} class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+                <span className="p-2.5 rounded-lg cursor-pointer" onClick={() => handleRemoveTag(i)}>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </span>
+              </div>
+              {tags_error[i] !== "" ? <div className="text-red-600 text-xs p-1">{tags_error[i]}</div> : <></>}
+            </>
           );
         })}
       </>
@@ -68,6 +72,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
     var tempTags = tags;
     tempTags = [...tempTags, { key: "", value: "" }];
     setTags(tempTags);
+    set_tags_error([...tags_error, ""]);
   };
 
   const handleRemoveTag = (i) => {
@@ -75,13 +80,18 @@ const RunWorkflow = ({ isLoggedIn }) => {
     tempTags.splice(i, 1);
     tempTags = [...tempTags];
     setTags(tempTags);
+    tempTags = tags_error;
+    tempTags.splice(i, 1);
+    tempTags = [...tempTags];
+    set_tags_error(tempTags);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     set_workflow_url_error("");
     set_workflow_params_error("");
     set_workflow_engine_params_error("");
+
     if (workflow_url === "") {
       set_workflow_url_error("Workflow URL is required!");
       return;
@@ -101,6 +111,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
       return;
     }
     workflow_params_json = JSON.stringify(workflow_params_json);
+
     var workflow_engine_params_json = "";
     if (workflow_engine_params !== "") {
       try {
@@ -111,6 +122,26 @@ const RunWorkflow = ({ isLoggedIn }) => {
       }
     }
     workflow_engine_params_json = JSON.stringify(workflow_engine_params_json);
+
+    var tags_json = {};
+    for (let i = 0; i < tags.length; i++) {
+      if (tags[i].key === "") {
+        var temp_tags_error = Array.from({ length: tags.length }, (v, k) => "");
+        temp_tags_error[i] = "Tag key is required!";
+        set_tags_error(temp_tags_error);
+        return;
+      }
+      if (tags[i].value === "") {
+        temp_tags_error = Array.from({ length: tags.length }, (v, k) => "");
+        temp_tags_error[i] = "Tag value is required!";
+        set_tags_error(temp_tags_error);
+        return;
+      }
+      temp_tags_error = Array.from({ length: tags.length }, (v, k) => "");
+      set_tags_error(temp_tags_error);
+      tags_json = Object.assign(...tags.map((tag) => ({ [tag.key]: tag.value })));
+    }
+    tags_json = JSON.stringify(tags_json);
   };
 
   return (
