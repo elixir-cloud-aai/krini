@@ -4,6 +4,7 @@ import yaml from "js-yaml";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import CodeEditor from "@uiw/react-textarea-code-editor";
+import Files from "react-files";
 
 const RunWorkflow = ({ isLoggedIn }) => {
   const [workflow_type, set_workflow_type] = useState("CWL");
@@ -90,12 +91,18 @@ const RunWorkflow = ({ isLoggedIn }) => {
     set_tags_error(tempTags);
   };
 
+  const handleAttachmentChange = (e) => {
+    // console.log(e.target.files.length, workflow_attachments.length);
+    set_workflow_attachments(e.target.files);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     set_workflow_url_error("");
     set_workflow_params_error("");
     set_workflow_engine_params_error("");
     set_workflow_attachments_error("");
+    console.log(workflow_attachments);
 
     const formData = new FormData();
     formData.append("workflow_type", workflow_type);
@@ -124,8 +131,6 @@ const RunWorkflow = ({ isLoggedIn }) => {
       set_workflow_params_error("Workflow parameters is not a valid YAML!");
       return;
     }
-    console.log(workflow_params);
-    console.log(workflow_params_json);
     workflow_params_json = JSON.stringify(workflow_params_json);
     formData.append("workflow_params", workflow_params_json);
     // workflow_params end
@@ -137,8 +142,8 @@ const RunWorkflow = ({ isLoggedIn }) => {
     }
     var i = 0;
     for (const item of Object.entries(workflow_attachments)) {
-      if (item[1].size / 1000 > 20) {
-        set_workflow_attachments_error("Workflow attachments must be less that 20 KB.");
+      if (item[1].size / 1000 > 500) {
+        set_workflow_attachments_error("Workflow attachments must be less that 500 KB.");
         return;
       } else {
         formData.append(`workflow_attachment[${i}]`, item[1]);
@@ -188,10 +193,12 @@ const RunWorkflow = ({ isLoggedIn }) => {
     //workflow_tag end
 
     try {
-      const res = await axios.post("https://wes-prod.cerit-sc.cz/ga4gh/wes/v1//runs", formData, {
+      const res = await axios.post("https://wes.rahtiapp.fi/ga4gh/wes/v1/runs", formData, {
         headers: {
           "content-type": "multipart/form-data",
           Accept: "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "*",
         },
       });
       console.log(res);
@@ -219,6 +226,26 @@ const RunWorkflow = ({ isLoggedIn }) => {
         </div>
       </div>
     );
+    // return (
+    //   <div className="files-list">
+    //     <ul>
+    //       {workflow_attachments.map((file) => (
+    //         <li className="files-list-item" key={file.id}>
+    //           <div className="files-list-item-preview">{file.preview.type === "image" ? <img className="files-list-item-preview-image" src={file.preview.url} /> : <div className="files-list-item-preview-extension">{file.extension}</div>}</div>
+    //           <div className="files-list-item-content">
+    //             <div className="files-list-item-content-item files-list-item-content-item-1">{file.name}</div>
+    //             <div className="files-list-item-content-item files-list-item-content-item-2">{file.sizeReadable}</div>
+    //           </div>
+    //           <div
+    //             id={file.id}
+    //             className="files-list-item-remove"
+    //             // onClick={this.filesRemoveOne.bind(this, file)} // eslint-disable-line
+    //           />
+    //         </li>
+    //       ))}
+    //     </ul>
+    //   </div>
+    // );
   };
   if (isLoggedIn === "loading") {
     return (
@@ -314,7 +341,11 @@ const RunWorkflow = ({ isLoggedIn }) => {
               Upload files
             </div>
             {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
-            <input type="file" id="workflow_attachments" multiple onChange={(e) => set_workflow_attachments(e.target.files)} hidden></input>
+            <input type="file" id="workflow_attachments" multiple onChange={(e) => handleAttachmentChange(e)} hidden></input>
+            {/* onError={this.onFilesError} */}
+            {/* <Files className="files-dropzone" onChange={(e) => handleAttachmentChange(e)} accepts={["image/png", ".pdf"]} multiple maxFileSize={10000000} minFileSize={0} clickable>
+              Drop files here or click to upload
+            </Files> */}
             {workflow_attachments_error !== "" ? <div className="text-red-600 text-xs pl-0 p-1">{workflow_attachments_error}</div> : <></>}
           </label>
           {renderFiles()}
