@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import CodeEditor from "@uiw/react-textarea-code-editor";
 import Files from "react-files";
+import Marquee from "react-fast-marquee";
 
 const RunWorkflow = ({ isLoggedIn }) => {
   const [workflow_type, set_workflow_type] = useState("CWL");
@@ -13,7 +14,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
   const [workflow_url_error, set_workflow_url_error] = useState("");
   const [workflow_params, set_workflow_params] = useState("");
   const [workflow_params_error, set_workflow_params_error] = useState("");
-  const [workflow_attachments, set_workflow_attachments] = useState({ length: 0 });
+  const [workflow_attachments, set_workflow_attachments] = useState([]);
   const [workflow_attachments_error, set_workflow_attachments_error] = useState("");
   const [showAdvance, setShowAdvance] = useState(false);
   const [workflow_engine_params, set_workflow_engine_params] = useState("");
@@ -92,8 +93,8 @@ const RunWorkflow = ({ isLoggedIn }) => {
   };
 
   const handleAttachmentChange = (e) => {
-    // console.log(e.target.files.length, workflow_attachments.length);
-    set_workflow_attachments(e.target.files);
+    var tempAttachment = [...workflow_attachments, ...e];
+    set_workflow_attachments(tempAttachment);
   };
 
   const handleSubmit = async (e) => {
@@ -102,7 +103,6 @@ const RunWorkflow = ({ isLoggedIn }) => {
     set_workflow_params_error("");
     set_workflow_engine_params_error("");
     set_workflow_attachments_error("");
-    console.log(workflow_attachments);
 
     const formData = new FormData();
     formData.append("workflow_type", workflow_type);
@@ -141,12 +141,12 @@ const RunWorkflow = ({ isLoggedIn }) => {
       return;
     }
     var i = 0;
-    for (const item of Object.entries(workflow_attachments)) {
-      if (item[1].size / 1000 > 500) {
+    for (const item of workflow_attachments) {
+      if (item.size / 1000 > 500) {
         set_workflow_attachments_error("Workflow attachments must be less that 500 KB.");
         return;
       } else {
-        formData.append(`workflow_attachment[${i}]`, item[1]);
+        formData.append(`workflow_attachment[${i}]`, item);
       }
       i++;
     }
@@ -207,46 +207,69 @@ const RunWorkflow = ({ isLoggedIn }) => {
     }
   };
 
-  function toFixed(num, fixed) {
-    var re = new RegExp("^-?\\d+(?:.\\d{0," + (fixed || -1) + "})?");
-    return num.toString().match(re)[0];
-  }
+  const handleFileRemove = (i) => {
+    var tempAttachment = workflow_attachments;
+    tempAttachment.splice(i, 1);
+    set_workflow_attachments([...tempAttachment]);
+  };
+
+  const handleFileRemoveAll = () => {
+    set_workflow_attachments([]);
+  };
 
   const renderFiles = () => {
     if (workflow_attachments.length <= 0) {
       return;
     }
     return (
-      <div className="text-xs">
-        <div>{workflow_attachments.length} files added</div>
-        <div>
-          {Object.entries(workflow_attachments).map((file) => {
-            return <div>{"- " + file[1].name + " ( " + toFixed(file[1].size / 1000, 2) + " KB )"}</div>;
-          })}
+      <div className="w-full bg-gray-100 rounded-lg p-3 text-xs mt-3 relative">
+        <ul className="flex flex-wrap">
+          {workflow_attachments.map((file, i) => (
+            <li className="w-36 mr-5 relative" key={file.id}>
+              <div className="h-20 flex items-center justify-center text-center w-full">
+                {file.preview.type === "image" ? (
+                  <img className="h-20" src={file.preview.url} />
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 flex-1 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                )}
+              </div>
+              <div className="flex flex-col items-center">
+                <Marquee gradient={false} className="bg-gray-100 text-gray-900" pauseOnHover={true}>
+                  <div className="bg-gray-100 text-gray-900">{file.name + "     "}</div>
+                </Marquee>
+                <div className="text-xs text-gray-700">{file.sizeReadable}</div>
+              </div>
+              <div
+                id={file.id}
+                className="absolute top-0 right-0 m-2 cursor-pointer rounded-full bg-white p-1 items-center justify-between"
+                onClick={() => handleFileRemove(i)} // eslint-disable-line
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div
+          className="absolute cursor-pointer rounded-full bg-red-500 text-white p-1 flex items-center justify-between pr-1.5"
+          style={{
+            top: "-5px",
+            right: "-5px",
+          }}
+          onClick={() => handleFileRemoveAll()} // eslint-disable-line
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Clear All
         </div>
       </div>
     );
-    // return (
-    //   <div className="files-list">
-    //     <ul>
-    //       {workflow_attachments.map((file) => (
-    //         <li className="files-list-item" key={file.id}>
-    //           <div className="files-list-item-preview">{file.preview.type === "image" ? <img className="files-list-item-preview-image" src={file.preview.url} /> : <div className="files-list-item-preview-extension">{file.extension}</div>}</div>
-    //           <div className="files-list-item-content">
-    //             <div className="files-list-item-content-item files-list-item-content-item-1">{file.name}</div>
-    //             <div className="files-list-item-content-item files-list-item-content-item-2">{file.sizeReadable}</div>
-    //           </div>
-    //           <div
-    //             id={file.id}
-    //             className="files-list-item-remove"
-    //             // onClick={this.filesRemoveOne.bind(this, file)} // eslint-disable-line
-    //           />
-    //         </li>
-    //       ))}
-    //     </ul>
-    //   </div>
-    // );
   };
+
   if (isLoggedIn === "loading") {
     return (
       <div className="mt-32 w-screen">
@@ -334,21 +357,18 @@ const RunWorkflow = ({ isLoggedIn }) => {
         <div class="mb-6">
           <label for="workflow_attachments" class="block mb-2 text-sm font-medium text-gray-900">
             Workflow attachments
-            <div className="text-white bg-green-400 hover:bg-green-600 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm pl-4 pr-4 py-2 mt-1.5 text-center flex items-center justify-center cursor-pointer w-full md:w-36">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              Upload files
-            </div>
-            {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
-            <input type="file" id="workflow_attachments" multiple onChange={(e) => handleAttachmentChange(e)} hidden></input>
             {/* onError={this.onFilesError} */}
-            {/* <Files className="files-dropzone" onChange={(e) => handleAttachmentChange(e)} accepts={["image/png", ".pdf"]} multiple maxFileSize={10000000} minFileSize={0} clickable>
-              Drop files here or click to upload
-            </Files> */}
+            <Files className="files-dropzone" onChange={(e) => handleAttachmentChange(e)} accepts={["image/png", ".pdf"]} multiple maxFileSize={10000000} minFileSize={0} clickable>
+              <div className="text-white bg-green-400 hover:bg-green-600 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm pl-4 pr-4 py-2 mt-1.5 text-center flex items-center justify-center cursor-pointer w-full md:w-36">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Upload files
+              </div>
+            </Files>
+            {renderFiles()}
             {workflow_attachments_error !== "" ? <div className="text-red-600 text-xs pl-0 p-1">{workflow_attachments_error}</div> : <></>}
           </label>
-          {renderFiles()}
         </div>
         <div>
           <div className="flex items-center justify-between border-b py-2 mb-5 cursor-pointer" onClick={() => setShowAdvance(!showAdvance)}>
