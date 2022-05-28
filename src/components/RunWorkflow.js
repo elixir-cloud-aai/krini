@@ -21,6 +21,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
   const [workflow_engine_params_error, set_workflow_engine_params_error] = useState("");
   const [tags, setTags] = useState([]);
   const [tags_error, set_tags_error] = useState([]);
+  const [loading, setLoading] = useState(false);
   let navigate = useNavigate();
 
   useEffect(() => {
@@ -96,6 +97,23 @@ const RunWorkflow = ({ isLoggedIn }) => {
     var tempAttachment = [...workflow_attachments, ...e];
     set_workflow_attachments(tempAttachment);
   };
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   const formData = new FormData();
+  //   formData.append("workflow_url", "https://github.com/ga4gh/workflow-execution-service-schemas/blob/c3b19854240c4fcbaf3483e22b19db0a918a7ee5/openapi/paths/runs.yaml#L89");
+  //   formData.append("workflow_params", `{"text":"hello world"}`);
+  //   formData.append("workflow_type_version", "<=6.10.0");
+  //   formData.append("workflow_type", "SMK");
+  //   const res = await axios.post("https://wes.rahtiapp.fi/ga4gh/wes/v1/runs", formData, {
+  //     headers: {
+  //       "content-type": "multipart/form-data",
+  //       Accept: "application/json",
+  //       "Access-Control-Allow-Origin": "*",
+  //       "Access-Control-Allow-Headers": "*",
+  //     },
+  //   });
+  //   console.log(res);
+  // };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -116,6 +134,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
       set_workflow_url_error("Workflow URL is not a valid URL!");
       return;
     }
+    // console.log(workflow_url);
     formData.append("workflow_url", workflow_url);
     // workflow_url end
 
@@ -126,12 +145,15 @@ const RunWorkflow = ({ isLoggedIn }) => {
     }
     var workflow_params_json = "";
     try {
-      workflow_params_json = yaml.load(workflow_params);
+      // console.log(workflow_params);
+      workflow_params_json = await yaml.load(workflow_params);
+      // console.log(workflow_params_json);
     } catch (e) {
       set_workflow_params_error("Workflow parameters is not a valid YAML!");
       return;
     }
     workflow_params_json = JSON.stringify(workflow_params_json);
+    // console.log(workflow_params_json);
     formData.append("workflow_params", workflow_params_json);
     // workflow_params end
 
@@ -156,15 +178,16 @@ const RunWorkflow = ({ isLoggedIn }) => {
     var workflow_engine_params_json = "";
     if (workflow_engine_params !== "") {
       try {
-        workflow_engine_params_json = yaml.load(workflow_engine_params);
+        workflow_engine_params_json = await yaml.load(workflow_engine_params);
+        workflow_engine_params_json = JSON.stringify(workflow_engine_params_json);
+        // console.log("workflow_engine_params_json", workflow_engine_params_json);
+        formData.append("workflow_engine_parameters", workflow_engine_params_json);
       } catch (e) {
-        showAdvance(true);
+        setShowAdvance(true);
         set_workflow_engine_params_error("Workflow engine parameters is not a valid YAML!");
         return;
       }
     }
-    workflow_engine_params_json = JSON.stringify(workflow_engine_params_json);
-    formData.append("workflow_engine_parameters", workflow_engine_params_json);
     // workflow_engine_params end
 
     //workflow_tag
@@ -173,14 +196,14 @@ const RunWorkflow = ({ isLoggedIn }) => {
       if (tags[i].key === "") {
         var temp_tags_error = Array.from({ length: tags.length }, (v, k) => "");
         temp_tags_error[i] = "Tag key is required!";
-        showAdvance(true);
+        setShowAdvance(true);
         set_tags_error(temp_tags_error);
         return;
       }
       if (tags[i].value === "") {
         temp_tags_error = Array.from({ length: tags.length }, (v, k) => "");
         temp_tags_error[i] = "Tag value is required!";
-        showAdvance(true);
+        setShowAdvance(true);
         set_tags_error(temp_tags_error);
         return;
       }
@@ -189,7 +212,10 @@ const RunWorkflow = ({ isLoggedIn }) => {
       tags_json = Object.assign(...tags.map((tag) => ({ [tag.key]: tag.value })));
     }
     tags_json = JSON.stringify(tags_json);
-    formData.append("tags", tags_json);
+    if (tags.length > 0) {
+      // console.log("tags", tags_json);
+      formData.append("tags", tags_json);
+    }
     //workflow_tag end
 
     try {
@@ -243,7 +269,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
               </div>
               <div
                 id={file.id}
-                className="absolute top-0 right-0 m-2 cursor-pointer rounded-full bg-white p-1 items-center justify-between"
+                className="absolute top-0 right-0 cursor-pointer rounded-full bg-white p-1 items-center justify-between"
                 onClick={() => handleFileRemove(i)} // eslint-disable-line
               >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -437,8 +463,31 @@ const RunWorkflow = ({ isLoggedIn }) => {
             <></>
           )}
         </div>
-        <button type="submit" class="text-white bg-color3 hover:bg-color3 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full md:w-auto px-5 py-2.5 text-center" onClick={(e) => handleSubmit(e)}>
-          Submit
+        <button
+          type="submit"
+          class={`text-white focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full md:w-36 px-5 py-2.5 text-center flex justify-center ${loading ? "cursor-wait bg-color2" : "cursor-pointer  bg-color3"}`}
+          disabled={loading}
+          onClick={async (e) => {
+            setLoading(true);
+            await handleSubmit(e);
+
+            setLoading(false);
+          }}
+        >
+          {loading ? (
+            <svg role="status" class="w-4 h-4 text-gray-200 animate-spin fill-color3" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+                fill="currentColor"
+              />
+              <path
+                d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+                fill="currentFill"
+              />
+            </svg>
+          ) : (
+            "Submit"
+          )}
         </button>
       </form>
     </div>
