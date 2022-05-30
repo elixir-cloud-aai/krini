@@ -11,10 +11,17 @@ const Landing = ({ isLoggedIn }) => {
           ELIXIR Cloud & AAI
         </a>
       </div>
-      <div className={`flex justify-center mt-5 ${isLoggedIn === "loading" ? "hidden" : ""}`}>
-        <Link to={isLoggedIn === "loading" ? "/" : isLoggedIn === "false" ? "/register" : "/run"} className="cursor-pointer text-lg bg-color3 text-white text-center w-max rounded-xl py-3 px-8 hover:shadow-lg font-mons">
-          {isLoggedIn === "loading" ? "" : isLoggedIn === "false" ? "Get Started" : "Run workflow"}
-        </Link>
+      <div className={`flex md:flex-row flex-col justify-center mt-5 ${isLoggedIn === "loading" ? "hidden" : ""}`}>
+        <div className={`flex justify-center ${isLoggedIn === "loading" ? "hidden" : ""} ${isLoggedIn === "true" ? "md:mr-5 mr-0 md:mb-0 mb-5" : ""}`}>
+          <Link to={isLoggedIn === "loading" ? "/" : isLoggedIn === "false" ? "/register" : "/run"} className="cursor-pointer text-lg bg-color3 text-white text-center md:w-64 w-full md:m-0 mx-10 rounded-xl py-3 px-8 hover:shadow-lg font-mons">
+            {isLoggedIn === "loading" ? "" : isLoggedIn === "false" ? "Get Started" : "Run workflow"}
+          </Link>
+        </div>
+        <div className={`flex justify-center ${isLoggedIn !== "true" ? "hidden" : ""}`}>
+          <Link to={isLoggedIn === "loading" ? "/" : isLoggedIn === "false" ? "/" : "/manage"} className="cursor-pointer text-lg bg-color3 text-white text-center md:w-64 w-full md:m-0 mx-10 rounded-xl py-3 px-8 hover:shadow-lg font-mons">
+            Manage workflows
+          </Link>
+        </div>
       </div>
       {/* <div className="flex px-20 space-x-10 mt-80 mb-20 h-60">
         <div className="flex-1 shadow-lg px-5 py-3 rounded-lg">Open Source</div>

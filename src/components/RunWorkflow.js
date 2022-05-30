@@ -7,7 +7,7 @@ import CodeEditor from "@uiw/react-textarea-code-editor";
 import Files from "react-files";
 import Marquee from "react-fast-marquee";
 
-const RunWorkflow = ({ isLoggedIn }) => {
+const RunWorkflow = ({ isLoggedIn, showToast }) => {
   const [workflow_type, set_workflow_type] = useState("CWL");
   const [workflow_version, set_workflow_version] = useState("v1.0");
   const [workflow_url, set_workflow_url] = useState("");
@@ -219,17 +219,22 @@ const RunWorkflow = ({ isLoggedIn }) => {
     //workflow_tag end
 
     try {
-      const res = await axios.post("https://wes.rahtiapp.fi/ga4gh/wes/v1/runs", formData, {
+      var token = localStorage.getItem("params");
+      token = JSON.parse(token);
+      token = token.access_token;
+      const res = await axios.post("https://csc-wes.rahtiapp.fi/ga4gh/wes/v1/runs", formData, {
         headers: {
           "content-type": "multipart/form-data",
           Accept: "application/json",
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Headers": "*",
+          Authorization: `Bearer ${token}`,
         },
       });
-      console.log(res);
+      showToast("success", "Workflow Added!");
+      navigate("/manage");
     } catch (e) {
-      console.log(e);
+      showToast("error", "Server Error!");
     }
   };
 
@@ -318,7 +323,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
     );
   }
   return (
-    <div className="pt-36 md:px-32 px-10" style={{ transition: "all 0.5s" }}>
+    <div className="pt-36 md:px-32 px-10 font-open" style={{ transition: "all 0.5s" }}>
       <form>
         <div class="mb-6">
           {/* dark:text-gray-300 */}
@@ -359,7 +364,7 @@ const RunWorkflow = ({ isLoggedIn }) => {
             Workflow URL *
           </label>
           {/* dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 */}
-          <input type="string" id="workflow_url" class={`bg-gray-100 ${workflow_url_error === "" ? "" : "border border-red-600"} text-gray-900 text-sm rounded-lg block w-full p-2.5`} onChange={(e) => set_workflow_url(e.target.value)} value={workflow_url} placeholder="Please enter valid URL." />
+          <input type="string" id="workflow_url" class={`bg-gray-100 ${workflow_url_error === "" ? "" : "border border-red-600"} tracking-wide text-gray-900 text-sm rounded-lg block w-full p-2.5`} onChange={(e) => set_workflow_url(e.target.value)} value={workflow_url} placeholder="Please enter valid URL." />
           {workflow_url_error !== "" ? <div className="text-red-600 text-xs p-1">{workflow_url_error}</div> : <></>}
         </div>{" "}
         <div class="mb-6">

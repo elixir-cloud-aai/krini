@@ -11,6 +11,8 @@ import Register from "./Register";
 import axios from "axios";
 import RunWorkflow from "./RunWorkflow";
 import Profile from "./Profile";
+import toast, { Toaster } from "react-hot-toast";
+import ManageWorkflows from "./ManageWorkflows";
 
 const Layout = () => {
   const [scroll, setScroll] = useState(0);
@@ -77,6 +79,14 @@ const Layout = () => {
     setDarkMode(!darkMode);
   };
 
+  const showToast = (type, msg) => {
+    if (type === "success") {
+      toast.success(msg);
+    } else if (type === "error") {
+      toast.error(msg);
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col min-h-screen">
@@ -84,6 +94,9 @@ const Layout = () => {
           <Navbar scroll={scroll} toggleDarkMode={toggleDarkMode} darkMode={darkMode} isLoggedIn={isLoggedIn} userData={userData} setIsLoggedIn={setIsLoggedIn} />
         </nav>
         <main className="flex-grow mb-10">
+          <div>
+            <Toaster position="bottom-center" />
+          </div>
           <DarkModeProvider value={darkMode}>
             <Routes>
               <Route path="/" element={<Landing isLoggedIn={isLoggedIn} userData={userData}></Landing>} />
@@ -91,7 +104,8 @@ const Layout = () => {
               <Route path="/privacy" element={<Privacy></Privacy>} />
               <Route path="/login" element={<Login isLoggedIn={isLoggedIn}></Login>} />
               <Route path="/register" element={<Register isLoggedIn={isLoggedIn}></Register>} />
-              <Route path="/run" element={<RunWorkflow isLoggedIn={isLoggedIn}></RunWorkflow>} />
+              <Route path="/run" element={<RunWorkflow isLoggedIn={isLoggedIn} showToast={showToast}></RunWorkflow>} />
+              <Route path="/manage" element={<ManageWorkflows isLoggedIn={isLoggedIn} showToast={showToast}></ManageWorkflows>} />
               <Route path="/profile" element={<Profile></Profile>} />
             </Routes>
           </DarkModeProvider>
