@@ -13,6 +13,7 @@ import RunWorkflow from "./RunWorkflow";
 import Profile from "./Profile";
 import toast, { Toaster } from "react-hot-toast";
 import ManageWorkflows from "./ManageWorkflows";
+import Workflow from "./Workflow";
 
 const Layout = () => {
   const [scroll, setScroll] = useState(0);
@@ -104,9 +105,10 @@ const Layout = () => {
               <Route path="/privacy" element={<Privacy></Privacy>} />
               <Route path="/login" element={<Login isLoggedIn={isLoggedIn}></Login>} />
               <Route path="/register" element={<Register isLoggedIn={isLoggedIn}></Register>} />
+              <Route path="/profile" element={<Profile></Profile>} />
               <Route path="/run" element={<RunWorkflow isLoggedIn={isLoggedIn} showToast={showToast}></RunWorkflow>} />
               <Route path="/manage" element={<ManageWorkflows isLoggedIn={isLoggedIn} showToast={showToast}></ManageWorkflows>} />
-              <Route path="/profile" element={<Profile></Profile>} />
+              <Route path="/manage/:id" element={<Workflow isLoggedIn={isLoggedIn}></Workflow>} />
             </Routes>
           </DarkModeProvider>
         </main>

@@ -6,6 +6,7 @@ import axios from "axios";
 import CodeEditor from "@uiw/react-textarea-code-editor";
 import Files from "react-files";
 import Marquee from "react-fast-marquee";
+import { host_uri_wes } from "../config";
 
 const RunWorkflow = ({ isLoggedIn, showToast }) => {
   const [workflow_type, set_workflow_type] = useState("CWL");
@@ -222,7 +223,7 @@ const RunWorkflow = ({ isLoggedIn, showToast }) => {
       var token = localStorage.getItem("params");
       token = JSON.parse(token);
       token = token.access_token;
-      const res = await axios.post("https://csc-wes.rahtiapp.fi/ga4gh/wes/v1/runs", formData, {
+      const res = await axios.post(`${host_uri_wes}/runs`, formData, {
         headers: {
           "content-type": "multipart/form-data",
           Accept: "application/json",

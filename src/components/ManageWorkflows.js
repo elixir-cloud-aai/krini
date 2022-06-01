@@ -1,16 +1,16 @@
 import axios from "axios";
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { host_uri_wes } from "../config";
 
 const ManageWorkflows = ({ isLoggedIn, showToast }) => {
   let navigate = useNavigate();
   const [workflows, setWorkflows] = React.useState(null);
   const [nextToken, setNextToken] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
-
   var token = localStorage.getItem("params");
   token = JSON.parse(token);
-  token = token.access_token;
+  token = token ? token.access_token : null;
 
   useEffect(() => {
     if (isLoggedIn === "false") {
@@ -21,23 +21,44 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
   useEffect(() => {
     (async function fetchWorkflows() {
       try {
-        const res = await axios.get(`https://csc-wes.rahtiapp.fi/ga4gh/wes/v1/runs`, {
+        const res = await axios.get(`${host_uri_wes}/runs`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
+        console.log(res.data);
         setWorkflows(res.data.runs);
         setNextToken(res.data.next_page_token);
       } catch (e) {
         showToast("error", "Server error!");
       }
+      // setInterval(handleRefresh, 5000);
     })();
   }, []);
+
+  const handleRefresh = async () => {
+    if (workflows === null) return;
+    try {
+      const res = await axios.get(`${host_uri_wes}/runs`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      let tempWorkflows = workflows;
+      console.log(workflows, tempWorkflows, res.data.runs);
+      // if (tempWorkflows[0].run_id !== res.data.runs[0].run_id) {
+      //   tempWorkflows.unshift(res.data.runs[0]);
+      // }
+      // setWorkflows(tempWorkflows);
+    } catch (e) {
+      showToast("error", "Server error!");
+    }
+  };
 
   const loadMore = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`https://csc-wes.rahtiapp.fi/ga4gh/wes/v1/runs?${nextToken !== "" ? "page_token=" + nextToken : ""}`, {
+      const res = await axios.get(`${host_uri_wes}/runs?${nextToken !== "" ? "page_token=" + nextToken : ""}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -49,6 +70,23 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
     }
     setLoading(false);
   };
+  console.log(workflows);
+
+  // const fetchWorkflow = async (id) => {
+  //   try {
+  //     const res = await axios.get(`${host_uri_wes}/runs/${id}`, {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //     });
+  //     let tempworkflows = workflows;
+  //     let index = tempworkflows.findIndex((workflow) => workflow.id === id);
+  //     tempworkflows[index]. =
+  //     return res.data;
+  //   } catch (error) {
+  //     showToast("error", "Server error!");
+  //   }
+  // };
 
   const renderRuns = () => {
     if (workflows === null) {
@@ -59,7 +97,7 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
       return (
         <tbody>
           {workflows.map((workflow, i) => (
-            <tr class="bg-white border-b transition duration-100 ease-in-out hover:bg-gray-100">
+            <tr class="bg-white border-t transition duration-100 ease-in-out hover:bg-gray-100 cursor-pointer" onClick={() => navigate(`/manage/${workflow.run_id}`)}>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{i + 1}</td>
               <td class="text-sm text-gray-900 px-6 py-4 whitespace-nowrap">{workflow.run_id}</td>
               <td class="text-sm text-gray-900 px-6 py-4 whitespace-nowrap">{workflow.state}</td>
@@ -74,7 +112,7 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
     <div className="pt-36 md:px-32 px-10 font-open" style={{ transition: "all 0.5s" }}>
       <div className="border rounded-lg px-5">
         <table className="table-auto min-w-full">
-          <thead className="bg-white border-b">
+          <thead className="bg-white">
             <tr>
               <th scope="col" className="text-sm font-medium text-gray-900 px-6 py-4 text-left">
                 #
@@ -120,7 +158,7 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
             </svg>
           </div>
         ) : (
-          <div className={`flex w-full items-center justify-center bg-white rounded-xl py-3 font-semibold text-color3 hover:underline-offset-2 hover:underline cursor-pointer font-open`} onClick={() => loadMore()}>
+          <div className={`flex w-full items-center border-t justify-center bg-white rounded-xl py-3 font-semibold text-color3 hover:underline-offset-2 hover:underline cursor-pointer font-open`} onClick={() => loadMore()}>
             Load More...
           </div>
         )}

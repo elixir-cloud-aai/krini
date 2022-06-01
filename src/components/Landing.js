@@ -13,13 +13,13 @@ const Landing = ({ isLoggedIn }) => {
       </div>
       <div className={`flex md:flex-row flex-col justify-center mt-5 ${isLoggedIn === "loading" ? "hidden" : ""}`}>
         <div className={`flex justify-center ${isLoggedIn === "loading" ? "hidden" : ""} ${isLoggedIn === "true" ? "md:mr-5 mr-0 md:mb-0 mb-5" : ""}`}>
-          <Link to={isLoggedIn === "loading" ? "/" : isLoggedIn === "false" ? "/register" : "/run"} className="cursor-pointer text-lg bg-color3 text-white text-center md:w-64 w-full md:m-0 mx-10 rounded-xl py-3 px-8 hover:shadow-lg font-mons">
+          <Link to={isLoggedIn === "loading" ? "/" : isLoggedIn === "false" ? "/register" : "/run"} className="cursor-pointer bg-color3 text-white text-center md:w-64 w-full md:m-0 mx-10 rounded-xl py-3 px-8 hover:shadow-lg font-mons">
             {isLoggedIn === "loading" ? "" : isLoggedIn === "false" ? "Get Started" : "Run workflow"}
           </Link>
         </div>
         <div className={`flex justify-center ${isLoggedIn !== "true" ? "hidden" : ""}`}>
-          <Link to={isLoggedIn === "loading" ? "/" : isLoggedIn === "false" ? "/" : "/manage"} className="cursor-pointer text-lg bg-color3 text-white text-center md:w-64 w-full md:m-0 mx-10 rounded-xl py-3 px-8 hover:shadow-lg font-mons">
-            Manage workflows
+          <Link to={isLoggedIn === "loading" ? "/" : isLoggedIn === "false" ? "/" : "/manage"} className="cursor-pointer bg-color3 text-white text-center md:w-64 w-full md:m-0 mx-10 rounded-xl py-3 px-8 hover:shadow-lg font-mons">
+            Manage workflows runs
           </Link>
         </div>
       </div>
