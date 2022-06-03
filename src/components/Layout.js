@@ -101,8 +101,8 @@ const Layout = () => {
           <DarkModeProvider value={darkMode}>
             <Routes>
               <Route path="/" element={<Landing isLoggedIn={isLoggedIn} userData={userData}></Landing>} />
-              <Route path="/about" element={<About></About>} />
-              <Route path="/privacy" element={<Privacy></Privacy>} />
+              <Route path="/about" element={<About showToast={showToast}></About>} />
+              <Route path="/privacy" element={<Privacy showToast={showToast}></Privacy>} />
               <Route path="/login" element={<Login isLoggedIn={isLoggedIn}></Login>} />
               <Route path="/register" element={<Register isLoggedIn={isLoggedIn}></Register>} />
               <Route path="/profile" element={<Profile></Profile>} />

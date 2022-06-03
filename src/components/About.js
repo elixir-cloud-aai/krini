@@ -3,13 +3,18 @@ import Content from "./Content";
 import { elixirBackend } from "../config";
 import axios from "axios";
 
-const About = () => {
+const About = ({ showToast }) => {
   const [aboutData, setAboutData] = useState(null);
 
   useEffect(() => {
-    axios.get(`${elixirBackend}/wc/docs/krini-about`).then((res) => {
-      setAboutData(res.data);
-    });
+    try {
+      (async () => {
+        const response = await axios.get(`${elixirBackend}/wc/docs/krini-about`);
+        setAboutData(response.data);
+      })();
+    } catch (error) {
+      showToast("error", "Server error!");
+    }
   }, []);
 
   if (!aboutData) {
