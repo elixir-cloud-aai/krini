@@ -8,7 +8,7 @@ const Login = ({ isLoggedIn }) => {
     if (isLoggedIn === "true") {
       return navigate("/");
     } else if (isLoggedIn === "false") {
-      window.location.href = `https://login.elixir-czech.org/oidc/authorize?response_type=token id_token&scope=openid profile email&client_id=5fc66010-a596-48e4-8c09-89a767ef136c&state=StAtE&redirect_uri=${host_uri}`;
+      window.location.href = `https://login.elixir-czech.org/oidc/authorize?response_type=token id_token&scope=openid profile email eduperson_entitlement ga4gh_passport_v1&client_id=5fc66010-a596-48e4-8c09-89a767ef136c&state=StAtE&redirect_uri=${host_uri}`;
     }
   }, [isLoggedIn]);
 
