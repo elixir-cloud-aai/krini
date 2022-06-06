@@ -21,11 +21,7 @@ const Workflow = ({ isLoggedIn }) => {
 
   useEffect(() => {
     (async function fetchWorkflow() {
-      const response = await fetch(`${host_uri_wes}/runs/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(`${host_uri_wes}/runs/${id}`);
       const data = await response.json();
       setWorkflow(data);
     })();

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import validator from "validator";
+// import validator from "validator";
 import yaml from "js-yaml";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -7,6 +7,7 @@ import CodeEditor from "@uiw/react-textarea-code-editor";
 import Files from "react-files";
 import Marquee from "react-fast-marquee";
 import { host_uri_wes } from "../config";
+import { confirmAlert } from "react-confirm-alert";
 
 const RunWorkflow = ({ isLoggedIn, showToast }) => {
   const [workflow_type, set_workflow_type] = useState("CWL");
@@ -36,9 +37,9 @@ const RunWorkflow = ({ isLoggedIn, showToast }) => {
     if (e.target.value === "CWL") {
       set_workflow_version("v1.0");
     } else if (e.target.value === "SMK") {
-      set_workflow_version("DSL1");
+      set_workflow_version("6.10.0");
     } else {
-      set_workflow_version("<=6.10.0");
+      set_workflow_version("DSL1");
     }
   };
 
@@ -124,17 +125,20 @@ const RunWorkflow = ({ isLoggedIn, showToast }) => {
     set_workflow_attachments_error("");
 
     const formData = new FormData();
+    // console.log(workflow_type);
     formData.append("workflow_type", workflow_type);
+    // console.log(workflow_version);
     formData.append("workflow_type_version", workflow_version);
 
     // workflow_url
     if (workflow_url === "") {
       set_workflow_url_error("Workflow URL is required!");
       return;
-    } else if (!validator.isURL(workflow_url)) {
-      set_workflow_url_error("Workflow URL is not a valid URL!");
-      return;
     }
+    //  else if (!validator.isURL(workflow_url)) {
+    //   set_workflow_url_error("Workflow URL is not a valid URL!");
+    //   return;
+    // }
     // console.log(workflow_url);
     formData.append("workflow_url", workflow_url);
     // workflow_url end
@@ -169,7 +173,8 @@ const RunWorkflow = ({ isLoggedIn, showToast }) => {
         set_workflow_attachments_error("Workflow attachments must be less that 500 KB.");
         return;
       } else {
-        formData.append(`workflow_attachment[${i}]`, item);
+        // console.log(item);
+        formData.append(`workflow_attachment`, item);
       }
       i++;
     }
@@ -220,21 +225,48 @@ const RunWorkflow = ({ isLoggedIn, showToast }) => {
     //workflow_tag end
 
     try {
-      var token = localStorage.getItem("params");
-      token = JSON.parse(token);
-      token = token.access_token;
+      // var token = localStorage.getItem("params");
+      // token = JSON.parse(token);
+      // token = token.access_token;
+      // for (var pair of formData.entries()) {
+      //   console.log(pair[0] + ", " + pair[1]);
+      // }
       const res = await axios.post(`${host_uri_wes}/runs`, formData, {
         headers: {
           "content-type": "multipart/form-data",
           Accept: "application/json",
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Headers": "*",
-          Authorization: `Bearer ${token}`,
+          // Authorization: `Bearer ${token}`,
         },
       });
-      showToast("success", "Workflow Added!");
-      navigate("/manage");
+      // showToast("success", "Workflow Added!");
+      confirmAlert({
+        customUI: ({ onClose }) => {
+          return (
+            <div className="bg-white rounded-lg p-10 shadow-xl font-open ">
+              <h1 className="mb-8">
+                Workflow run added! <br></br>
+                Run Id: <span className="font-mons font-semibold">{res.data.run_id}</span>
+                <div className="text-sm mt-2 ">Please note the runid.</div>
+              </h1>
+              <div className="flex justify-end items-center px-10">
+                <button
+                  className="w-20 py-1 rounded-lg border bg-color3 text-white hover:shadow-lg"
+                  onClick={() => {
+                    navigate("/manage");
+                    onClose();
+                  }}
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+          );
+        },
+      });
     } catch (e) {
+      // console.log(e);
       showToast("error", "Server Error!");
     }
   };
@@ -350,12 +382,12 @@ const RunWorkflow = ({ isLoggedIn, showToast }) => {
               </>
             ) : workflow_type === "SMK" ? (
               <>
-                <option value="DSL1">DSL1</option>
-                <option value="DSL2">DSL2</option>
+                <option value="6.10.0">&lt;=6.10.0</option>
               </>
             ) : (
               <>
-                <option value="<=6.10.0">&lt;=6.10.0</option>
+                <option value="DSL1">DSL1</option>
+                <option value="DSL2">DSL2</option>
               </>
             )}
           </select>
@@ -390,7 +422,7 @@ const RunWorkflow = ({ isLoggedIn, showToast }) => {
           <label for="workflow_attachments" class="block mb-2 text-sm font-medium text-gray-900">
             Workflow attachments
             {/* onError={this.onFilesError} */}
-            <Files className="files-dropzone" onChange={(e) => handleAttachmentChange(e)} accepts={["image/png", ".pdf"]} multiple maxFileSize={10000000} minFileSize={0} clickable>
+            <Files className="files-dropzone" onChange={(e) => handleAttachmentChange(e)} multiple maxFileSize={10000000} minFileSize={0} clickable>
               <div className="text-white bg-green-400 hover:bg-green-600 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm pl-4 pr-4 py-2 mt-1.5 text-center flex items-center justify-center cursor-pointer w-full md:w-36">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
