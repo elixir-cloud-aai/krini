@@ -128,7 +128,11 @@ const RunWorkflow = ({ isLoggedIn, showToast }) => {
     // console.log(workflow_type);
     formData.append("workflow_type", workflow_type);
     // console.log(workflow_version);
-    formData.append("workflow_type_version", workflow_version);
+    if (workflow_type === "NFL") {
+      formData.append("workflow_type_version", "21.04.0");
+    } else {
+      formData.append("workflow_type_version", workflow_version);
+    }
 
     // workflow_url
     if (workflow_url === "") {
