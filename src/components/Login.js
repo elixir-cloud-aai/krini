@@ -18,7 +18,7 @@ const Login = ({ isLoggedIn }) => {
         <div className="flex w-48 items-center justify-between text-lg bg-white text-gray-700 text-center rounded-xl py-3 pl-7 pr-8 font-mons">
           <svg
             role="status"
-            className="w-7 h-7 mr-2 text-gray-200 animate-spin fill-color3"
+            class="w-7 h-7 mr-2 text-gray-200 animate-spin fill-color3"
             viewBox="0 0 100 101"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
