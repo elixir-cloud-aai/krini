@@ -1,12 +1,12 @@
-import axios from "axios";
-import React, { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { host_uri_wes } from "../config";
+import axios from 'axios';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { host_uri_wes } from '../config';
 
 const ManageWorkflows = ({ isLoggedIn, showToast }) => {
-  let navigate = useNavigate();
+  const navigate = useNavigate();
   const [workflows, setWorkflows] = React.useState(null);
-  const [query, setQuery] = React.useState("");
+  const [query, setQuery] = React.useState('');
   // const [nextToken, setNextToken] = React.useState(null);
   // const [loading, setLoading] = React.useState(false);
   // var token = localStorage.getItem("params");
@@ -14,8 +14,8 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
   // token = token ? token.access_token : null;
 
   useEffect(() => {
-    if (isLoggedIn === "false") {
-      return navigate("/");
+    if (isLoggedIn === 'false') {
+      return navigate('/');
     }
   }, [isLoggedIn]);
 
@@ -27,7 +27,7 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
         // setNextToken(res.data.next_page_token);
       } catch (e) {
         console.log(e);
-        showToast("error", "Server error!");
+        showToast('error', 'Server error!');
       }
       // setInterval(handleRefresh, 5000);
     })();
@@ -95,11 +95,20 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
       return (
         <tbody>
           {workflows.map((workflow, i) =>
-            query === "" || workflow.run_id.includes(query) ? (
-              <tr class="bg-white border-t transition duration-100 ease-in-out hover:bg-gray-100 cursor-pointer" onClick={() => navigate(`/manage/${workflow.run_id}`)}>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{i + 1}</td>
-                <td class="text-sm text-gray-900 px-6 py-4 whitespace-nowrap">{workflow.run_id}</td>
-                <td class="text-sm text-gray-900 px-6 py-4 whitespace-nowrap">{workflow.run_status}</td>
+            query === '' || workflow.run_id.includes(query) ? (
+              <tr
+                className="bg-white border-t transition duration-100 ease-in-out hover:bg-gray-100 cursor-pointer"
+                onClick={() => navigate(`/manage/${workflow.run_id}`)}
+              >
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {i + 1}
+                </td>
+                <td className="text-sm text-gray-900 px-6 py-4 whitespace-nowrap">
+                  {workflow.run_id}
+                </td>
+                <td className="text-sm text-gray-900 px-6 py-4 whitespace-nowrap">
+                  {workflow.run_status}
+                </td>
               </tr>
             ) : (
               <></>
@@ -111,19 +120,37 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
   };
 
   return (
-    <div className="pt-36 md:px-32 px-10 font-open" style={{ transition: "all 0.5s" }}>
+    <div
+      className="pt-36 md:px-32 px-10 font-open"
+      style={{ transition: 'all 0.5s' }}
+    >
       <div className="border rounded-lg px-5 pt-3">
-        <input type="search" className="border w-full rounded-lg text-sm py-1 px-3 outline-none" placeholder="Search by run id.." value={query} onChange={(e) => setQuery(e.target.value)}></input>
+        <input
+          type="search"
+          className="border w-full rounded-lg text-sm py-1 px-3 outline-none"
+          placeholder="Search by run id.."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        ></input>
         <table className="table-auto min-w-full">
           <thead className="bg-white">
             <tr>
-              <th scope="col" className="text-sm font-medium text-gray-900 px-6 py-4 text-left">
+              <th
+                scope="col"
+                className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
+              >
                 #
               </th>
-              <th scope="col" className="text-sm font-medium text-gray-900 px-6 py-4 text-left">
+              <th
+                scope="col"
+                className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
+              >
                 Run ID
               </th>
-              <th scope="col" className="text-sm font-medium text-gray-900 px-6 py-4 text-left">
+              <th
+                scope="col"
+                className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
+              >
                 Run Status
               </th>
             </tr>
@@ -132,7 +159,13 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
         </table>
         {workflows === null ? (
           <div className="flex w-full items-center justify-center bg-white rounded-xl py-3">
-            <svg role="status" class="w-7 h-7 mr-2 text-gray-200 animate-spin fill-color3" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg
+              role="status"
+              className="w-7 h-7 mr-2 text-gray-200 animate-spin fill-color3"
+              viewBox="0 0 100 101"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
               <path
                 d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
                 fill="currentColor"
@@ -144,7 +177,9 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
             </svg>
           </div>
         ) : workflows.length === 0 ? (
-          <p className="flex w-full items-center justify-center bg-white rounded-xl py-3 text-gray-900 font-open">No workflows found</p>
+          <p className="flex w-full items-center justify-center bg-white rounded-xl py-3 text-gray-900 font-open">
+            No workflows found
+          </p>
         ) : (
           <div></div>
         )}

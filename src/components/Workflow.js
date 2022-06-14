@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import ReactJson from "react-json-view";
-import { host_uri_wes } from "../config";
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import ReactJson from 'react-json-view';
+import { host_uri_wes } from '../config';
 
 const Workflow = ({ isLoggedIn }) => {
   const navigate = useNavigate();
@@ -9,13 +9,13 @@ const Workflow = ({ isLoggedIn }) => {
   const { id } = params;
   const [workflow, setWorkflow] = useState(null);
 
-  var token = localStorage.getItem("params");
-  token = JSON.parse(token);
-  token = token ? token.access_token : null;
+  // let token = localStorage.getItem("params");
+  // token = JSON.parse(token);
+  // token = token ? token.access_token : null;
 
   useEffect(() => {
-    if (isLoggedIn === "false") {
-      return navigate("/");
+    if (isLoggedIn === 'false') {
+      return navigate('/');
     }
   }, [isLoggedIn]);
 
@@ -32,7 +32,13 @@ const Workflow = ({ isLoggedIn }) => {
       <div className="mt-32 w-screen">
         <div className="flex justify-center mt-5 font-semibold">
           <div className="flex w-48 items-center justify-between text-lg bg-white text-gray-700 text-center rounded-xl py-3 pl-7 pr-8 font-mons">
-            <svg role="status" class="w-7 h-7 mr-2 text-gray-200 animate-spin fill-color3" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg
+              role="status"
+              className="w-7 h-7 mr-2 text-gray-200 animate-spin fill-color3"
+              viewBox="0 0 100 101"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
               <path
                 d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
                 fill="currentColor"
@@ -50,37 +56,89 @@ const Workflow = ({ isLoggedIn }) => {
   }
 
   return (
-    <div className="pt-36 md:px-32 px-10 font-open" style={{ transition: "all 0.5s" }}>
+    <div
+      className="pt-36 md:px-32 px-10 font-open"
+      style={{ transition: 'all 0.5s' }}
+    >
       <div className="mb-5">
         <div className="mb-2">Run ID</div>
-        <div className="bg-100 text-xs block text-gray-900 font-mono w-full cursor-text rounded-lg p-3 bg-slate-100 tracking-wide">{id}</div>
+        <div className="bg-100 text-xs block text-gray-900 font-mono w-full cursor-text rounded-lg p-3 bg-slate-100 tracking-wide">
+          {id}
+        </div>
       </div>
       <div className="mb-5">
         <div className="mb-2">Run State</div>
-        <div className="bg-100 text-xs block text-gray-900 font-mono w-full cursor-text rounded-lg p-3 bg-slate-100 tracking-wide">{workflow.state}</div>
+        <div className="bg-100 text-xs block text-gray-900 font-mono w-full cursor-text rounded-lg p-3 bg-slate-100 tracking-wide">
+          {workflow.state}
+        </div>
       </div>
       <div className="mb-5">
         <div className="mb-2">Run Request</div>
         {workflow === null ? (
-          <div className="bg-100 text-xs block text-gray-900 font-mono w-full cursor-text rounded-lg p-3 bg-slate-100 tracking-wide">Loading...</div>
+          <div className="bg-100 text-xs block text-gray-900 font-mono w-full cursor-text rounded-lg p-3 bg-slate-100 tracking-wide">
+            Loading...
+          </div>
         ) : (
-          <ReactJson src={workflow.request} collapsed={true} enableClipboard={false} displayObjectSize={false} displayDataTypes={false} style={{ backgroundColor: "#f1f5f9", borderRadius: "0.5rem", padding: "0.75rem", lineHeight: "1.2rem" }} className="rounded-lg" />
+          <ReactJson
+            src={workflow.request}
+            collapsed={true}
+            enableClipboard={false}
+            displayObjectSize={false}
+            displayDataTypes={false}
+            style={{
+              backgroundColor: '#f1f5f9',
+              borderRadius: '0.5rem',
+              padding: '0.75rem',
+              lineHeight: '1.2rem'
+            }}
+            className="rounded-lg"
+          />
         )}
       </div>
       <div className="mb-5">
         <div className="mb-2">Run Outputs</div>
         {workflow === null ? (
-          <div className="bg-100 text-xs block text-gray-900 font-mono w-full cursor-text rounded-lg p-3 bg-slate-100 tracking-wide">Loading...</div>
+          <div className="bg-100 text-xs block text-gray-900 font-mono w-full cursor-text rounded-lg p-3 bg-slate-100 tracking-wide">
+            Loading...
+          </div>
         ) : (
-          <ReactJson src={workflow.outputs} collapsed={true} enableClipboard={false} displayObjectSize={false} displayDataTypes={false} style={{ backgroundColor: "#f1f5f9", borderRadius: "0.5rem", padding: "0.75rem", lineHeight: "1.2rem" }} className="rounded-lg" />
+          <ReactJson
+            src={workflow.outputs}
+            collapsed={true}
+            enableClipboard={false}
+            displayObjectSize={false}
+            displayDataTypes={false}
+            style={{
+              backgroundColor: '#f1f5f9',
+              borderRadius: '0.5rem',
+              padding: '0.75rem',
+              lineHeight: '1.2rem'
+            }}
+            className="rounded-lg"
+          />
         )}
       </div>
       <div>
         <div className="mb-2">Run Logs</div>
         {workflow === null ? (
-          <div className="bg-100 text-xs block text-gray-900 font-mono w-full cursor-text rounded-lg p-3 bg-slate-100 tracking-wide">Loading...</div>
+          <div className="bg-100 text-xs block text-gray-900 font-mono w-full cursor-text rounded-lg p-3 bg-slate-100 tracking-wide">
+            Loading...
+          </div>
         ) : (
-          <ReactJson src={workflow.run_log} collapsed={true} enableClipboard={false} displayObjectSize={false} displayDataTypes={false} style={{ backgroundColor: "#f1f5f9", borderRadius: "0.5rem", padding: "0.75rem", lineHeight: "1.2rem" }} className="rounded-lg" />
+          <ReactJson
+            src={workflow.run_log}
+            collapsed={true}
+            enableClipboard={false}
+            displayObjectSize={false}
+            displayDataTypes={false}
+            style={{
+              backgroundColor: '#f1f5f9',
+              borderRadius: '0.5rem',
+              padding: '0.75rem',
+              lineHeight: '1.2rem'
+            }}
+            className="rounded-lg"
+          />
         )}
       </div>
     </div>

@@ -1,68 +1,71 @@
-import React, { useState, useEffect } from "react";
-import { DarkModeProvider } from "../context/darkMode";
-import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
-import Landing from "./Landing";
-import About from "./About";
-import Privacy from "./Privacy";
-import Navbar from "./Navbar";
-import Footer from "./Footer";
-import Login from "./Login";
-import Register from "./Register";
-import axios from "axios";
-import RunWorkflow from "./RunWorkflow";
-import Profile from "./Profile";
-import toast, { Toaster } from "react-hot-toast";
-import ManageWorkflows from "./ManageWorkflows";
-import Workflow from "./Workflow";
+import React, { useState, useEffect } from 'react';
+import { DarkModeProvider } from '../context/darkMode';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import Landing from './Landing';
+import About from './About';
+import Privacy from './Privacy';
+import Navbar from './Navbar';
+import Footer from './Footer';
+import Login from './Login';
+import Register from './Register';
+import axios from 'axios';
+import RunWorkflow from './RunWorkflow';
+import Profile from './Profile';
+import toast, { Toaster } from 'react-hot-toast';
+import ManageWorkflows from './ManageWorkflows';
+import Workflow from './Workflow';
 
 const Layout = () => {
   const [scroll, setScroll] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState("loading");
+  const [isLoggedIn, setIsLoggedIn] = useState('loading');
   const [userData, setUserData] = useState({});
   const location = useLocation();
   const params = new URLSearchParams(location.hash);
   const navigate = useNavigate();
 
   function arr2obj(arr) {
-    let obj = {};
+    const obj = {};
     arr.forEach((v) => {
       let key = v[0];
-      if (key === "#access_token") {
-        key = "access_token";
+      if (key === '#access_token') {
+        key = 'access_token';
       }
-      let value = v[1];
+      const value = v[1];
       obj[key] = value;
     });
     return obj;
   }
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-color-mode", "light");
+    document.documentElement.setAttribute('data-color-mode', 'light');
     let param = [...params.entries()];
     if (!param || param.length === 0) {
-      param = JSON.parse(localStorage.getItem("params"));
+      param = JSON.parse(localStorage.getItem('params'));
     } else {
       param = arr2obj(param);
-      localStorage.setItem("params", JSON.stringify(param));
-      navigate("/");
+      localStorage.setItem('params', JSON.stringify(param));
+      navigate('/');
     }
     if (!param) {
-      setIsLoggedIn("false");
+      setIsLoggedIn('false');
     } else {
-      setIsLoggedIn("loading");
+      setIsLoggedIn('loading');
       (async function () {
         try {
-          const response = await axios.get("https://login.elixir-czech.org/oidc/userinfo", {
-            headers: {
-              Authorization: `Bearer ${param.access_token}`,
-            },
-          });
+          const response = await axios.get(
+            'https://login.elixir-czech.org/oidc/userinfo',
+            {
+              headers: {
+                Authorization: `Bearer ${param.access_token}`
+              }
+            }
+          );
           setUserData(response.data);
-          setIsLoggedIn("true");
+          setIsLoggedIn('true');
         } catch (e) {
-          localStorage.removeItem("params");
-          setIsLoggedIn("false");
+          localStorage.removeItem('params');
+          setIsLoggedIn('false');
         }
       })();
     }
@@ -75,15 +78,15 @@ const Layout = () => {
   });
 
   const toggleDarkMode = () => {
-    document.body.classList.toggle("dark");
-    document.body.classList.toggle("bg-gray-800");
+    document.body.classList.toggle('dark');
+    document.body.classList.toggle('bg-gray-800');
     setDarkMode(!darkMode);
   };
 
   const showToast = (type, msg) => {
-    if (type === "success") {
+    if (type === 'success') {
       toast.success(msg);
-    } else if (type === "error") {
+    } else if (type === 'error') {
       toast.error(msg);
     }
   };
@@ -92,7 +95,14 @@ const Layout = () => {
     <>
       <div className="flex flex-col min-h-screen">
         <nav>
-          <Navbar scroll={scroll} toggleDarkMode={toggleDarkMode} darkMode={darkMode} isLoggedIn={isLoggedIn} userData={userData} setIsLoggedIn={setIsLoggedIn} />
+          <Navbar
+            scroll={scroll}
+            toggleDarkMode={toggleDarkMode}
+            darkMode={darkMode}
+            isLoggedIn={isLoggedIn}
+            userData={userData}
+            setIsLoggedIn={setIsLoggedIn}
+          />
         </nav>
         <main className="flex-grow mb-10">
           <div>
@@ -100,15 +110,54 @@ const Layout = () => {
           </div>
           <DarkModeProvider value={darkMode}>
             <Routes>
-              <Route path="/" element={<Landing isLoggedIn={isLoggedIn} userData={userData}></Landing>} />
-              <Route path="/about" element={<About showToast={showToast}></About>} />
-              <Route path="/privacy" element={<Privacy showToast={showToast}></Privacy>} />
-              <Route path="/login" element={<Login isLoggedIn={isLoggedIn}></Login>} />
-              <Route path="/register" element={<Register isLoggedIn={isLoggedIn}></Register>} />
+              <Route
+                path="/"
+                element={
+                  <Landing
+                    isLoggedIn={isLoggedIn}
+                    userData={userData}
+                  ></Landing>
+                }
+              />
+              <Route
+                path="/about"
+                element={<About showToast={showToast}></About>}
+              />
+              <Route
+                path="/privacy"
+                element={<Privacy showToast={showToast}></Privacy>}
+              />
+              <Route
+                path="/login"
+                element={<Login isLoggedIn={isLoggedIn}></Login>}
+              />
+              <Route
+                path="/register"
+                element={<Register isLoggedIn={isLoggedIn}></Register>}
+              />
               <Route path="/profile" element={<Profile></Profile>} />
-              <Route path="/run" element={<RunWorkflow isLoggedIn={isLoggedIn} showToast={showToast}></RunWorkflow>} />
-              <Route path="/manage" element={<ManageWorkflows isLoggedIn={isLoggedIn} showToast={showToast}></ManageWorkflows>} />
-              <Route path="/manage/:id" element={<Workflow isLoggedIn={isLoggedIn}></Workflow>} />
+              <Route
+                path="/run"
+                element={
+                  <RunWorkflow
+                    isLoggedIn={isLoggedIn}
+                    showToast={showToast}
+                  ></RunWorkflow>
+                }
+              />
+              <Route
+                path="/manage"
+                element={
+                  <ManageWorkflows
+                    isLoggedIn={isLoggedIn}
+                    showToast={showToast}
+                  ></ManageWorkflows>
+                }
+              />
+              <Route
+                path="/manage/:id"
+                element={<Workflow isLoggedIn={isLoggedIn}></Workflow>}
+              />
             </Routes>
           </DarkModeProvider>
         </main>
