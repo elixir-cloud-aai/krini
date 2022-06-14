@@ -2,17 +2,19 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ['master']
   pull_request:
-    branches: [ "master" ]
+    branches: ['master']
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: docker build -f Dockerfile -t krini:latest .
+      - uses: actions/checkout@v3
+      - name: Install modules
+        run: npm i
+      - name: Run ESLint
+        run: npm run lint
+      - name: Build the Docker image
+        run: docker build -f Dockerfile -t krini:latest .
