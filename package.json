@@ -33,7 +33,8 @@
     "lint": "eslint ./",
     "lint-fix": "eslint ./ --fix",
     "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "pre-commit": "lint-staged"
   },
   "eslintConfig": {
     "extends": [
