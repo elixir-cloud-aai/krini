@@ -71,10 +71,8 @@
     "tailwindcss": "^3.0.24"
   },
   "lint-staged": {
-    "**/*.{js,jsx}": [
-      "npm run lint",
-      "prettier --write"
-    ]
+    "**/*.{js,jsx}": "npm run lint-fix",
+    "*.+(json|css|md)": "prettier --write"
   },
   "husky": {
     "hooks": {
