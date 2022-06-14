@@ -70,7 +70,10 @@
     "tailwindcss": "^3.0.24"
   },
   "lint-staged": {
-    "*.js": "eslint"
+    "**/*.{js,jsx}": [
+      "npm run lint",
+      "prettier --write"
+    ]
   },
   "husky": {
     "hooks": {
