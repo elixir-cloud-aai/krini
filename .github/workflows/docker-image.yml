@@ -11,12 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/setup-node@v2
-        with:
-          node-version: '16.15.0'
-      - name: Install modules
-        run: npm i
-      - name: Run ESLint
-        run: npm run lint
+      - uses: actions/checkout@v3
       - name: Build the Docker image
         run: docker build -f Dockerfile -t krini:latest .
