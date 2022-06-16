@@ -7,7 +7,7 @@ on:
     branches: ['master']
 
 jobs:
-  eslint:
+  linters:
     runs-on: ubuntu-latest
 
     strategy:
@@ -25,9 +25,21 @@ jobs:
       - run: npm i --force
       - run: npm run lint
 
-  docker-image:
+  tests:
     runs-on: ubuntu-latest
-    needs: eslint
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cypress run
+        uses: cypress-io/github-action@v4
+        with:
+          build: npm run build
+          start: npm start
+
+  docker-image:
+    needs: [eslint, tests]
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
