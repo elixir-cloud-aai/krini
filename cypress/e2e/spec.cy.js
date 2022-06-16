@@ -1,5 +1,6 @@
-describe('empty spec', () => {
-  it('passes', () => {
-    cy.visit('https://example.cypress.io')
+describe('auth', () => {
+  it('user can login', () => {
+    cy.visit("/")
+    // cy.findByText(/login/i).click()
   })
 })
