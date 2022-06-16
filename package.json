@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@szhsin/react-menu": "^3.0.1",
+    "@testing-library/cypress": "^8.0.3",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.2.0",
     "@testing-library/user-event": "^13.5.0",
@@ -28,14 +29,15 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test --watchAll=false --passWithNoTests",
-    "test-dev": "react-scripts test --passWithNoTests",
+    "test": "./node_modules/.bin/cypress run && react-scripts test --watchAll=false --passWithNoTests",
+    "test:dev": "react-scripts test --passWithNoTests",
+    "cypress:open": "./node_modules/.bin/cypress open",
     "eject": "react-scripts eject",
     "lint": "eslint ./",
     "lint-fix": "eslint ./ --fix",
     "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
     "prepare": "husky install",
-    "pre-commit": "lint-staged"
+    "pre-commit": "lint-staged && npm run test"
   },
   "eslintConfig": {
     "extends": [
@@ -57,6 +59,7 @@
   },
   "devDependencies": {
     "autoprefixer": "^10.4.7",
+    "cypress": "^10.1.0",
     "eslint": "^8.17.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-config-standard": "^17.0.0",

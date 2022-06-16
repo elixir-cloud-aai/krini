@@ -16,5 +16,8 @@
   "rules": {
     "camelcase": "off",
     "react/prop-types": 0
+  },
+  "globals": {
+    "cy": true
   }
 }
