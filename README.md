@@ -5,20 +5,19 @@
 Check out the application in the [production](https://krini.rahtiapp.fi/). The rest of this doc will mainly contain details about how to run and contribute to the Krini site locally.
 
 ## Getting Started
-<!-- 
+
 ### Prerequisites
 
 - Git
 - [Node & npm](https://nodejs.org/en/): Recent LTS version avaliable
-- A fork of the repo (for any contributions)
 
 ### Installation
 
-- To start with, [fork](https://github.com/git-anurag-hub/web-components) & clone the repository and traverse into the service's root directory with:
+- To start with, [fork](https://github.com/git-anurag-hub/web-components) & clone the repository and traverse into the project's root directory with:
 
 ```
-git clone https://github.com/<your-github-username>/web-components.git
-cd web-components
+git clone https://github.com/<your-github-username>/krini.git
+cd krini
 ```
 
 - Install the packages to be used in the development:
@@ -27,21 +26,15 @@ cd web-components
 npm install
 ```
 
-- Build CSS for the project:
-
-```
-npm run build:css
-```
-
 - Run start script to start the development enviroment of project:
 
 ```
 npm run start
 ```
 
-- This will open the browser window on desktop. If not visit `http://localhost:3333/` on your browser new window.
+- This will open the browser window on desktop. If not visit `http://localhost:3000/` on your browser new window.
 
-Great, Now you are good to go! -->
+Great, Now you are good to go!
 
 ## Contributing
 
