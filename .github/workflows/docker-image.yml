@@ -50,3 +50,5 @@ jobs:
         run: docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
       - name: Build Docker Image
         run: docker build -f Dockerfile -t anurag1201/krini:latest .
+      - name: Docker Push
+        run: docker push anurag1201/krini:latest
