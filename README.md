@@ -13,7 +13,7 @@ Check out the application in the [production](https://krini.rahtiapp.fi/). The r
 
 ### Installation
 
-- To start with, [fork](https://github.com/git-anurag-hub/web-components) & clone the repository and traverse into the project's root directory with:
+- To start with, [fork](https://github.com/elixir-cloud-aai/krini) & clone the repository and traverse into the project's root directory with:
 
 ```
 git clone https://github.com/<your-github-username>/krini.git
