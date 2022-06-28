@@ -9,28 +9,41 @@ on:
 jobs:
   linters:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [12.x, 14.x, 16.x]
 
     steps:
       - uses: actions/checkout@v3
-      - name: Use Node.js 16.x
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
       - run: npm i --force
       - run: npm run lint
 
   tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [12.x, 14.x, 16.x]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-      - name: Cypress run
+        uses: actions/checkout@v3
+      - name: E2E run
         uses: cypress-io/github-action@v4
         with:
           build: npm run build
           start: npm start
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - run: npm i --force
+      - run: npm run test:dev
 
   docker-image:
     runs-on: ubuntu-latest
@@ -66,4 +79,8 @@ jobs:
           openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
           openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
           insecure_skip_tls_verify: true
-          # namespace: ${{ env.OPENSHIFT_NAMESPACE }}
+          namespace: krini
+          # openshift_username: ${{ secrets.OPENSHIFT_USER }}
+          # openshift_password: ${{ secrets.OPENSHIFT_PASSWORD }}
+      # - name: Switch Krini namespace
+      #   run: oc project krini
