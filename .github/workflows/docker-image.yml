@@ -79,8 +79,15 @@ jobs:
           openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
           openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
           insecure_skip_tls_verify: true
-          namespace: krini
+          # namespace: krini
           # openshift_username: ${{ secrets.OPENSHIFT_USER }}
           # openshift_password: ${{ secrets.OPENSHIFT_PASSWORD }}
-      # - name: Switch Krini namespace
-      #   run: oc project krini
+      - name: Switch to project Krini
+        run: oc project krini
+      # - name: Create Docker Image
+      #   run: oc new-build --binary --name=krini --image=anurag1201/krini:latest
+      - name: Deploy
+        run: oc start-build krini --wait=true
+      - name: OpenShift Logout
+        run: oc logout
+
