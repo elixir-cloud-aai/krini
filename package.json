@@ -33,6 +33,7 @@
     "test": "./node_modules/.bin/cypress run && react-scripts test --watchAll=false --passWithNoTests",
     "test:dev": "react-scripts test --passWithNoTests",
     "cypress:open": "./node_modules/.bin/cypress open",
+    "cypress:install": "./node_modules/.bin/cypress install && npx cypress verify",
     "eject": "react-scripts eject",
     "lint": "eslint ./",
     "lint-fix": "eslint ./ --fix",
