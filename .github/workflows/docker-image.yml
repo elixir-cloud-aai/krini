@@ -84,8 +84,8 @@ jobs:
           # openshift_password: ${{ secrets.OPENSHIFT_PASSWORD }}
       - name: Switch to project Krini
         run: oc project krini
-      # - name: Create Docker Image
-      #   run: oc new-build --binary --name=krini --image=anurag1201/krini:latest
+      - name: Create Docker Image
+        run: oc new-build --binary --name=krini --image=anurag1201/krini:latest
       - name: Deploy
         run: oc start-build krini --wait=true
       - name: OpenShift Logout
