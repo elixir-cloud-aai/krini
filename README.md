@@ -26,20 +26,25 @@ cd krini
 npm install
 ```
 
-- Run start script to start the development enviroment of project:
+> **_NOTE:_**  If haven't used the cypress before please run 
+> ```npm i cypress:install```
+> This will install cypress in your project & will allow you to run e2e tests.
+
+- Run the start script to start the development environment of the project:
 
 ```
 npm run start
 ```
 
-- This will open the browser window on desktop. If not visit `http://localhost:3000/` on your browser new window.
+- This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
 
-Great, Now you are good to go!
+Great, now you are good to go!
+
 
 ## Contributing
 
 This project is a community effort and lives off your contributions, be it in
-the form of bug reports, feature requests, discussions, or fixes and other code
+the form of bug reports, feature requests, discussions, or fixes, and other code
 changes. Please refer to our organization's [contribution
 guidelines](https://github.com/elixir-cloud-aai/elixir-cloud-aai/blob/dev/CONTRIBUTING.md) if you are interested in contributing.
 Please mind the [code of conduct](https://github.com/elixir-cloud-aai/elixir-cloud-aai/blob/dev/CODE_OF_CONDUCT.md) for all interactions with
@@ -48,7 +53,6 @@ the community.
 ## Versioning
 
 The project adopts the [semantic versioning](https://semver.org/) scheme for versioning.
-Currently the service is in development v1 package for the same will be out soon. Stay tuned!
 
 ## License
 
@@ -59,6 +63,6 @@ This project is covered by the MIT License also
 
 The project is a collaborative effort under the umbrella of [ELIXIR Cloud &
 AAI](https://github.com/elixir-cloud-aai/). Follow the link to get in touch with us via chat or email.
-Please mention the name of this service for any inquiry, proposal, question
+Please mention the name of this service for any inquiry, proposal, question, 
 etc. Alternatively, you can also make use of the [issue
 tracker](https://github.com/elixir-cloud-aai/krini/issues) to request features or report bugs.
