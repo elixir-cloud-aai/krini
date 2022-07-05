@@ -8,6 +8,7 @@ import Files from 'react-files';
 import Marquee from 'react-fast-marquee';
 import { host_uri_wes } from '../config';
 import { confirmAlert } from 'react-confirm-alert';
+import FileViewer from 'react-file-viewer';
 
 const RunWorkflow = ({ isLoggedIn, showToast }) => {
   const [workflow_type, set_workflow_type] = useState('CWL');
@@ -338,30 +339,40 @@ const RunWorkflow = ({ isLoggedIn, showToast }) => {
     if (workflow_attachments.length <= 0) {
       return;
     }
+    // console.log(workflow_attachments);
     return (
       <div className="w-full bg-gray-100 rounded-lg p-3 text-xs mt-3 relative">
         <ul className="flex flex-wrap">
           {workflow_attachments.map((file, i) => (
             <li className="w-36 mr-5 relative" key={file.id}>
               <div className="h-20 flex items-center justify-center text-center w-full">
-                {file.preview.type === 'image' ? (
-                  <img className="h-20" src={file.preview.url} />
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-10 w-10 flex-1 text-gray-900"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                    />
-                  </svg>
-                )}
+                {(() => {
+                  if (file.preview.type === 'image') {
+                    return <img className="h-20" src={file.preview.url} />;
+                  }
+                  else if (file.type === 'application/pdf') {
+                    const fileURL = window.URL.createObjectURL(file);
+                    return <FileViewer fileType={`pdf`} filePath={fileURL} />;
+                  }
+                  else {
+                    return (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-10 w-10 flex-1 text-gray-900"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                        />
+                      </svg>
+                    );
+                  }
+                })()}
               </div>
               <div className="flex flex-col items-center">
                 <Marquee

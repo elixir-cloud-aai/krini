@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.pg-viewer-wrapper {
+    overflow-x: hidden;
+}
+img, svg, video, canvas, audio, iframe, embed, object {
+    width: 100%;
+}
