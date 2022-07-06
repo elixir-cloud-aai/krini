@@ -26,8 +26,8 @@ cd krini
 npm install
 ```
 
-> **_NOTE:_**  If haven't used the cypress before please run 
-> ```npm i cypress:install```
+> **_NOTE:_** If haven't used the cypress before please run
+> `npm run cypress:install`
 > This will install cypress in your project & will allow you to run e2e tests.
 
 - Run the start script to start the development environment of the project:
@@ -39,7 +39,6 @@ npm run start
 - This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
 
 Great, now you are good to go!
-
 
 ## Contributing
 
@@ -63,6 +62,6 @@ This project is covered by the MIT License also
 
 The project is a collaborative effort under the umbrella of [ELIXIR Cloud &
 AAI](https://github.com/elixir-cloud-aai/). Follow the link to get in touch with us via chat or email.
-Please mention the name of this service for any inquiry, proposal, question, 
+Please mention the name of this service for any inquiry, proposal, question,
 etc. Alternatively, you can also make use of the [issue
 tracker](https://github.com/elixir-cloud-aai/krini/issues) to request features or report bugs.
