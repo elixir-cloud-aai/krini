@@ -30,10 +30,10 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "./node_modules/.bin/cypress run && react-scripts test --watchAll=false --passWithNoTests",
+    "test": "cypress run && react-scripts test --watchAll=false --passWithNoTests",
     "test:dev": "react-scripts test --passWithNoTests",
-    "cypress:open": "./node_modules/.bin/cypress open",
-    "cypress:install": "./node_modules/.bin/cypress install && npx cypress verify",
+    "cypress:open": "cypress open",
+    "cypress:install": "cypress install && npx cypress verify",
     "eject": "react-scripts eject",
     "lint": "eslint ./",
     "lint-fix": "eslint ./ --fix",
