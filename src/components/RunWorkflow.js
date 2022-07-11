@@ -346,7 +346,6 @@ const RunWorkflow = ({ isLoggedIn, showToast }) => {
             <li className="w-36 mr-5 relative" key={file.id}>
               <div className="h-20 flex items-center justify-center text-center w-full">
                 {(() => {
-                  console.log(file.preview.type)
                   if (file.preview.type === 'image') {
                     return <img className="h-20" src={file.preview.url} />;
                   } else if (file.type === 'application/pdf') {
