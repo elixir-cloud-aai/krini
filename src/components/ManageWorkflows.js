@@ -132,31 +132,33 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         ></input>
-        <table className="table-auto min-w-full">
-          <thead className="bg-white">
-            <tr>
-              <th
-                scope="col"
-                className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
-              >
-                #
-              </th>
-              <th
-                scope="col"
-                className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
-              >
-                Run ID
-              </th>
-              <th
-                scope="col"
-                className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
-              >
-                Run Status
-              </th>
-            </tr>
-          </thead>
-          {renderRuns()}
-        </table>
+        <div className="overflow-x-auto">
+          <table className="table-auto min-w-full">
+            <thead className="bg-white">
+              <tr>
+                <th
+                  scope="col"
+                  className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
+                >
+                  #
+                </th>
+                <th
+                  scope="col"
+                  className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
+                >
+                  Run ID
+                </th>
+                <th
+                  scope="col"
+                  className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
+                >
+                  Run Status
+                </th>
+              </tr>
+            </thead>
+            {renderRuns()}
+          </table>
+        </div>
         {workflows === null ? (
           <div className="flex w-full items-center justify-center bg-white rounded-xl py-3">
             <svg
