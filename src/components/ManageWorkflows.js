@@ -100,7 +100,7 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
                 className="bg-white border-t transition duration-100 ease-in-out hover:bg-gray-100 cursor-pointer"
                 onClick={() => navigate(`/manage/${workflow.run_id}`)}
               >
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sm:hidden">
                   {i + 1}
                 </td>
                 <td className="text-sm text-gray-900 px-6 py-4 whitespace-nowrap">
@@ -132,31 +132,33 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         ></input>
-        <table className="table-auto min-w-full">
-          <thead className="bg-white">
-            <tr>
-              <th
-                scope="col"
-                className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
-              >
-                #
-              </th>
-              <th
-                scope="col"
-                className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
-              >
-                Run ID
-              </th>
-              <th
-                scope="col"
-                className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
-              >
-                Run Status
-              </th>
-            </tr>
-          </thead>
-          {renderRuns()}
-        </table>
+        <div className="overflow-x-auto">
+          <table className="table-auto min-w-full">
+            <thead className="bg-white">
+              <tr>
+                <th
+                  scope="col"
+                  className="text-sm font-medium text-gray-900 px-6 py-4 text-left sm:hidden"
+                >
+                  #
+                </th>
+                <th
+                  scope="col"
+                  className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
+                >
+                  Run ID
+                </th>
+                <th
+                  scope="col"
+                  className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
+                >
+                  Run Status
+                </th>
+              </tr>
+            </thead>
+            {renderRuns()}
+          </table>
+        </div>
         {workflows === null ? (
           <div className="flex w-full items-center justify-center bg-white rounded-xl py-3">
             <svg
