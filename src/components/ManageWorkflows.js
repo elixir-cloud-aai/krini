@@ -100,7 +100,7 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
                 className="bg-white border-t transition duration-100 ease-in-out hover:bg-gray-100 cursor-pointer"
                 onClick={() => navigate(`/manage/${workflow.run_id}`)}
               >
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sm:hidden">
                   {i + 1}
                 </td>
                 <td className="text-sm text-gray-900 px-6 py-4 whitespace-nowrap">
@@ -138,7 +138,7 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
               <tr>
                 <th
                   scope="col"
-                  className="text-sm font-medium text-gray-900 px-6 py-4 text-left"
+                  className="text-sm font-medium text-gray-900 px-6 py-4 text-left sm:hidden"
                 >
                   #
                 </th>
