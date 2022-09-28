@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from 'react-avatar';
 import { Menu, MenuItem, MenuButton } from '@szhsin/react-menu';
@@ -11,9 +11,27 @@ const Navbar = ({
   darkMode,
   isLoggedIn,
   userData,
-  setIsLoggedIn
+  setIsLoggedIn,
+  showToast
 }) => {
   const [showOption, setShowOption] = useState(false);
+  const [accessToken, setAccessToken] = useState('');
+
+  const getAccessToken = () => {
+    const localStorageData = localStorage.params;
+    // console.log(localStorageData)
+    if (!localStorageData) {
+      // console.warn(`nothing in localStorage`);
+      return
+    }
+    const localStorageDataJson = JSON.parse(localStorageData);
+    setAccessToken(localStorageDataJson.access_token)
+  }
+
+  useEffect(() => {
+    getAccessToken();
+  }, [showOption])
+
 
   const handleLogout = async () => {
     const params = JSON.parse(localStorage.getItem('params'));
@@ -21,6 +39,13 @@ const Navbar = ({
     window.location.href = `https://login.elixir-czech.org/oidc/endsession?id_token_hint=${params.id_token}&post_logout_redirect_uri=${host_uri}`;
     setIsLoggedIn('false');
   };
+
+  const handleCopyToClipboard = () => {
+    if (accessToken === undefined) getAccessToken();
+    navigator.clipboard.writeText(accessToken)
+    // console.log(accessToken);
+    showToast('success', 'Copied to clipboard');
+  }
 
   const handleLogoutClick = () => {
     confirmAlert({
@@ -60,15 +85,15 @@ const Navbar = ({
       style={
         scroll <= 1
           ? {
-              paddingTop: '2rem',
-              paddingBottom: '2rem',
-              transition: 'all 0.5s'
-            }
+            paddingTop: '2rem',
+            paddingBottom: '2rem',
+            transition: 'all 0.5s'
+          }
           : {
-              paddingTop: '1rem',
-              paddingBottom: '0.75rem',
-              transition: 'all 0.5s'
-            }
+            paddingTop: '1rem',
+            paddingBottom: '0.75rem',
+            transition: 'all 0.5s'
+          }
       }
       className={
         scroll <= 1
@@ -124,7 +149,7 @@ const Navbar = ({
                 <div
                   className="w-max flex justify-between items-center font-open cursor-pointer"
                   onClick={() => {
-                    console.log(showOption);
+                    // console.log(showOption);
                     setShowOption(!showOption);
                   }}
                 >
@@ -144,6 +169,9 @@ const Navbar = ({
               <Link to="/profile" className="w-full h-max">
                 Profile
               </Link>
+            </MenuItem>
+            <MenuItem onClick={() => handleCopyToClipboard()}>
+              {accessToken ? `Copy to clipboard`: `Getting token`}
             </MenuItem>
             <MenuItem>
               <div onClick={() => handleLogoutClick()} className="w-full h-max">

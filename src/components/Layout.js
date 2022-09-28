@@ -102,6 +102,7 @@ const Layout = () => {
             isLoggedIn={isLoggedIn}
             userData={userData}
             setIsLoggedIn={setIsLoggedIn}
+            showToast={showToast}
           />
         </nav>
         <main className="flex-grow mb-10">
