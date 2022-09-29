@@ -171,7 +171,7 @@ const Navbar = ({
               </Link>
             </MenuItem>
             <MenuItem onClick={() => handleCopyToClipboard()}>
-              {accessToken ? `Copy to clipboard`: `Getting token`}
+              {accessToken ? `Copy Token to clipboard`: `Getting token`}
             </MenuItem>
             <MenuItem>
               <div onClick={() => handleLogoutClick()} className="w-full h-max">
