@@ -14,6 +14,7 @@ import Profile from './Profile';
 import toast, { Toaster } from 'react-hot-toast';
 import ManageWorkflows from './ManageWorkflows';
 import Workflow from './Workflow';
+import CookieConsent from './CookieConsent';
 
 const Layout = () => {
   const [scroll, setScroll] = useState(0);
@@ -165,6 +166,7 @@ const Layout = () => {
         <footer>
           <Footer></Footer>
         </footer>
+      <CookieConsent />
       </div>
     </>
   );
