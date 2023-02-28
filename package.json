@@ -26,6 +26,7 @@
     "react-router-dom": "^6.3.0",
     "react-scripts": "5.0.1",
     "validator": "^13.7.0",
+    "vanilla-cookieconsent": "^2.8.9",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
