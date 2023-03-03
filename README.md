@@ -1,4 +1,4 @@
-# <img src="https://github.com/elixir-cloud-aai/krini/blob/master/public/logo.png?raw=true" align="left" height="38" alt=""> <span >Krini</span>
+# `<img src="https://github.com/elixir-cloud-aai/krini/blob/master/public/logo.png?raw=true" align="left" height="38" alt="">` `<span >`Krini
 
 **The Krini is a virtual research environment allowing users to run, manage, share and publish life science analyses.**
 
@@ -9,7 +9,7 @@ Check out the application in the [production](https://krini.rahtiapp.fi/). The r
 ### Prerequisites
 
 - Git
-- [Node & npm](https://nodejs.org/en/): Recent LTS version avaliable
+- [Node &amp; npm](https://nodejs.org/en/): Recent LTS version avaliable
 
 ### Installation
 
@@ -38,6 +38,15 @@ npm run start
 
 - This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
 
+### Running workflows
+
+To `run a workflow` or `manage your workflow runs` locally (on local host), please modify the `./src/config.js` file by:
+
+- commenting out line 2 (`const host_uri = 'https://krini.rahtiapp.fi/';`) and
+- uncommenting line 3 (`consthost_uri="http://localhost:3000/";`).
+
+> Note: Please don't commit the changes made to the config.js file in a Pull request.
+
 Great, now you are good to go!
 
 ## Contributing
@@ -60,7 +69,7 @@ This project is covered by the MIT License also
 
 ## Contact
 
-The project is a collaborative effort under the umbrella of [ELIXIR Cloud &
+The project is a collaborative effort under the umbrella of [ELIXIR Cloud &amp;
 AAI](https://github.com/elixir-cloud-aai/). Follow the link to get in touch with us via chat or email.
 Please mention the name of this service for any inquiry, proposal, question,
 etc. Alternatively, you can also make use of the [issue
