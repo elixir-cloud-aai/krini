@@ -1,4 +1,4 @@
-# `<img src="https://github.com/elixir-cloud-aai/krini/blob/master/public/logo.png?raw=true" align="left" height="38" alt="">` `<span >`Krini
+# <img src="https://github.com/elixir-cloud-aai/krini/blob/master/public/logo.png?raw=true" align="left" height="38" alt=""> <span >Krini</span>
 
 **The Krini is a virtual research environment allowing users to run, manage, share and publish life science analyses.**
 
@@ -38,14 +38,14 @@ npm run start
 
 - This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
 
-### Running workflows
+### Running workflows locally
 
 To `run a workflow` or `manage your workflow runs` locally (on local host), please modify the `./src/config.js` file by:
 
 - commenting out line 2 (`const host_uri = 'https://krini.rahtiapp.fi/';`) and
 - uncommenting line 3 (`consthost_uri="http://localhost:3000/";`).
 
-> Note: Please don't commit the changes made to the config.js file in a Pull request.
+> **_NOTE:_** Please don't commit the changes made to the config.js file in a Pull request.
 
 Great, now you are good to go!
 
