@@ -8,7 +8,7 @@ describe("auth", () => {
         else console.log("No cookie banner or cookie already accepted");
       });
 
-      cy.contains("Login").click();
+      cy.findByText(/login/i).click();
       cy.origin("https://elixir-czech.org", () => {});
       cy.origin("https://ds.aai.lifescience-ri.eu", () => {
         cy.wait(3000).then(() => {
