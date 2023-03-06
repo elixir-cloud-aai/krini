@@ -37,6 +37,7 @@ npm run start
 ```
 
 - This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
+  > **_NOTE:_** You might face a problem while login if your application isn't running on `http://localhost:3000/`. In the case of port change, change the enviroment variable `REACT_APP_HOST_URI` in file `.env.development` file to the required url.
 
 Great, now you are good to go!
 

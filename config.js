@@ -1,3 +1,2 @@
-const host_uri = 'https://krini.rahtiapp.fi/';
-// const host_uri = "http://localhost:3000/";
+const host_uri = process.env.REACT_APP_HOST_URI;
 module.exports = { host_uri };
