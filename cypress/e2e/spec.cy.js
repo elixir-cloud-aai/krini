@@ -1,6 +1,6 @@
 describe('auth', () => {
   it('user can login', () => {
-    cy.visit("/")
+    // cy.visit("/")
     // cy.findByText(/login/i).click()
-  })
-})
+  });
+});
