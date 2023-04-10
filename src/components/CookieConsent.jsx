@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import 'vanilla-cookieconsent';
 import 'vanilla-cookieconsent/dist/cookieconsent.css';
-// import Cookies from 'js-cookie';
-// import ReactGA from 'react-ga4';
+import Cookies from 'js-cookie';
+import ReactGA from 'react-ga4';
 
 const pluginConfig = {
   current_lang: 'en',
@@ -17,6 +17,9 @@ const pluginConfig = {
       transition: 'slide',
       swap_buttons: false
     }
+  },
+  onAccept: function () {
+    googleAnalyticsCookieScript();
   },
   languages: {
     en: {
@@ -79,6 +82,13 @@ const pluginConfig = {
         ]
       }
     }
+  }
+};
+
+const googleAnalyticsCookieScript = () => {
+  const cookie = JSON.parse(Cookies.get('cc_cookie'));
+  if (cookie?.categories.includes('analytics')) {
+    ReactGA.initialize(`${process.env.REACT_APP_GA_MEASUREMENT_ID}`);
   }
 };
 
