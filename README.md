@@ -23,10 +23,12 @@ cd krini
 - Install the packages to be used in the development:
 
 ```
-npm install
+npm install --legacy-peer-deps
 ```
 
-> **_NOTE:_** If haven't used the cypress before please run
+> **_NOTE 1:_** If need to add any other depency make sure to append `--legacy-peer-deps` at the end of command. To read more about this you can follow [this link](https://stackoverflow.com/questions/66239691/what-does-npm-install-legacy-peer-deps-do-exactly-when-is-it-recommended-wh)
+
+> **_NOTE 2:_** If haven't used the cypress before please run
 > `npm run cypress:install`
 > This will install cypress in your project & will allow you to run e2e tests.
 
