@@ -62,12 +62,6 @@ const Landing = ({ isLoggedIn }) => {
           </Link>
         </div>
       </div>
-      {/* <div className="flex px-20 space-x-10 mt-80 mb-20 h-60">
-        <div className="flex-1 shadow-lg px-5 py-3 rounded-lg">Open Source</div>
-        <div className="flex-1 shadow-lg px-5 py-3 rounded-lg">Open Source</div>
-        <div className="flex-1 shadow-lg px-5 py-3 rounded-lg">Open Source</div>
-        <div className="flex-1 shadow-lg px-5 py-3 rounded-lg">Open Source</div>
-      </div> */}
     </div>
   );
 };

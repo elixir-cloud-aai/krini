@@ -8,9 +8,14 @@ import Files from 'react-files';
 import Marquee from 'react-fast-marquee';
 import { host_uri_wes } from '../config';
 import { confirmAlert } from 'react-confirm-alert';
-import FileViewer from 'react-file-viewer';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
 const RunWorkflow = ({ isLoggedIn, showToast }) => {
+  // Pdfjs worker
+  pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
+
   const [workflow_type, set_workflow_type] = useState('CWL');
   const [workflow_version, set_workflow_version] = useState('v1.0');
   const [workflow_url, set_workflow_url] = useState('');
@@ -350,7 +355,11 @@ const RunWorkflow = ({ isLoggedIn, showToast }) => {
                     return <img className="h-20" src={file.preview.url} />;
                   } else if (file.type === 'application/pdf') {
                     const fileURL = window.URL.createObjectURL(file);
-                    return <FileViewer fileType={`pdf`} filePath={fileURL} />;
+                    return (
+                      <Document file={fileURL}>
+                        <Page pageNumber={1} height={80} />
+                      </Document>
+                    );
                   } else {
                     return (
                       <svg
