@@ -97,6 +97,7 @@ const ManageWorkflows = ({ isLoggedIn, showToast }) => {
           {workflows.map((workflow, i) =>
             query === '' || workflow.run_id.includes(query) ? (
               <tr
+                key={workflow.run_id}
                 className="bg-white border-t transition duration-100 ease-in-out hover:bg-gray-100 cursor-pointer"
                 onClick={() => navigate(`/manage/${workflow.run_id}`)}
               >

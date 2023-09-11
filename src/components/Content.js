@@ -1,5 +1,4 @@
 import React from 'react';
-import Zoom from 'react-reveal/Zoom';
 
 const Content = ({ content }) => {
   const renderBlock = (block) => {
@@ -61,46 +60,36 @@ const Content = ({ content }) => {
           textStyle = 'text-justify';
         }
         return (
-          <Zoom>
-            <div
-              className={`leading-relaxed my-3 tracking-wide  ${textStyle}`}
-              key={block.id}
-            >
-              {/* dark:text-gray-200 */}
-              {renderBlock(block)}
-            </div>
-          </Zoom>
+          <div
+            className={`leading-relaxed my-3 tracking-wide  ${textStyle}`}
+            key={block.id}
+          >
+            {/* dark:text-gray-200 */}
+            {renderBlock(block)}
+          </div>
         );
       } else if (block.type === 'bulleted_list_item') {
         return (
-          <Zoom>
-            <ul
-              className={`leading-relaxed my-3 tracking-wide list-disc`}
-              key={block.id}
-            >
-              {/* dark:text-gray-200  */}
-              <li>{renderBlock(block)}</li>
-            </ul>
-          </Zoom>
+          <ul
+            className={`leading-relaxed my-3 tracking-wide list-disc`}
+            key={block.id}
+          >
+            {/* dark:text-gray-200  */}
+            <li>{renderBlock(block)}</li>
+          </ul>
         );
       } else if (block.type === 'divider') {
-        return (
-          <Zoom>
-            <hr className="my-3 border-t border-gray-300 " />
-            {/* dark:border-gray-600 */}
-          </Zoom>
-        );
+        return <hr className="my-3 border-t border-gray-300" key={block.id} />;
       } else {
         return (
-          <Zoom>
-            <img
-              src={block.image}
-              alt="Image"
-              className="my-10"
-              width="auto"
-              height="auto"
-            ></img>
-          </Zoom>
+          <img
+            key={block.id}
+            src={block.image}
+            alt="Image"
+            className="my-10"
+            width="auto"
+            height="auto"
+          ></img>
         );
       }
     }

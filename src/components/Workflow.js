@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ReactJson from 'react-json-view';
+import { JSONTree } from 'react-json-tree';
 import { host_uri_wes } from '../config';
 
 const Workflow = ({ isLoggedIn }) => {
@@ -79,20 +79,15 @@ const Workflow = ({ isLoggedIn }) => {
             Loading...
           </div>
         ) : (
-          <ReactJson
-            src={workflow.request}
-            collapsed={true}
-            enableClipboard={false}
-            displayObjectSize={false}
-            displayDataTypes={false}
-            style={{
-              backgroundColor: '#f1f5f9',
-              borderRadius: '0.5rem',
-              padding: '0.75rem',
-              lineHeight: '1.2rem'
-            }}
-            className="rounded-lg"
-          />
+          <div className="text-sm tracking-wide p-4 bg-slate-100 rounded-lg overflow-hidden">
+            <JSONTree
+              data={workflow.request}
+              theme={{
+                scheme: 'monokai',
+                base00: 'invisible'
+              }}
+            />
+          </div>
         )}
       </div>
       <div className="mb-5">
@@ -102,20 +97,15 @@ const Workflow = ({ isLoggedIn }) => {
             Loading...
           </div>
         ) : (
-          <ReactJson
-            src={workflow.outputs}
-            collapsed={true}
-            enableClipboard={false}
-            displayObjectSize={false}
-            displayDataTypes={false}
-            style={{
-              backgroundColor: '#f1f5f9',
-              borderRadius: '0.5rem',
-              padding: '0.75rem',
-              lineHeight: '1.2rem'
-            }}
-            className="rounded-lg"
-          />
+          <div className="text-sm tracking-wide p-4 bg-slate-100 rounded-lg overflow-hidden">
+            <JSONTree
+              data={workflow.outputs}
+              theme={{
+                scheme: 'monokai',
+                base00: 'invisible'
+              }}
+            />
+          </div>
         )}
       </div>
       <div>
@@ -125,20 +115,15 @@ const Workflow = ({ isLoggedIn }) => {
             Loading...
           </div>
         ) : (
-          <ReactJson
-            src={workflow.run_log}
-            collapsed={true}
-            enableClipboard={false}
-            displayObjectSize={false}
-            displayDataTypes={false}
-            style={{
-              backgroundColor: '#f1f5f9',
-              borderRadius: '0.5rem',
-              padding: '0.75rem',
-              lineHeight: '1.2rem'
-            }}
-            className="rounded-lg"
-          />
+          <div className="text-sm tracking-wide p-4 bg-slate-100 rounded-lg overflow-hidden">
+            <JSONTree
+              data={workflow.run_log}
+              theme={{
+                scheme: 'monokai',
+                base00: 'invisible'
+              }}
+            />
+          </div>
         )}
       </div>
     </div>

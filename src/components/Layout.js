@@ -166,7 +166,7 @@ const Layout = () => {
         <footer>
           <Footer></Footer>
         </footer>
-      <CookieConsent />
+        <CookieConsent />
       </div>
     </>
   );

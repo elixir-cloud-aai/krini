@@ -22,16 +22,15 @@ const Navbar = ({
     // console.log(localStorageData)
     if (!localStorageData) {
       // console.warn(`nothing in localStorage`);
-      return
+      return;
     }
     const localStorageDataJson = JSON.parse(localStorageData);
-    setAccessToken(localStorageDataJson.access_token)
-  }
+    setAccessToken(localStorageDataJson.access_token);
+  };
 
   useEffect(() => {
     getAccessToken();
-  }, [showOption])
-
+  }, [showOption]);
 
   const handleLogout = async () => {
     const params = JSON.parse(localStorage.getItem('params'));
@@ -42,10 +41,10 @@ const Navbar = ({
 
   const handleCopyToClipboard = () => {
     if (accessToken === undefined) getAccessToken();
-    navigator.clipboard.writeText(accessToken)
+    navigator.clipboard.writeText(accessToken);
     // console.log(accessToken);
     showToast('success', 'Copied to clipboard');
-  }
+  };
 
   const handleLogoutClick = () => {
     confirmAlert({
@@ -85,15 +84,15 @@ const Navbar = ({
       style={
         scroll <= 1
           ? {
-            paddingTop: '2rem',
-            paddingBottom: '2rem',
-            transition: 'all 0.5s'
-          }
+              paddingTop: '2rem',
+              paddingBottom: '2rem',
+              transition: 'all 0.5s'
+            }
           : {
-            paddingTop: '1rem',
-            paddingBottom: '0.75rem',
-            transition: 'all 0.5s'
-          }
+              paddingTop: '1rem',
+              paddingBottom: '0.75rem',
+              transition: 'all 0.5s'
+            }
       }
       className={
         scroll <= 1
@@ -105,13 +104,7 @@ const Navbar = ({
       <Link to="/">
         <div className="flex items-center cursor-pointer">
           <div className="h-10 mr-4 mb-1">
-            <img
-              src="/logo.png"
-              alt="logo"
-              width="40px"
-              height="40px"
-              layout="intrinsic"
-            ></img>
+            <img src="/logo.png" alt="logo" width="40px" height="40px"></img>
           </div>
           <div className="text-2xl tracking-wider font-bold font-mons">
             KRINI
@@ -171,7 +164,7 @@ const Navbar = ({
               </Link>
             </MenuItem>
             <MenuItem onClick={() => handleCopyToClipboard()}>
-              {accessToken ? `Copy Token to clipboard`: `Getting token`}
+              {accessToken ? `Copy Token to clipboard` : `Getting token`}
             </MenuItem>
             <MenuItem>
               <div onClick={() => handleLogoutClick()} className="w-full h-max">
