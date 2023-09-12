@@ -15,6 +15,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import ManageWorkflows from './ManageWorkflows';
 import Workflow from './Workflow';
 import CookieConsent from './CookieConsent';
+import TaskRuns from './TaskRuns';
 
 const Layout = () => {
   const [scroll, setScroll] = useState(0);
@@ -145,6 +146,15 @@ const Layout = () => {
                     isLoggedIn={isLoggedIn}
                     showToast={showToast}
                   ></RunWorkflow>
+                }
+              />
+              <Route
+                path="/tesRun"
+                element={
+                  <TaskRuns
+                    isLoggedIn={isLoggedIn}
+                    showToast={showToast}
+                  ></TaskRuns>
                 }
               />
               <Route
