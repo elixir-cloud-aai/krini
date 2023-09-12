@@ -45,6 +45,28 @@ const Landing = ({ isLoggedIn }) => {
         </div>
         <div
           className={`flex justify-center ${
+            isLoggedIn === 'false' ? 'hidden' : ''
+          } ${isLoggedIn === 'true' ? 'md:mr-5 mr-0 md:mb-0 mb-5' : ''}`}
+        >
+          <Link
+            to={
+              isLoggedIn === 'loading'
+                ? '/'
+                : isLoggedIn === 'false'
+                ? '/register'
+                : '/tesRun'
+            }
+            className="cursor-pointer bg-color3 text-white text-center md:w-64 w-full md:m-0 mx-10 rounded-xl py-3 px-8 hover:shadow-lg font-mons"
+          >
+            {isLoggedIn === 'loading'
+              ? ''
+              : isLoggedIn === 'false'
+              ? 'Get Started'
+              : 'Task Runs'}
+          </Link>
+        </div>
+        <div
+          className={`flex justify-center ${
             isLoggedIn !== 'true' ? 'hidden' : ''
           }`}
         >
