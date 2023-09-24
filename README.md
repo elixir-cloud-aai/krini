@@ -30,6 +30,8 @@ npm install
 > `npm run cypress:install`
 > This will install cypress in your project & will allow you to run e2e tests.
 
+- Copy the `sample.env` file to `.env` file. This file contains the environment variables required for the project to run. You can change the values of the variables as per your requirements.
+
 - Run the start script to start the development environment of the project:
 
 ```
