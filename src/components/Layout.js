@@ -16,6 +16,7 @@ import ManageWorkflows from './ManageWorkflows';
 import Workflow from './Workflow';
 import CookieConsent from './CookieConsent';
 import TaskRuns from './TaskRuns';
+import TaskCreateRuns from './TaskCreate';
 
 const Layout = () => {
   const [scroll, setScroll] = useState(0);
@@ -155,6 +156,15 @@ const Layout = () => {
                     isLoggedIn={isLoggedIn}
                     showToast={showToast}
                   ></TaskRuns>
+                }
+              />
+              <Route
+                path="/tesCreateRun"
+                element={
+                  <TaskCreateRuns
+                    isLoggedIn={isLoggedIn}
+                    showToast={showToast}
+                  ></TaskCreateRuns>
                 }
               />
               <Route
