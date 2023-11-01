@@ -17,14 +17,14 @@ const Landing = ({ isLoggedIn }) => {
         </a>
       </div>
       <div
-        className={`flex md:flex-row flex-col justify-center mt-5 ${
+        className={`flex lg:flex-row flex-col justify-center mt-5 ${
           isLoggedIn === 'loading' ? 'hidden' : ''
         }`}
       >
         <div
           className={`flex justify-center ${
             isLoggedIn === 'loading' ? 'hidden' : ''
-          } ${isLoggedIn === 'true' ? 'md:mr-5 mr-0 md:mb-0 mb-5' : ''}`}
+          } ${isLoggedIn === 'true' ? 'lg:mr-5 mr-0 lg:mb-0 mb-5' : ''}`}
         >
           <Link
             to={
@@ -46,7 +46,7 @@ const Landing = ({ isLoggedIn }) => {
         <div
           className={`flex justify-center ${
             isLoggedIn === 'false' ? 'hidden' : ''
-          } ${isLoggedIn === 'true' ? 'md:mr-5 mr-0 md:mb-0 mb-5' : ''}`}
+          } ${isLoggedIn === 'true' ? 'lg:mr-5 mr-0 lg:mb-0 mb-5' : ''}`}
         >
           <Link
             to={
@@ -68,7 +68,7 @@ const Landing = ({ isLoggedIn }) => {
         <div
           className={`flex justify-center ${
             isLoggedIn === 'false' ? 'hidden' : ''
-          } ${isLoggedIn === 'true' ? 'md:mr-5 mr-0 md:mb-0 mb-5' : ''}`}
+          } ${isLoggedIn === 'true' ? 'lg:mr-5 mr-0 lg:mb-0 mb-5' : ''}`}
         >
           <Link
             to={
