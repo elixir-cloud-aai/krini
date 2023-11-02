@@ -21,7 +21,7 @@ const TaskCreateRuns = ({ isLoggedIn, showToast }) => {
     <div className="tesContainer mt-28 p-1">
       <TESCreateRunsComponent
         className="w-full"
-        baseURL="https://csc-tesk-noauth.rahtiapp.fi/v1"
+        baseURL="https://protes.rahtiapp.fi/ga4gh/tes/v1"
       />
     </div>
   );
