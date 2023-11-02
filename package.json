@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@elixir-cloud/tes": "^0.0.2",
     "@microsoft/fast-react-wrapper": "^0.3.19",
     "@szhsin/react-menu": "^3.0.1",
     "@testing-library/cypress": "^8.0.3",
@@ -12,7 +13,6 @@
     "@uiw/react-textarea-code-editor": "^2.0.2",
     "axios": "^0.27.2",
     "env-cmd": "^10.1.0",
-    "jae-tes": "^0.0.0",
     "js-yaml": "^4.1.0",
     "prop-types": "^15.8.1",
     "react": "^18.1.0",

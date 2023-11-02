@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TESRuns } from 'jae-tes';
+import { TESRuns } from '@elixir-cloud/tes';
 import { provideFASTDesignSystem } from '@microsoft/fast-components';
 import { provideReactWrapper } from '@microsoft/fast-react-wrapper';
 
