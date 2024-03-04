@@ -21,6 +21,11 @@ const Footer = () => {
                   Privacy
                 </div>
               </Link>
+              <Link to="https://github.com/elixir-cloud-aai/krini/issues" target='_blank'>
+                <div className="hover:underline hover:text-gray-300 cursor-pointer">
+                  Support
+                </div>
+              </Link>
             </div>
             <div>&#169; 2022 Krini. All rights reserved.</div>
           </div>
