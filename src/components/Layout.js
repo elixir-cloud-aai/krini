@@ -20,12 +20,14 @@ import TaskCreateRuns from './TaskCreate';
 
 const Layout = () => {
   const [scroll, setScroll] = useState(0);
-  const [darkMode, setDarkMode] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState('loading');
   const [userData, setUserData] = useState({});
   const location = useLocation();
   const params = new URLSearchParams(location.hash);
   const navigate = useNavigate();
+
+  const storedDarkMode = JSON.parse(localStorage.getItem('darkMode'));
+  const [darkMode, setDarkMode] = useState(storedDarkMode || false);
 
   function arr2obj(arr) {
     const obj = {};
@@ -51,7 +53,7 @@ const Layout = () => {
       navigate('/');
     }
     if (!param) {
-      setIsLoggedIn('false');
+      setIsLoggedIn('true');
     } else {
       setIsLoggedIn('loading');
       (async function () {
@@ -80,10 +82,18 @@ const Layout = () => {
     };
   });
 
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark');
+      document.body.classList.add('bg-gray-800');
+    }
+  }, [darkMode]);
+
   const toggleDarkMode = () => {
     document.body.classList.toggle('dark');
     document.body.classList.toggle('bg-gray-800');
     setDarkMode(!darkMode);
+    localStorage.setItem('darkMode', JSON.stringify(!darkMode));
   };
 
   const showToast = (type, msg) => {
