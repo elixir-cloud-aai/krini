@@ -4,6 +4,7 @@ import Avatar from 'react-avatar';
 import { Menu, MenuItem, MenuButton } from '@szhsin/react-menu';
 import { host_uri } from '../config';
 import { confirmAlert } from 'react-confirm-alert';
+import DarkModeToggle from 'react-dark-mode-toggle';
 
 const Navbar = ({
   scroll,
@@ -50,7 +51,7 @@ const Navbar = ({
     confirmAlert({
       customUI: ({ onClose }) => {
         return (
-          <div className="bg-white rounded-lg p-10 shadow-xl font-open ">
+          <div className="bg-white rounded-lg p-10 shadow-xl font-open">
             <h1 className="mb-8">
               Are you sure to logout from{' '}
               <span className="font-mons font-semibold">KRINI</span>?
@@ -100,7 +101,7 @@ const Navbar = ({
           : 'bg-white z-10 fixed w-full shadow-lg  py-5 pt-10 md:px-32 px-10 flex justify-between items-center'
       }
     >
-      {/* <div className=""> */}
+     {/* <div className=""> */}
       <Link to="/">
         <div className="flex items-center cursor-pointer">
           <div className="h-10 mr-4 mb-1">
@@ -135,7 +136,12 @@ const Navbar = ({
           </Link>
         </div>
       ) : (
-        <div>
+        <div className="flex items-center">
+          <DarkModeToggle
+            onChange={toggleDarkMode}
+            checked={darkMode}
+            size={40}
+          />
           <Menu
             menuButton={
               <MenuButton>
