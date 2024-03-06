@@ -8,8 +8,8 @@ import DarkModeToggle from 'react-dark-mode-toggle';
 
 const Navbar = ({
   scroll,
-  darkMode,
   toggleDarkMode,
+  darkMode,
   isLoggedIn,
   userData,
   setIsLoggedIn,
@@ -20,7 +20,9 @@ const Navbar = ({
 
   const getAccessToken = () => {
     const localStorageData = localStorage.params;
+    // console.log(localStorageData)
     if (!localStorageData) {
+      // console.warn(`nothing in localStorage`);
       return;
     }
     const localStorageDataJson = JSON.parse(localStorageData);
@@ -41,6 +43,7 @@ const Navbar = ({
   const handleCopyToClipboard = () => {
     if (accessToken === undefined) getAccessToken();
     navigator.clipboard.writeText(accessToken);
+    // console.log(accessToken);
     showToast('success', 'Copied to clipboard');
   };
 
@@ -98,6 +101,7 @@ const Navbar = ({
           : 'bg-white z-10 fixed w-full shadow-lg  py-5 pt-10 md:px-32 px-10 flex justify-between items-center'
       }
     >
+     {/* <div className=""> */}
       <Link to="/">
         <div className="flex items-center cursor-pointer">
           <div className="h-10 mr-4 mb-1">
@@ -144,6 +148,7 @@ const Navbar = ({
                 <div
                   className="w-max flex justify-between items-center font-open cursor-pointer"
                   onClick={() => {
+                    // console.log(showOption);
                     setShowOption(!showOption);
                   }}
                 >
@@ -175,6 +180,8 @@ const Navbar = ({
           </Menu>
         </div>
       )}
+
+      {/* </div> */}
     </div>
   );
 };
