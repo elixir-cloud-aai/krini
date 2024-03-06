@@ -53,7 +53,7 @@ const Layout = () => {
       navigate('/');
     }
     if (!param) {
-      setIsLoggedIn('true');
+      setIsLoggedIn('false');
     } else {
       setIsLoggedIn('loading');
       (async function () {
