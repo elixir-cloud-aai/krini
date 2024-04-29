@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@elixir-cloud/tes": "^0.0.2",
-    "@microsoft/fast-react-wrapper": "^0.3.19",
+    "@elixir-cloud/tes": "0.1.1",
     "@szhsin/react-menu": "^3.0.1",
     "@testing-library/cypress": "^8.0.3",
     "@testing-library/jest-dom": "^5.16.4",
