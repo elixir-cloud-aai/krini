@@ -14,7 +14,7 @@ const TaskCreateRuns = ({ isLoggedIn, showToast }) => {
   return (
     <div className="tesContainer mt-28 p-1">
       <ECCClientGa4ghTesCreateRun
-      />;
+      />
     </div>
   );
 };
