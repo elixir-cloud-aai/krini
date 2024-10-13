@@ -1,5 +1,7 @@
 import React, { FC, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+//@ts-expect-error
 import ECCClientGa4ghTesCreateRun from '@elixir-cloud/tes/dist/react/create-run/index';
 import { TaskCreateProps } from './types';
 
