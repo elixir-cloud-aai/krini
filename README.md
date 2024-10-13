@@ -23,7 +23,7 @@ cd krini
 - Install the packages to be used in the development:
 
 ```
-npm install
+yarn
 ```
 
 > **_NOTE:_** If haven't used the cypress before please run
@@ -33,11 +33,11 @@ npm install
 - Run the start script to start the development environment of the project:
 
 ```
-npm run start
+yarn dev
 ```
 
 - This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
-  > **_NOTE:_** You might face a problem while login if your application isn't running on `http://localhost:3000/`. In the case of port change, change the enviroment variable `REACT_APP_HOST_URI` in file `.env.development` file to the required url.
+  > **_NOTE:_** You might face a problem while login if your application isn't running on `http://localhost:3000/`. In the case of port change, change the environment variable `VITE_HOST_URI` in file `.env.development` file to the required url.
 
 Great, now you are good to go!
 
