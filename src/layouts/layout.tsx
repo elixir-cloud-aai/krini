@@ -10,7 +10,7 @@ import RunWorkflow from '@/components/run-workflow';
 import TaskCreateRuns from '@/components/task-create';
 import TaskRuns from '@/components/task-run';
 import Workflow from '@/components/workflows';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import DarkModeContext from '@/context/dark-mode'
 import Footer from '@/components/footer';
@@ -25,7 +25,7 @@ const Layout = () => {
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isLoggedIn, setIsLoggedIn] = useState<LoginStatus>(LoginStatus.LOADING);
   const [userData, setUserData] = useState({});
-  const navigate= useNavigate();
+  const navigate = useNavigate();
   const location = useLocation();
 
   const arr2obj = (arr: [string, string][]) => {
@@ -41,50 +41,48 @@ const Layout = () => {
     return obj;
   }
 
-  useEffect(() => {
-    const authentication= async ()=>{
-      const searchParams = new URLSearchParams(location.hash);
-      document.documentElement.setAttribute('data-color-mode', 'light');
-      let localParams :Record<string, string> = {}
-      if (!searchParams || searchParams.size==0) {
-        localParams = JSON.parse(localStorage.getItem(AUTH_TOKEN) || '{}');
-      } else {
-        const paramsObj = arr2obj(Array.from(searchParams.entries()));
-        localStorage.setItem(AUTH_TOKEN, JSON.stringify(paramsObj));
-        navigate('/')
-      }
-      if (Object.keys(localParams).length == 0) {
-        setIsLoggedIn(LoginStatus.NOT_LOGGED_IN);
-      } else {
-        setIsLoggedIn(LoginStatus.LOADING);
-        console.log({...localParams}, location)
-          try {
-            const response = await axios.get(
-              'https://login.elixir-czech.org/oidc/userinfo',
-              {
-                headers: {
-                  Authorization: `Bearer ${
-                 localParams?.access_token || ''}`
-                }
-              }
-            );
-            setUserData(response.data);
-            setIsLoggedIn(LoginStatus.LOGGED_IN);
-          } catch (_e: any) {
-            localStorage.removeItem(AUTH_TOKEN);
-            setIsLoggedIn(LoginStatus.NOT_LOGGED_IN);
-          }
+  const authentication = useCallback(async () => {
+    const searchParams = new URLSearchParams(location.hash);
+    document.documentElement.setAttribute('data-color-mode', 'light');
+    let localParams: Record<string, string> = {}
+    if (!searchParams || searchParams.size == 0) {
+      localParams = JSON.parse(localStorage.getItem(AUTH_TOKEN) || '{}');
+    } else {
+      const paramsObj = arr2obj(Array.from(searchParams.entries()));
+      localStorage.setItem(AUTH_TOKEN, JSON.stringify(paramsObj));
+      navigate('/')
     }
-  }
-  authentication()
+    if (Object.keys(localParams).length == 0) {
+      setIsLoggedIn(LoginStatus.NOT_LOGGED_IN);
+    } else {
+      setIsLoggedIn(LoginStatus.LOADING);
+      try {
+        const response = await axios.get(
+          'https://login.elixir-czech.org/oidc/userinfo',
+          {
+            headers: {
+              Authorization: `Bearer ${localParams?.access_token || ''}`
+            }
+          }
+        );
+        setUserData(response.data);
+        setIsLoggedIn(LoginStatus.LOGGED_IN);
+      } catch (_e: any) {
+        localStorage.removeItem(AUTH_TOKEN);
+        setIsLoggedIn(LoginStatus.NOT_LOGGED_IN);
+      }
+    }
+  }, [location, navigate])
 
-  }, [navigate, location]);
+  useEffect(() => {
+    if (isLoggedIn != LoginStatus.LOGGED_IN) authentication()
+  }, [authentication, isLoggedIn]);
 
   useEffect(() => {
     window.onscroll = () => {
       setScroll(window.scrollY);
     };
-  });
+  },[]);
 
   const toggleDarkMode = () => {
     document.body.classList.toggle('dark');
@@ -92,7 +90,7 @@ const Layout = () => {
     setDarkMode(!darkMode);
   };
 
-  const showToast = (type : string , msg : string) => {
+  const showToast = (type: string, msg: string) => {
     if (type === 'success') {
       toast.success(msg);
     } else if (type === 'error') {

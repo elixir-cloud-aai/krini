@@ -10,14 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@elixir-cloud/tes": "^0.1.1",
+    "@elixir-cloud/tes": "1.0.0",
     "@szhsin/react-menu": "^4.2.2",
     "@uiw/react-textarea-code-editor": "^3.0.2",
     "axios": "^1.7.7",
     "js-yaml": "^4.1.0",
     "krini": "file:",
     "react": "^18.3.1",
-    "react-confirm-alert": "^3.0.6",
     "react-dom": "^18.3.1",
     "react-fast-marquee": "^1.6.5",
     "react-files": "^3.0.3",
