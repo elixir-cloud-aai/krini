@@ -18,7 +18,7 @@ const Navbar: FC<NavbarProps> = ({
 }) => {
   const [showOption, setShowOption] = useState(false);
   const [accessToken, setAccessToken] = useState('');
-  const [openModal, setOpenModal] = useState(false)
+  const [showModal, setShowModal] = useState(false)
 
   const getAccessToken = () => {
     const localStorageData = localStorage.params;
@@ -47,12 +47,12 @@ const Navbar: FC<NavbarProps> = ({
   };
 
   const onCloseModal = () => {
-    setOpenModal(false)
+    setShowModal(false)
   }
 
   const logoutHandler = async () => {
     await handleLogout()
-    setOpenModal(false)
+    setShowModal(false)
   }
 
   return (
@@ -144,7 +144,7 @@ const Navbar: FC<NavbarProps> = ({
                 {accessToken ? `Copy Token to clipboard` : `Getting token`}
               </MenuItem>
               <MenuItem>
-                <div onClick={() => setOpenModal(true)} className="w-full h-max">
+                <div onClick={() => setShowModal(true)} className="w-full h-max">
                   Log out
                 </div>
               </MenuItem>
@@ -153,7 +153,7 @@ const Navbar: FC<NavbarProps> = ({
         )}
       </div>
       {
-        openModal &&
+        showModal &&
         <Modal>
           <div className="bg-white rounded-lg p-10 shadow-xl font-open h-fit drop-shadow-2xl">
             <h1 className="mb-8">
