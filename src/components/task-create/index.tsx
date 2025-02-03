@@ -14,9 +14,8 @@ const TaskCreateRuns: FC<TaskCreateProps> = ({ isLoggedIn }) => {
   }, [isLoggedIn, navigate]);
 
   return (
-    <div className="tesContainer mt-28 p-1">
-      <ECCCLientGa4ghTesCreateRun
-      />;
+    <div className="tesContainer mt-28 px-10 py-5">
+      <ECCCLientGa4ghTesCreateRun />
     </div>
   );
 };
