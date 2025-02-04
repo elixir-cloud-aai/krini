@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [12.x, 14.x, 16.x]
+        node-version: [22.x]
 
     steps:
       - uses: actions/checkout@v3
@@ -17,15 +17,15 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-      - run: npm i --force
-      - run: npm run lint
+          cache: 'yarn'
+      - run: yarn install --frozen-lockfile
+      - run: yarn lint
 
   tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [12.x, 14.x, 16.x]
+        node-version: [22.x]
 
     steps:
       - name: Checkout
@@ -33,15 +33,14 @@ jobs:
       - name: E2E run
         uses: cypress-io/github-action@v4
         with:
-          build: npm run build
-          start: npm start
+          build: yarn build
+          start: yarn dev
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-      - run: npm i --force
-      - run: npm run test:dev
+          cache: 'yarn'
+      - run: yarn install --frozen-lockfile
 
   docker-image:
     runs-on: ubuntu-latest
