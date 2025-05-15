@@ -10,7 +10,7 @@ const Login: FC<LoginProps> = ({ isLoggedIn }) => {
     if (isLoggedIn === LoginStatus.LOGGED_IN) {
       return navigate('/');
     } else if (isLoggedIn === LoginStatus.NOT_LOGGED_IN) {
-      window.location.href = `https://login.elixir-czech.org/oidc/authorize?response_type=token id_token&scope=openid profile email eduperson_entitlement ga4gh_passport_v1&client_id=5fc66010-a596-48e4-8c09-89a767ef136c&state=StAtE&redirect_uri=${HOST_URI}`;
+      window.location.href = `https://login.aai.lifescience-ri.eu/oidc/authorize?response_type=token id_token&scope=openid profile email eduperson_entitlement ga4gh_passport_v1&client_id=5fc66010-a596-48e4-8c09-89a767ef136c&state=StAtE&redirect_uri=${HOST_URI}`;
     }
   }, [isLoggedIn, navigate]);
 
