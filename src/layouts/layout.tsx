@@ -58,7 +58,7 @@ const Layout = () => {
       setIsLoggedIn(LoginStatus.LOADING);
       try {
         const response = await axios.get(
-          'https://login.elixir-czech.org/oidc/userinfo',
+          'https://login.aai.lifescience-ri.eu/oidc/userinfo',
           {
             headers: {
               Authorization: `Bearer ${localParams?.access_token || ''}`

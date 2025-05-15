@@ -36,7 +36,7 @@ const Navbar: FC<NavbarProps> = ({
   const handleLogout = async () => {
     const params = JSON.parse(localStorage.getItem(AUTH_TOKEN) || '{}');
     localStorage.removeItem(AUTH_TOKEN);
-    window.location.href = `https://login.elixir-czech.org/oidc/endsession?id_token_hint=${params.id_token}&post_logout_redirect_uri=${HOST_URI}`;
+    window.location.href = `https://login.aai.lifescience-ri.eu/oidc/endsession?id_token_hint=${params.id_token}&post_logout_redirect_uri=${HOST_URI}`;
     setIsLoggedIn(LoginStatus.NOT_LOGGED_IN);
   };
 
