@@ -1,0 +1,23 @@
+# Framework-agnostic TES Dashboard Requirements
+# Core dependencies
+requests>=2.31.0
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+
+# Framework options (choose one or both)
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# FastAPI alternative (optional)
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Development dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+mypy>=1.5.0
+
+# Original dependencies (if still needed)
+urllib3>=2.0.0
+certifi>=2023.0.0

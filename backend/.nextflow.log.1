@@ -1,0 +1,56 @@
+Jul-21 03:37:43.981 [main] DEBUG nextflow.cli.Launcher - $> nextflow run uploads/98e06d6e-2f0e-4565-9a4c-8357d1ceca77_test.nf -profile tes --outdir uploads/98e06d6e-2f0e-4565-9a4c-8357d1ceca77_results --tes_url 'https://funnel.cloud.e-infra.cz' --tes_user funnel --tes_password icP5DfAInL -resume
+Jul-21 03:37:44.061 [main] DEBUG nextflow.cli.CmdRun - N E X T F L O W  ~  version 25.04.6
+Jul-21 03:37:44.088 [main] DEBUG nextflow.plugin.PluginsFacade - Setting up plugin manager > mode=prod; embedded=false; plugins-dir=/Users/keshavdayal/.nextflow/plugins; core-plugins: nf-amazon@2.15.0,nf-azure@1.16.0,nf-cloudcache@0.4.3,nf-codecommit@0.2.3,nf-console@1.2.1,nf-google@1.21.1,nf-k8s@1.0.0,nf-tower@1.11.4,nf-wave@1.12.1
+Jul-21 03:37:44.113 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Enabled plugins: []
+Jul-21 03:37:44.114 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Disabled plugins: []
+Jul-21 03:37:44.116 [main] INFO  org.pf4j.DefaultPluginManager - PF4J version 3.12.0 in 'deployment' mode
+Jul-21 03:37:44.127 [main] INFO  org.pf4j.AbstractPluginManager - No plugins
+Jul-21 03:37:44.176 [main] DEBUG n.secret.LocalSecretsProvider - Secrets store: /Users/keshavdayal/.nextflow/secrets/store.json
+Jul-21 03:37:44.186 [main] DEBUG nextflow.secret.SecretsLoader - Discovered secrets providers: [nextflow.secret.LocalSecretsProvider@e8fadb0] - activable => nextflow.secret.LocalSecretsProvider@e8fadb0
+Jul-21 03:37:44.225 [main] DEBUG nextflow.cli.CmdRun - Applied DSL=2 by global default
+Jul-21 03:37:44.253 [main] DEBUG nextflow.cli.CmdRun - Launching `uploads/98e06d6e-2f0e-4565-9a4c-8357d1ceca77_test.nf` [intergalactic_poisson] DSL2 - revision: 86f5d8b542
+Jul-21 03:37:44.254 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins default=[]
+Jul-21 03:37:44.254 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins resolved requirement=[]
+Jul-21 03:37:44.322 [main] DEBUG nextflow.Session - Session UUID: 3cb4731e-eb9a-4667-946c-d4053b4c692c
+Jul-21 03:37:44.322 [main] DEBUG nextflow.Session - Run name: intergalactic_poisson
+Jul-21 03:37:44.323 [main] DEBUG nextflow.Session - Executor pool size: 8
+Jul-21 03:37:44.331 [main] DEBUG nextflow.file.FilePorter - File porter settings maxRetries=3; maxTransfers=50; pollTimeout=null
+Jul-21 03:37:44.336 [main] DEBUG nextflow.util.ThreadPoolBuilder - Creating thread pool 'FileTransfer' minSize=10; maxSize=24; workQueue=LinkedBlockingQueue[-1]; allowCoreThreadTimeout=false
+Jul-21 03:37:44.363 [main] DEBUG nextflow.cli.CmdRun - 
+  Version: 25.04.6 build 5954
+  Created: 01-07-2025 11:27 UTC (16:57 IDT)
+  System: Mac OS X 15.0
+  Runtime: Groovy 4.0.26 on OpenJDK 64-Bit Server VM 17.0.15+0
+  Encoding: UTF-8 (UTF-8)
+  Process: 74456@Keshavs-Laptop.local [127.0.0.1]
+  CPUs: 8 - Mem: 8 GB (102.2 MB) - Swap: 5 GB (1.4 GB)
+Jul-21 03:37:44.378 [main] DEBUG nextflow.Session - Work-dir: /Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/work [Mac OS X]
+Jul-21 03:37:44.379 [main] DEBUG nextflow.Session - Script base path does not exist or is not a directory: /Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/uploads/bin
+Jul-21 03:37:44.401 [main] DEBUG nextflow.executor.ExecutorFactory - Extension executors providers=[]
+Jul-21 03:37:44.409 [main] DEBUG nextflow.Session - Observer factory: DefaultObserverFactory
+Jul-21 03:37:44.413 [main] DEBUG nextflow.Session - Observer factory (v2): LinObserverFactory
+Jul-21 03:37:44.429 [main] DEBUG nextflow.cache.CacheFactory - Using Nextflow cache factory: nextflow.cache.DefaultCacheFactory
+Jul-21 03:37:44.446 [main] DEBUG nextflow.util.CustomThreadPool - Creating default thread pool > poolSize: 9; maxThreads: 1000
+Jul-21 03:37:44.554 [main] DEBUG nextflow.Session - Session start
+Jul-21 03:37:44.952 [main] DEBUG nextflow.script.ScriptRunner - > Launching execution
+Jul-21 03:37:45.030 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: null
+Jul-21 03:37:45.030 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'local'
+Jul-21 03:37:45.037 [main] DEBUG nextflow.executor.Executor - [warm up] executor > local
+Jul-21 03:37:45.046 [main] DEBUG n.processor.LocalPollingMonitor - Creating local task monitor for executor 'local' > cpus=8; memory=8 GB; capacity=8; pollInterval=100ms; dumpInterval=5m
+Jul-21 03:37:45.049 [main] DEBUG n.processor.TaskPollingMonitor - >>> barrier register (monitor: local)
+Jul-21 03:37:45.099 [main] DEBUG nextflow.processor.TaskProcessor - Creating process 'sayHello': maxForks=0; fair=false; array=0
+Jul-21 03:37:45.149 [main] DEBUG nextflow.Session - Workflow process names [dsl2]: sayHello
+Jul-21 03:37:45.150 [main] DEBUG nextflow.Session - Igniting dataflow network (1)
+Jul-21 03:37:45.150 [main] DEBUG nextflow.processor.TaskProcessor - Starting process > sayHello
+Jul-21 03:37:45.151 [main] DEBUG nextflow.script.ScriptRunner - Parsed script files:
+  Script_1fbf97d1925bac41: /Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/uploads/98e06d6e-2f0e-4565-9a4c-8357d1ceca77_test.nf
+Jul-21 03:37:45.151 [main] DEBUG nextflow.script.ScriptRunner - > Awaiting termination 
+Jul-21 03:37:45.151 [main] DEBUG nextflow.Session - Session await
+Jul-21 03:37:45.274 [Actor Thread 3] INFO  nextflow.processor.TaskProcessor - [46/5d95ed] Cached process > sayHello
+Jul-21 03:37:45.286 [main] DEBUG nextflow.Session - Session await > all processes finished
+Jul-21 03:37:45.368 [Task monitor] DEBUG n.processor.TaskPollingMonitor - <<< barrier arrives (monitor: local) - terminating tasks monitor poll loop
+Jul-21 03:37:45.368 [main] DEBUG nextflow.Session - Session await > all barriers passed
+Jul-21 03:37:45.378 [main] DEBUG n.trace.WorkflowStatsObserver - Workflow completed > WorkflowStats[succeededCount=0; failedCount=0; ignoredCount=0; cachedCount=1; pendingCount=0; submittedCount=0; runningCount=0; retriesCount=0; abortedCount=0; succeedDuration=0ms; failedDuration=0ms; cachedDuration=6ms;loadCpus=0; loadMemory=0; peakRunning=0; peakCpus=0; peakMemory=0; ]
+Jul-21 03:37:45.446 [main] DEBUG nextflow.cache.CacheDB - Closing CacheDB done
+Jul-21 03:37:45.477 [main] DEBUG nextflow.util.ThreadPoolManager - Thread pool 'FileTransfer' shutdown completed (hard=false)
+Jul-21 03:37:45.477 [main] DEBUG nextflow.script.ScriptRunner - > Execution complete -- Goodbye

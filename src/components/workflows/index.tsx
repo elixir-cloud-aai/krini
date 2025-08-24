@@ -10,10 +10,6 @@ const Workflow: FC<WorkflowProps> = ({ isLoggedIn }) => {
   const { id } = params;
   const [workflow, setWorkflow] = useState<any>(null);
 
-  // let token = localStorage.getItem("params");
-  // token = JSON.parse(token);
-  // token = token ? token.access_token : null;
-
   useEffect(() => {
     if (isLoggedIn === 'false') {
       return navigate('/');

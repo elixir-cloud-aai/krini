@@ -1,0 +1,677 @@
+[
+  {
+    "mode": "gateway",
+    "tes_name": "TES Gateway",
+    "status": "SUBMITTED",
+    "run_id": "96b6917a-5e21-43bf-a820-c2c4b50cbc5d",
+    "log_file": "uploads/batch_96b6917a-5e21-43bf-a820-c2c4b50cbc5d.log",
+    "workflow_type": "nextflow",
+    "submitted_at": "2025-08-03T17:22:39.062840"
+  },
+  {
+    "mode": "all",
+    "tes_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "status": "SUBMITTED",
+    "run_id": "bcdfc650-3ef6-48c1-b701-261ae511ee35",
+    "log_file": "uploads/batch_bcdfc650-3ef6-48c1-b701-261ae511ee35.log",
+    "workflow_type": "snakemake",
+    "submitted_at": "2025-08-03T17:23:59.334990"
+  },
+  {
+    "mode": "all",
+    "tes_name": "Funnel/Slurm @ ELIXIR-FI",
+    "status": "SUBMITTED",
+    "run_id": "a732df84-9214-431f-a8f9-af55a8e5befa",
+    "log_file": "uploads/batch_a732df84-9214-431f-a8f9-af55a8e5befa.log",
+    "workflow_type": "snakemake",
+    "submitted_at": "2025-08-03T17:23:59.335818"
+  },
+  {
+    "mode": "all",
+    "tes_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "status": "SUBMITTED",
+    "run_id": "ff2db6e8-27a4-454e-8d11-5ec8f087301b",
+    "log_file": "uploads/batch_ff2db6e8-27a4-454e-8d11-5ec8f087301b.log",
+    "workflow_type": "snakemake",
+    "submitted_at": "2025-08-03T17:23:59.336330"
+  },
+  {
+    "mode": "all",
+    "tes_name": "TESK/OpenShift @ ELIXIR-FI",
+    "status": "SUBMITTED",
+    "run_id": "8d83906b-df9a-4e0e-83c6-eddb0e000e59",
+    "log_file": "uploads/batch_8d83906b-df9a-4e0e-83c6-eddb0e000e59.log",
+    "workflow_type": "snakemake",
+    "submitted_at": "2025-08-03T17:23:59.336765"
+  },
+  {
+    "mode": "gateway",
+    "tes_name": "TES Gateway",
+    "status": "SUBMITTED",
+    "run_id": "6935abb0-7484-446a-8ced-02f51f0ef6d9",
+    "log_file": "uploads/batch_6935abb0-7484-446a-8ced-02f51f0ef6d9.log",
+    "workflow_type": "cwl",
+    "submitted_at": "2025-08-03T17:24:23.087459"
+  },
+  {
+    "mode": "all",
+    "tes_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "status": "SUBMITTED",
+    "run_id": "e470396a-6c24-4dee-94ff-150257d8bd8f",
+    "log_file": "uploads/batch_e470396a-6c24-4dee-94ff-150257d8bd8f.log",
+    "workflow_type": "snakemake",
+    "submitted_at": "2025-08-03T17:25:12.795248"
+  },
+  {
+    "mode": "all",
+    "tes_name": "Funnel/Slurm @ ELIXIR-FI",
+    "status": "SUBMITTED",
+    "run_id": "d2d7495d-c536-440c-935a-3898190e4bb5",
+    "log_file": "uploads/batch_d2d7495d-c536-440c-935a-3898190e4bb5.log",
+    "workflow_type": "snakemake",
+    "submitted_at": "2025-08-03T17:25:12.796345"
+  },
+  {
+    "mode": "all",
+    "tes_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "status": "SUBMITTED",
+    "run_id": "b615223d-85e3-4a5a-b736-6937314835da",
+    "log_file": "uploads/batch_b615223d-85e3-4a5a-b736-6937314835da.log",
+    "workflow_type": "snakemake",
+    "submitted_at": "2025-08-03T17:25:12.797244"
+  },
+  {
+    "mode": "all",
+    "tes_name": "TESK/OpenShift @ ELIXIR-FI",
+    "status": "SUBMITTED",
+    "run_id": "fdcc6497-9014-43da-a398-88cfff3373a8",
+    "log_file": "uploads/batch_fdcc6497-9014-43da-a398-88cfff3373a8.log",
+    "workflow_type": "snakemake",
+    "submitted_at": "2025-08-03T17:25:12.798251"
+  },
+  {
+    "mode": "all",
+    "tes_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "status": "SUBMITTED",
+    "run_id": "8b9bd811-616d-48e6-8c77-011fec51a2fa",
+    "log_file": "uploads/batch_8b9bd811-616d-48e6-8c77-011fec51a2fa.log",
+    "workflow_type": "nextflow",
+    "submitted_at": "2025-08-03T17:25:45.484114"
+  },
+  {
+    "mode": "all",
+    "tes_name": "Funnel/Slurm @ ELIXIR-FI",
+    "status": "SUBMITTED",
+    "run_id": "b8cdd2ea-032e-450a-9327-817527c4975e",
+    "log_file": "uploads/batch_b8cdd2ea-032e-450a-9327-817527c4975e.log",
+    "workflow_type": "nextflow",
+    "submitted_at": "2025-08-03T17:25:45.484962"
+  },
+  {
+    "mode": "all",
+    "tes_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "status": "SUBMITTED",
+    "run_id": "eefc2c3f-1cdf-4b90-b508-064412821dd8",
+    "log_file": "uploads/batch_eefc2c3f-1cdf-4b90-b508-064412821dd8.log",
+    "workflow_type": "nextflow",
+    "submitted_at": "2025-08-03T17:25:45.485464"
+  },
+  {
+    "mode": "all",
+    "tes_name": "TESK/OpenShift @ ELIXIR-FI",
+    "status": "SUBMITTED",
+    "run_id": "fb55d3fc-5eae-44b5-b63e-707ff508f715",
+    "log_file": "uploads/batch_fb55d3fc-5eae-44b5-b63e-707ff508f715.log",
+    "workflow_type": "nextflow",
+    "submitted_at": "2025-08-03T17:25:45.486288"
+  },
+  {
+    "mode": "all",
+    "tes_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "status": "SUBMITTED",
+    "run_id": "3aee4389-14b3-40bd-97e7-d2e10686da48",
+    "log_file": "uploads/batch_3aee4389-14b3-40bd-97e7-d2e10686da48.log",
+    "workflow_type": "cwl",
+    "submitted_at": "2025-08-03T17:26:28.215245"
+  },
+  {
+    "mode": "all",
+    "tes_name": "Funnel/Slurm @ ELIXIR-FI",
+    "status": "SUBMITTED",
+    "run_id": "46b578ac-c560-4d30-8838-cda4ac2938e8",
+    "log_file": "uploads/batch_46b578ac-c560-4d30-8838-cda4ac2938e8.log",
+    "workflow_type": "cwl",
+    "submitted_at": "2025-08-03T17:26:28.217368"
+  },
+  {
+    "mode": "all",
+    "tes_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "status": "SUBMITTED",
+    "run_id": "b4330665-4073-4ff7-a533-adc4abeda44e",
+    "log_file": "uploads/batch_b4330665-4073-4ff7-a533-adc4abeda44e.log",
+    "workflow_type": "cwl",
+    "submitted_at": "2025-08-03T17:26:28.218264"
+  },
+  {
+    "mode": "all",
+    "tes_name": "TESK/OpenShift @ ELIXIR-FI",
+    "status": "SUBMITTED",
+    "run_id": "e138bd83-a585-4bc9-a858-8e66cd1c92ce",
+    "log_file": "uploads/batch_e138bd83-a585-4bc9-a858-8e66cd1c92ce.log",
+    "workflow_type": "cwl",
+    "submitted_at": "2025-08-03T17:26:28.218984"
+  },
+  {
+    "mode": "all",
+    "tes_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "status": "SUBMITTED",
+    "run_id": "62b51f43-d63b-4c4d-82a3-81aed3e80fba",
+    "log_file": "uploads/batch_62b51f43-d63b-4c4d-82a3-81aed3e80fba.log",
+    "workflow_type": "nextflow",
+    "submitted_at": "2025-08-04T01:52:47.020717"
+  },
+  {
+    "mode": "all",
+    "tes_name": "Funnel/Slurm @ ELIXIR-FI",
+    "status": "SUBMITTED",
+    "run_id": "c5913f40-7599-4805-b47b-1131566f9f4e",
+    "log_file": "uploads/batch_c5913f40-7599-4805-b47b-1131566f9f4e.log",
+    "workflow_type": "nextflow",
+    "submitted_at": "2025-08-04T01:52:47.022324"
+  },
+  {
+    "mode": "all",
+    "tes_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "status": "SUBMITTED",
+    "run_id": "1719da5a-bfb8-426b-a78a-ca46eaed2cb5",
+    "log_file": "uploads/batch_1719da5a-bfb8-426b-a78a-ca46eaed2cb5.log",
+    "workflow_type": "nextflow",
+    "submitted_at": "2025-08-04T01:52:47.023723"
+  },
+  {
+    "mode": "all",
+    "tes_name": "TESK/OpenShift @ ELIXIR-FI",
+    "status": "SUBMITTED",
+    "run_id": "36cad5c5-07ab-4b8f-927f-c5ad233a012e",
+    "log_file": "uploads/batch_36cad5c5-07ab-4b8f-927f-c5ad233a012e.log",
+    "workflow_type": "nextflow",
+    "submitted_at": "2025-08-04T01:52:47.024517"
+  },
+  {
+    "mode": "gateway",
+    "tes_name": "TES Gateway",
+    "status": "SUBMITTED",
+    "run_id": "eb280931-b443-4aef-bb27-47c270c6f047",
+    "log_file": "uploads/batch_eb280931-b443-4aef-bb27-47c270c6f047.log",
+    "workflow_type": "cwl",
+    "submitted_at": "2025-08-04T01:53:00.214826"
+  },
+  {
+    "run_id": "73d35d9f-a136-4d61-ad1b-1cffde522659",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TES Gateway",
+    "submitted_at": "2025-08-12T23:45:26.727730",
+    "mode": "gateway",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_73d35d9f-a136-4d61-ad1b-1cffde522659.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_4fcbeb4f-0024-4d4d-9810-500a05ad20b4_test.nf"
+    }
+  },
+  {
+    "run_id": "1d92815f-a8d5-4bdb-8c8e-ac4102082dae",
+    "workflow_type": "snakemake",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TES Gateway",
+    "submitted_at": "2025-08-12T23:45:42.287121",
+    "mode": "gateway",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_1d92815f-a8d5-4bdb-8c8e-ac4102082dae.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_825447a8-5148-446f-9c35-6da297794ee0_Snakefile"
+    }
+  },
+  {
+    "run_id": "0d56f77d-7eb5-4ea0-97b2-a32b05604570",
+    "workflow_type": "cwl",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TES Gateway",
+    "submitted_at": "2025-08-12T23:46:06.087517",
+    "mode": "gateway",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_0d56f77d-7eb5-4ea0-97b2-a32b05604570.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_2a26269c-f04f-46f1-b28f-1e67c7ab8177_test_workflow.cwl"
+    }
+  },
+  {
+    "run_id": "3b0ef659-243e-41a3-a6a9-2971f77f69e9",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "submitted_at": "2025-08-12T23:50:59.784312",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_3b0ef659-243e-41a3-a6a9-2971f77f69e9.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_25caa33c-46f3-4118-b553-ca352c74a294_test.nf"
+    }
+  },
+  {
+    "run_id": "ff0ebf64-93cc-421d-8399-f76bc13de9cf",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/Slurm @ ELIXIR-FI",
+    "submitted_at": "2025-08-12T23:50:59.786315",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_ff0ebf64-93cc-421d-8399-f76bc13de9cf.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_25caa33c-46f3-4118-b553-ca352c74a294_test.nf"
+    }
+  },
+  {
+    "run_id": "90c1c9b1-5574-4a77-8bfb-52e237f195a9",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "submitted_at": "2025-08-12T23:50:59.786831",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_90c1c9b1-5574-4a77-8bfb-52e237f195a9.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_25caa33c-46f3-4118-b553-ca352c74a294_test.nf"
+    }
+  },
+  {
+    "run_id": "53d31d23-8131-437c-a32a-a21687bee882",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/OpenShift @ ELIXIR-FI",
+    "submitted_at": "2025-08-12T23:50:59.787334",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_53d31d23-8131-437c-a32a-a21687bee882.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_25caa33c-46f3-4118-b553-ca352c74a294_test.nf"
+    }
+  },
+  {
+    "run_id": "16399bcb-9252-44e3-bd95-3ad0e62ed5eb",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TES Gateway",
+    "submitted_at": "2025-08-12T23:56:55.939448",
+    "mode": "gateway",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_16399bcb-9252-44e3-bd95-3ad0e62ed5eb.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_9e4def98-147a-4700-8cdf-242610f25cd7_test.nf"
+    }
+  },
+  {
+    "run_id": "2d87d389-c2ba-4f89-8eb5-2fab32aa8656",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TES Gateway",
+    "submitted_at": "2025-08-13T00:15:52.080698",
+    "mode": "gateway",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_2d87d389-c2ba-4f89-8eb5-2fab32aa8656.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_06474751-153d-4fc4-8261-53df0b43e0d1_test.nf"
+    }
+  },
+  {
+    "run_id": "b39d4cc9-e2b9-476e-92a8-cdc4fc8347e5",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TES Gateway",
+    "submitted_at": "2025-08-13T00:17:19.479575",
+    "mode": "gateway",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_b39d4cc9-e2b9-476e-92a8-cdc4fc8347e5.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_1d201080-49a9-4997-be52-08f16da6aadf_test.nf"
+    }
+  },
+  {
+    "run_id": "36b0e617-72c6-4fc3-85a1-ae6fd635b338",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TES Gateway",
+    "submitted_at": "2025-08-13T00:21:51.949883",
+    "mode": "gateway",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_36b0e617-72c6-4fc3-85a1-ae6fd635b338.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_a027e5f7-07ee-457d-a749-61367f1dc8d4_test.nf"
+    }
+  },
+  {
+    "run_id": "22cf2b28-3e2f-4d13-9415-5a0b2e611ac4",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "submitted_at": "2025-08-13T00:23:07.029015",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_22cf2b28-3e2f-4d13-9415-5a0b2e611ac4.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_a2097db0-081e-49d8-b88a-cb06614d1679_test.nf"
+    }
+  },
+  {
+    "run_id": "3e821e5c-e21b-4fdb-9584-a1120bcac8a7",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/Slurm @ ELIXIR-FI",
+    "submitted_at": "2025-08-13T00:23:07.032289",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_3e821e5c-e21b-4fdb-9584-a1120bcac8a7.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_a2097db0-081e-49d8-b88a-cb06614d1679_test.nf"
+    }
+  },
+  {
+    "run_id": "af514b57-f3a7-43cb-9d35-b99ec48908c4",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "submitted_at": "2025-08-13T00:23:07.034192",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_af514b57-f3a7-43cb-9d35-b99ec48908c4.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_a2097db0-081e-49d8-b88a-cb06614d1679_test.nf"
+    }
+  },
+  {
+    "run_id": "f14c7242-834c-41a7-91cd-63aa0c035463",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/OpenShift @ ELIXIR-FI",
+    "submitted_at": "2025-08-13T00:23:07.035620",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_f14c7242-834c-41a7-91cd-63aa0c035463.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_a2097db0-081e-49d8-b88a-cb06614d1679_test.nf"
+    }
+  },
+  {
+    "run_id": "8cbf10be-d8cd-4f66-9a12-23b4d4e6d087",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "submitted_at": "2025-08-13T00:24:05.438424",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_8cbf10be-d8cd-4f66-9a12-23b4d4e6d087.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_14b482fb-941f-4b2b-8de4-d8fa5272ffa8_test.nf"
+    }
+  },
+  {
+    "run_id": "36ed7774-2d57-44d2-bb79-2f8b2cae3317",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/Slurm @ ELIXIR-FI",
+    "submitted_at": "2025-08-13T00:24:05.441704",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_36ed7774-2d57-44d2-bb79-2f8b2cae3317.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_14b482fb-941f-4b2b-8de4-d8fa5272ffa8_test.nf"
+    }
+  },
+  {
+    "run_id": "2a0d80e1-d0d0-4a8c-851b-e7d0ecd4d25b",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "submitted_at": "2025-08-13T00:24:05.443760",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_2a0d80e1-d0d0-4a8c-851b-e7d0ecd4d25b.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_14b482fb-941f-4b2b-8de4-d8fa5272ffa8_test.nf"
+    }
+  },
+  {
+    "run_id": "1fcf5851-b070-458a-93a6-67f213475848",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/OpenShift @ ELIXIR-FI",
+    "submitted_at": "2025-08-13T00:24:05.446401",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_1fcf5851-b070-458a-93a6-67f213475848.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_14b482fb-941f-4b2b-8de4-d8fa5272ffa8_test.nf"
+    }
+  },
+  {
+    "run_id": "a77bcf71-4a5f-413a-8374-fc89b82ab140",
+    "workflow_type": "cwl",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "submitted_at": "2025-08-13T00:52:42.469578",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_a77bcf71-4a5f-413a-8374-fc89b82ab140.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_1370f611-a963-4da4-af7c-2aef756074a4_hashsplitter-workflow.cwl"
+    }
+  },
+  {
+    "run_id": "95c0f214-70f5-4f4e-808e-cfc020ba3916",
+    "workflow_type": "cwl",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/Slurm @ ELIXIR-FI",
+    "submitted_at": "2025-08-13T00:52:42.482742",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_95c0f214-70f5-4f4e-808e-cfc020ba3916.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_1370f611-a963-4da4-af7c-2aef756074a4_hashsplitter-workflow.cwl"
+    }
+  },
+  {
+    "run_id": "e57c38eb-ce5b-4bcc-b683-ddf641148e81",
+    "workflow_type": "cwl",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "submitted_at": "2025-08-13T00:52:42.483544",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_e57c38eb-ce5b-4bcc-b683-ddf641148e81.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_1370f611-a963-4da4-af7c-2aef756074a4_hashsplitter-workflow.cwl"
+    }
+  },
+  {
+    "run_id": "8f82842c-8bd5-4d92-9371-1a535c46b4bb",
+    "workflow_type": "cwl",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/OpenShift @ ELIXIR-FI",
+    "submitted_at": "2025-08-13T00:52:42.489107",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_8f82842c-8bd5-4d92-9371-1a535c46b4bb.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_1370f611-a963-4da4-af7c-2aef756074a4_hashsplitter-workflow.cwl"
+    }
+  },
+  {
+    "run_id": "77a24f8d-e5a6-4662-ac8f-304ac0b61094",
+    "workflow_type": "snakemake",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "submitted_at": "2025-08-13T00:53:52.989494",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_77a24f8d-e5a6-4662-ac8f-304ac0b61094.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_da77a38a-8f2a-46d6-bef9-e12f6d68fc03_Snakefile"
+    }
+  },
+  {
+    "run_id": "9b76af7b-e2f0-4c3f-885b-91b930132c7e",
+    "workflow_type": "snakemake",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/Slurm @ ELIXIR-FI",
+    "submitted_at": "2025-08-13T00:53:53.002486",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_9b76af7b-e2f0-4c3f-885b-91b930132c7e.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_da77a38a-8f2a-46d6-bef9-e12f6d68fc03_Snakefile"
+    }
+  },
+  {
+    "run_id": "961140c3-dfd6-48ec-bd99-2998190201f8",
+    "workflow_type": "snakemake",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "submitted_at": "2025-08-13T00:53:53.003447",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_961140c3-dfd6-48ec-bd99-2998190201f8.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_da77a38a-8f2a-46d6-bef9-e12f6d68fc03_Snakefile"
+    }
+  },
+  {
+    "run_id": "76ef2fb0-8b3a-4d6d-ace4-7bfb38d135fb",
+    "workflow_type": "snakemake",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/OpenShift @ ELIXIR-FI",
+    "submitted_at": "2025-08-13T00:53:53.004385",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/pacificanalytics/elixir-cloud-demos/demos/2025-elixir-on-cloud/backend/uploads/batch_76ef2fb0-8b3a-4d6d-ace4-7bfb38d135fb.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_da77a38a-8f2a-46d6-bef9-e12f6d68fc03_Snakefile"
+    }
+  },
+  {
+    "run_id": "d7927a13-ab64-42d7-b75e-6e355350154c",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "submitted_at": "2025-08-18T03:03:36.246236",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/Gavenue/krini/backend/uploads/batch_d7927a13-ab64-42d7-b75e-6e355350154c.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_4b633497-1c3a-4d27-ade4-9254565abb73_test.nf"
+    }
+  },
+  {
+    "run_id": "7bdd81ae-1885-4a82-8c4b-551d4b634542",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/Slurm @ ELIXIR-FI",
+    "submitted_at": "2025-08-18T03:03:36.253510",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/Gavenue/krini/backend/uploads/batch_7bdd81ae-1885-4a82-8c4b-551d4b634542.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_4b633497-1c3a-4d27-ade4-9254565abb73_test.nf"
+    }
+  },
+  {
+    "run_id": "4e1422b8-f1e2-4853-b680-c4e5654fff4f",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "submitted_at": "2025-08-18T03:03:36.255481",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/Gavenue/krini/backend/uploads/batch_4e1422b8-f1e2-4853-b680-c4e5654fff4f.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_4b633497-1c3a-4d27-ade4-9254565abb73_test.nf"
+    }
+  },
+  {
+    "run_id": "a7b12568-3dfc-466b-97f3-22465b6e6975",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/OpenShift @ ELIXIR-FI",
+    "submitted_at": "2025-08-18T03:03:36.257446",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/Gavenue/krini/backend/uploads/batch_a7b12568-3dfc-466b-97f3-22465b6e6975.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_4b633497-1c3a-4d27-ade4-9254565abb73_test.nf"
+    }
+  },
+  {
+    "run_id": "9ff0ecca-eb08-4009-a6bb-9e029bdb23ce",
+    "workflow_type": "nextflow",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TES Gateway",
+    "submitted_at": "2025-08-18T03:39:10.797115",
+    "mode": "gateway",
+    "log_file_path": "/Users/keshavdayal/Desktop/Gavenue/krini/backend/uploads/batch_9ff0ecca-eb08-4009-a6bb-9e029bdb23ce.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_560f73ec-8052-4a66-9ce2-4adcdd45e1e5_test_batch.nf"
+    }
+  },
+  {
+    "run_id": "b09711b5-a683-49a2-a9dc-c0de9dfe55ae",
+    "workflow_type": "snakemake",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "submitted_at": "2025-08-18T03:39:30.858528",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/Gavenue/krini/backend/uploads/batch_b09711b5-a683-49a2-a9dc-c0de9dfe55ae.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_21038304-eee1-49e4-a869-bd76cf073274_Snakefile"
+    }
+  },
+  {
+    "run_id": "1fec3640-5440-40d6-b8ae-c0453ee2b32f",
+    "workflow_type": "snakemake",
+    "status": "SUBMITTED",
+    "tes_instance_name": "Funnel/Slurm @ ELIXIR-FI",
+    "submitted_at": "2025-08-18T03:39:30.861517",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/Gavenue/krini/backend/uploads/batch_1fec3640-5440-40d6-b8ae-c0453ee2b32f.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_21038304-eee1-49e4-a869-bd76cf073274_Snakefile"
+    }
+  },
+  {
+    "run_id": "d0328bd5-6899-4254-8f2d-56bffc86979b",
+    "workflow_type": "snakemake",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/Kubernetes @ ELIXIR-GR",
+    "submitted_at": "2025-08-18T03:39:30.864631",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/Gavenue/krini/backend/uploads/batch_d0328bd5-6899-4254-8f2d-56bffc86979b.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_21038304-eee1-49e4-a869-bd76cf073274_Snakefile"
+    }
+  },
+  {
+    "run_id": "e1ba903c-24e0-46f7-9e22-e495e7740055",
+    "workflow_type": "snakemake",
+    "status": "SUBMITTED",
+    "tes_instance_name": "TESK/OpenShift @ ELIXIR-FI",
+    "submitted_at": "2025-08-18T03:39:30.867390",
+    "mode": "all",
+    "log_file_path": "/Users/keshavdayal/Desktop/Gavenue/krini/backend/uploads/batch_e1ba903c-24e0-46f7-9e22-e495e7740055.log",
+    "parameters": {},
+    "files": {
+      "workflow_file": "uploads/batch_21038304-eee1-49e4-a869-bd76cf073274_Snakefile"
+    }
+  }
+]

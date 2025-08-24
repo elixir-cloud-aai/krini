@@ -1,0 +1,6 @@
+flask
+flask-cors
+python-dotenv==1.0.0
+requests==2.31.0
+git+https://github.com/uniqueg/cwl-tes.git@0de223ad3571ca30671ba983095420187ad9a9ba 
+# snakemake - temporarily removed due to datrie compilation issues 
