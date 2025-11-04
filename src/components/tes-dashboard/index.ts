@@ -4,6 +4,7 @@ export { default as TasksPage } from './TasksPage';
 export { default as WorkflowsPage } from './WorkflowsPage';
 export { default as BatchProcessingPage } from './BatchProcessingPage';
 export { default as NetworkTopologyPage } from './NetworkTopologyPage';
+export { default as RealTimeNetworkTopology } from './RealTimeNetworkTopology';
 export { default as TESHeader } from './components/TESHeader';
 export { default as TESSidebar } from './components/TESSidebar';
 export { default as LoadingSpinner } from './components/LoadingSpinner';

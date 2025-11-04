@@ -113,7 +113,7 @@ const Layout = () => {
             showToast={showToast}
           />
         </nav>
-        <main className="flex-grow mb-10">
+        <main className="flex-grow ">
           <div>
             <Toaster position="bottom-center" />
           </div>

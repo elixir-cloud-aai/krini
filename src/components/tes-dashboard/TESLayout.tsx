@@ -8,6 +8,11 @@ import TasksPage from './TasksPage';
 import WorkflowsPage from './WorkflowsPage';
 import BatchProcessingPage from './BatchProcessingPage';
 import NetworkTopologyPage from './NetworkTopologyPage';
+import RealTimeNetworkTopology from './RealTimeNetworkTopology';
+import SystemStatusPage from './SystemStatusPage';
+import ServiceInfoPage from './ServiceInfoPage';
+import LogsPage from './LogsPage';
+import SettingsPage from './SettingsPage';
 import { testConnection } from './services/api';
 
 const AppContainer = styled.div`
@@ -24,39 +29,6 @@ const ContentArea = styled.main`
   min-height: calc(100vh - 80px);
   overflow-y: auto;
 `;
-
-// Placeholder components for other pages
-const SystemStatusPage = () => (
-  <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-    <h2>System Status</h2>
-    <p>Monitor system health and performance metrics</p>
-    <p>This page is under construction.</p>
-  </div>
-);
-
-const ServiceInfoPage = () => (
-  <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-    <h2>Service Info</h2>
-    <p>View TES service information and capabilities</p>
-    <p>This page is under construction.</p>
-  </div>
-);
-
-const LogsPage = () => (
-  <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-    <h2>Logs</h2>
-    <p>View and analyze system logs</p>
-    <p>This page is under construction.</p>
-  </div>
-);
-
-const SettingsPage = () => (
-  <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-    <h2>Settings</h2>
-    <p>Configure dashboard settings and preferences</p>
-    <p>This page is under construction.</p>
-  </div>
-);
 
 interface TESLayoutProps {
   basePath?: string;
@@ -116,7 +88,8 @@ const TESLayout: React.FC<TESLayoutProps> = ({ basePath = '/federated-analytics-
             <Route path="status" element={<SystemStatusPage />} />
             <Route path="service-info" element={<ServiceInfoPage />} />
             <Route path="logs" element={<LogsPage />} />
-            <Route path="topology" element={<NetworkTopologyPage />} />
+            <Route path="topology" element={<RealTimeNetworkTopology />} />
+            <Route path="topology-classic" element={<NetworkTopologyPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Routes>
         </ContentArea>
