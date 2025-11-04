@@ -20,13 +20,17 @@ const Navbar: FC<NavbarProps> = ({
   const [accessToken, setAccessToken] = useState('');
   const [showModal, setShowModal] = useState(false)
 
-  const getAccessToken = () => {
-    const localStorageData = localStorage.params;
-    if (!localStorageData) {
-      return;
+  const getAccessToken = (): string => {
+    try {
+      const raw = localStorage.getItem(AUTH_TOKEN);
+      if (!raw) return '';
+      const parsed = JSON.parse(raw);
+      const token = parsed?.access_token || '';
+      setAccessToken(token);
+      return token;
+    } catch (_e) {
+      return '';
     }
-    const localStorageDataJson = JSON.parse(localStorageData);
-    setAccessToken(localStorageDataJson.access_token);
   };
 
   useEffect(() => {
@@ -40,10 +44,30 @@ const Navbar: FC<NavbarProps> = ({
     setIsLoggedIn(LoginStatus.NOT_LOGGED_IN);
   };
 
-  const handleCopyToClipboard = () => {
-    if (accessToken === undefined) getAccessToken();
-    navigator.clipboard.writeText(accessToken);
-    showToast('success', 'Copied to clipboard');
+  const handleCopyToClipboard = async () => {
+    const token = accessToken || getAccessToken();
+    if (!token) {
+      showToast('error', 'No token available yet');
+      return;
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(token);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = token;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      showToast('success', 'Copied to clipboard');
+    } catch (_e) {
+      showToast('error', 'Failed to copy to clipboard');
+    }
   };
 
   const onCloseModal = () => {
