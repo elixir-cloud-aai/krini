@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  tes-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.new
+    ports:
+      - "8080:8080"
+    environment:
+      - FLASK_ENV=production
+      - PORT=8080
+      - HOST=0.0.0.0
+      - WEB_FRAMEWORK=flask
+      - DEBUG=false
+    volumes:
+      # Mount uploads directory for persistent storage
+      - ./uploads:/app/uploads
+      # Mount work directory for Nextflow workflows
+      - ./work:/app/work
+      # Mount logs directory
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add nginx as reverse proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - tes-dashboard
+    restart: unless-stopped
+    profiles:
+      - with-proxy
+
+networks:
+  default:
+    name: tes-dashboard-network

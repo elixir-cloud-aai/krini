@@ -10,6 +10,7 @@ import RunWorkflow from '@/components/run-workflow';
 import TaskCreateRuns from '@/components/task-create';
 import TaskRuns from '@/components/task-run';
 import Workflow from '@/components/workflows';
+import { TESLayout } from '@/components/tes-dashboard';
 import { useCallback, useEffect, useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import DarkModeContext from '@/context/dark-mode'
@@ -112,7 +113,7 @@ const Layout = () => {
             showToast={showToast}
           />
         </nav>
-        <main className="flex-grow mb-10">
+        <main className="flex-grow ">
           <div>
             <Toaster position="bottom-center" />
           </div>
@@ -185,6 +186,10 @@ const Layout = () => {
               <Route
                 path="/manage/:id"
                 element={<Workflow isLoggedIn={isLoggedIn}></Workflow>}
+              />
+              <Route
+                path="/federated-analytics-showcase/*"
+                element={<TESLayout />}
               />
             </Routes>
           </DarkModeContext.Provider>

@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Funnel/OpenPBS @ ELIXIR-CZ",
+    "url": "https://funnel.cloud.e-infra.cz",
+    "ip": "147.251.253.240",
+    "country": "Czechia",
+    "lat": 49.1823,
+    "lon": 16.6372
+  },
+  {
+    "name": "Funnel/Slurm @ ELIXIR-FI",
+    "url": "https://vm4816.kaj.pouta.csc.fi",
+    "ip": "86.50.228.254",
+    "country": "Finland",
+    "lat": 60.1816,
+    "lon": 24.8368
+  },
+  {
+    "name": "TESK/Kubernetes @ ELIXIR-GR",
+    "url": "https://tesk-eu.hypatia-comp.athenarc.gr",
+    "ip": "62.217.122.118",
+    "country": "Greece",
+    "lat": 37.9874,
+    "lon": 23.7617
+  },
+  {
+    "name": "TESK/OpenShift @ ELIXIR-FI",
+    "url": "https://csc-tesk-noauth.rahtiapp.fi/ga4gh/tes",
+    "ip": "195.148.21.61",
+    "country": "Finland",
+    "lat": 60.2289,
+    "lon": 24.8964
+  }
+]

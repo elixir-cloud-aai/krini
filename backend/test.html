@@ -1,0 +1,35 @@
+ <!-- Workflow Topology Map -->
+ <div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Workflow Topology Map</h3>
+        <p class="card-subtitle">Geographic distribution of TES instances</p>
+    </div>
+    <div id="workflow-map">
+        <div class="map-loading" id="map-loading">
+            <div class="spinner"></div>
+            Loading map...
+        </div>
+        <div class="map-controls">
+            <button class="map-control-btn" onclick="refreshWorkflowMap()" title="Refresh Map">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <button class="map-control-btn" onclick="toggleMapFullscreen()" title="Fullscreen">
+                <i class="fas fa-expand"></i>
+            </button>
+        </div>
+        <div class="map-legend">
+            <div class="map-legend-item">
+                <div class="map-legend-dot" style="background: #2563eb;"></div>
+                <span>TES Instances</span>
+            </div>
+            <div class="map-legend-item">
+                <div class="map-legend-dot" style="background: #22c55e;"></div>
+                <span>Active Workflow</span>
+            </div>
+            <div class="map-legend-item">
+                <div class="map-legend-dot" style="background: #f59e0b;"></div>
+                <span>Data Flow</span>
+            </div>
+        </div>
+    </div>
+</div>

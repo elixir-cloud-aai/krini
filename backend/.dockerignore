@@ -1,0 +1,121 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+dashboard.log
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Nextflow
+.nextflow/
+.nextflow.log*
+work/
+
+# Docker
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+docker-compose.yaml
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Backup files
+*.bak
+backup_original/
+
+# Test files
+test_*
+*_test.py
+tests/
+
+# Deployment files
+deploy*
+build_and_deploy.sh
+rebuild_container.sh
+kubeconfig.yaml
+*.yaml
+*.yml
+
+# Certificates
+*.pem
+*.crt
+*.key
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Data files (depending on your needs)
+uploads/*
+!uploads/.gitkeep
+batch_runs.json
+submitted_tasks.json
+workflow_runs.json
+tes_instance_locations.json
