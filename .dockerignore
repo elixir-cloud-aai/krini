@@ -1,0 +1,7 @@
+.git
+node_modules
+dist  # Or your build directory
+.next
+.DS_Store
+*.test.js
+*.test.tsx

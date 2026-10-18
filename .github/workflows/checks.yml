@@ -1,0 +1,72 @@
+
+name: Open Shift Deployment
+
+on:
+  push:
+    branches: ['master']
+
+jobs:
+  linters:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run lint
+        run: bun run lint
+
+  docker-image:
+    runs-on: ubuntu-latest
+    needs: [linters]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker Login
+        env:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKERHUB_LOGIN }}
+          DOCKER_HUB_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+
+      - name: Build Docker Image
+        run: docker build -f Dockerfile -t anurag1201/krini:latest .
+
+      - name: Docker Push
+        run: docker push anurag1201/krini:latest
+
+  open-shift:
+    runs-on: ubuntu-latest
+    needs: [docker-image, linters]
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install oc
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          oc: 4
+
+      - name: Log in to OpenShift
+        uses: redhat-actions/oc-login@v1
+        with:
+          openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
+          openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
+          insecure_skip_tls_verify: true
+
+      - name: Switch to project Krini
+        run: oc project krini
+
+      - name: Trigger Build
+        run: oc rollout latest krini
+
+      - name: OpenShift Logout
+        if: always()
+        run: oc logout
