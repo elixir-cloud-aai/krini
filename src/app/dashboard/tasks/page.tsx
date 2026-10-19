@@ -22,7 +22,7 @@ function Page() {
                     </Button>
                 </div>
             </div>
-            <div className="rounded-xl border overflow-hidden">
+            <div className="rounded-xl overflow-hidden">
                 <ECCClientGa4ghTesRunsClient />
             </div>
         </div>

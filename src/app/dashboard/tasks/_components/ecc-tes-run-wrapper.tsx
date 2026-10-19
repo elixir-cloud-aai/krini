@@ -17,5 +17,5 @@ const ECCClientGa4ghTesRuns = dynamic(
 );
 
 export function ECCClientGa4ghTesRunsClient() {
-  return <ECCClientGa4ghTesRuns />;
+  return <ECCClientGa4ghTesRuns baseURL="/tes-api/v1" pageSize={10}  />
 }

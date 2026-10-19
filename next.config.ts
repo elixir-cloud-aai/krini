@@ -2,8 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
   reactCompiler: true,
   turbopack: {
     rules: {
@@ -12,6 +10,16 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  // for testing purposes only
+  async rewrites() {
+    return [
+      {
+        source: "/tes-api/:path*",
+        destination:
+          "https://csc-tesk-noauth.rahtiapp.fi/ga4gh/tes/:path*",
+      },
+    ];
   },
 };
 

@@ -17,5 +17,5 @@ const ECCClientGa4ghTesCreateRuns = dynamic(
 );
 
 export function ECCClientGa4ghTesCreateRunsClient() {
-  return <ECCClientGa4ghTesCreateRuns  />;
+  return <ECCClientGa4ghTesCreateRuns baseURL="/tes-api/v1" />;
 }
