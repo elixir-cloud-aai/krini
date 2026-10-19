@@ -23,7 +23,11 @@ function TESServerList() {
             const res = await fetch("/api/tasks/get-tes-servers");
 
             if (!res.ok) {
-                toast.error("Failed to fetch TES servers");
+                if(res.status === 401)
+                    toast.error("Login to fetch TES servers from registry.")
+                else
+                    toast.error("Failed to fetch TES servers.")
+                return;
             }
 
             const data = await res.json();

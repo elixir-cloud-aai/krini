@@ -3,7 +3,7 @@
 function DashboardPage() {
     return (
         <div>
-            dsa
+            WIP
         </div>
     )
 }
