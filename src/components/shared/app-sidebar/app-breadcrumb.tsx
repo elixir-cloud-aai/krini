@@ -9,8 +9,8 @@ import { BreadcrumbClient } from "./breadcrumb-client";
 function AppBreadcrumb() {
     return (
         <Breadcrumb>
-            <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:flex">
+            <BreadcrumbList className="hidden sm:flex">
+                <BreadcrumbItem>
                     <BreadcrumbLink href="/dashboard">
                         Krini
                     </BreadcrumbLink>

@@ -9,8 +9,8 @@ function Page() {
             <div className="flex justify-between w-full items-center">
                 <div>
                     <h2 className="text-3xl font-semibold tracking-tight mt-2">Create Task</h2>
-                    <p className="leading-7 mt-2">
-                        Create a task
+                    <p className="leading-7 text-sm text-muted-foreground">
+                        Configure and submit a task to a TES instance.
                     </p>
                 </div>
                 <div className="hidden md:flex flex-wrap gap-2 justify-end">
@@ -22,7 +22,7 @@ function Page() {
                     </Button>
                 </div>
             </div>
-            <div className="overflow-hidden">
+            <div className="overflow-hidden px-2">
                 <ECCClientGa4ghTesCreateRunsClient />
             </div>
         </div>

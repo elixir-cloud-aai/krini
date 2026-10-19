@@ -7,6 +7,7 @@
       "dependencies": {
         "@base-ui/react": "^1.9.0",
         "@elixir-cloud/tes": "^1.0.1",
+        "@elixir-cloud/wes": "^2.0.0-alpha.48",
         "axios": "^1.20.0",
         "class-variance-authority": "^0.7.1",
         "cn": "^0.5.0",
@@ -129,6 +130,8 @@
     "@elixir-cloud/design": ["@elixir-cloud/design@1.0.1", "", { "dependencies": { "@anurag_gupta/tus-js-client": "^4.2.10", "@shoelace-style/shoelace": "^2.8.0", "ace-builds": "^1.35.0", "lit": "^2.8.0", "lodash-es": "^4.17.21" } }, "sha512-gaLXLIb2nNSTXDspZEHSDdcZRfFBOTJ7rtGzODe8NTFV8rmPs9zm8F5SeRlYcf6SriN9vAl2OwHu1WMCX94kaw=="],
 
     "@elixir-cloud/tes": ["@elixir-cloud/tes@1.0.1", "", { "dependencies": { "@elixir-cloud/design": "*", "lit": "^2.8.0" } }, "sha512-9PtgxtM0YKJp/B/C6KPag5CDyo1RPTnK/0r6hySTiF0RDyPj1PCWfkccJ+G07DRcX9SVWoOFp5Oc75RlyOyOTw=="],
+
+    "@elixir-cloud/wes": ["@elixir-cloud/wes@2.0.0-alpha.48", "", { "dependencies": { "@elixir-cloud/design": "2.0.0-alpha.48", "@lit/react": "^1.0.2", "lit": "^2.8.0" } }, "sha512-B1rn061fsQ/UgPZJGyarftk6RIGx5EtPi0n1f7ICdT88GqJrCInGzZCEpLX+roH+domaSLVGijad433DIJUJjA=="],
 
     "@emnapi/runtime": ["@emnapi/runtime@1.11.3", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA=="],
 
@@ -901,6 +904,8 @@
     "@dotenvx/dotenvx/execa": ["execa@5.1.1", "", { "dependencies": { "cross-spawn": "^7.0.3", "get-stream": "^6.0.0", "human-signals": "^2.1.0", "is-stream": "^2.0.0", "merge-stream": "^2.0.0", "npm-run-path": "^4.0.1", "onetime": "^5.1.2", "signal-exit": "^3.0.3", "strip-final-newline": "^2.0.0" } }, "sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg=="],
 
     "@dotenvx/dotenvx/open": ["open@8.4.2", "", { "dependencies": { "define-lazy-prop": "^2.0.0", "is-docker": "^2.1.1", "is-wsl": "^2.2.0" } }, "sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ=="],
+
+    "@elixir-cloud/wes/@elixir-cloud/design": ["@elixir-cloud/design@2.0.0-alpha.48", "", { "dependencies": { "@lit/react": "^1.0.2", "ace-builds": "^1.35.0", "lit": "^2.8.0" } }, "sha512-xoqdlGFMvqxh2GnrqATaV1UqrWWXKksXBv4VrJNlnVJaI063fhhSIWJ5RWKdpYpMYZP6EBD8flVEmbHXplHeIQ=="],
 
     "@shadcn/registry/cn": ["cn@0.2.6", "", { "bin": { "cn": "bin/cn.mjs" } }, "sha512-+i4L0zUGgRcEnhsxueVrP7iBGxBx5iD0WOTYg1MwFEu2ZyCmH5Ov2V1cul2Ht5UchRQQgftCf4be/RxspuW6QQ=="],
 
