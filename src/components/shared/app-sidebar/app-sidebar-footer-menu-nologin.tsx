@@ -4,7 +4,6 @@ import {
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { LogIn } from "lucide-react";
-import Link from "next/link";
 
 function AppSidebarFooterMenuNoUser() {
     return (
@@ -17,10 +16,10 @@ function AppSidebarFooterMenuNoUser() {
             
             <DropdownMenuGroup>
                 <DropdownMenuItem render={
-                    <Link href={"/auth/api/login-redirect"}>
+                    <a href={"/auth/api/login-redirect"}>
                         <LogIn />
                         Login
-                    </Link>
+                    </a>
                 }>
                 </DropdownMenuItem>
             </DropdownMenuGroup>

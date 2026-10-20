@@ -1,4 +1,5 @@
 "use client";
+
 import {
     Select,
     SelectContent,
@@ -13,35 +14,63 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 function TESServerList() {
-    const [servers, setServers] = useState<TESServer[]>([]);
-    const [loading, setLoading] = useState(true);
-    const setSelectedServer = useTESStore((state) => state.setSelectedServer);
+    const servers = useTESStore((state) => state.servers);
+    const serversLoaded = useTESStore((state) => state.serversLoaded);
+    const setServers = useTESStore((state) => state.setServers);
+
     const selectedServer = useTESStore((state) => state.selectedServer);
+    const setSelectedServer = useTESStore((state) => state.setSelectedServer);
 
-    const fetchServers = async () => {
-        try {
-            const res = await fetch("/api/tasks/get-tes-servers");
-
-            if (!res.ok) {
-                if(res.status === 401)
-                    toast.error("Login to fetch TES servers from registry.")
-                else
-                    toast.error("Failed to fetch TES servers.")
-                return;
-            }
-
-            const data = await res.json();
-            setServers(data);
-        } catch (error) {
-            toast.error("Failed to fetch TES servers.");
-        } finally {
-            setLoading(false);
-        }
-    };
+    const [loading, setLoading] = useState(!serversLoaded);
 
     useEffect(() => {
-        fetchServers();
-    }, []);
+        if (serversLoaded) {
+            setLoading(false);
+            return;
+        }
+
+        let cancelled = false;
+        async function fetchServers() {
+            try {
+                const res = await fetch("/api/tasks/get-tes-servers");
+
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        toast.error(
+                            "Login to fetch TES servers from registry.",
+                        );
+                    } else {
+                        toast.error("Failed to fetch TES servers.");
+                    }
+                    return;
+                }
+
+                const data = await res.json();
+
+                if (!Array.isArray(data)) {
+                    throw new Error("Invalid TES server response");
+                }
+
+                if (!cancelled) {
+                    setServers(data);
+                }
+            } catch {
+                if (!cancelled) {
+                    toast.error("Failed to fetch TES servers.");
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        void fetchServers();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [serversLoaded, setServers]);
 
     if (loading) {
         return (
@@ -58,19 +87,25 @@ function TESServerList() {
             onValueChange={(value) => {
                 if (value != null) setSelectedServer(value);
             }}
-            items={servers.map((server) => ({
-                value: server.url,
-                label: server.name,
-            }))}>
+            items={[
+                { value: "/tes-api", label: "TEST SERVER" },
+                ...servers.map((server) => ({
+                    value: server.url,
+                    label: server.name,
+                })),
+            ]}>
             <SelectTrigger>
                 <SelectValue placeholder="Select TES Instance" />
             </SelectTrigger>
+
             <SelectContent
                 side="bottom"
                 align="start"
                 sideOffset={4}
-                className={"min-w-87.5 max-w-[min(90vw,480px)]"}>
+                className="min-w-87.5 max-w-[min(90vw,480px)]">
                 <SelectGroup>
+                    <SelectItem value="/tes-api">TEST SERVER</SelectItem>
+
                     {servers.map((server) => (
                         <SelectItem
                             key={server.url + Math.random()}

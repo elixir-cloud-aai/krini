@@ -12,7 +12,7 @@ function AppSidebarHeader() {
                             <Image src={"/logo.svg"} width={40} height={40} alt="icon" />
                         </div>
                         <div className="flex flex-col gap-0.5 leading-none">
-                            <span className="font-medium">Elixir Cloud AAI</span>
+                            <span className="font-medium">ELIXIR On-Cloud</span>
                             <span className="text-xs">Krini</span>
                         </div>
                     </Link>

@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
       {
         source: "/tes-api/:path*",
         destination:
-          "https://csc-tesk-noauth.rahtiapp.fi/ga4gh/tes/:path*",
+          "https://csc-tesk-noauth.rahtiapp.fi/:path*",
       },
     ];
   },

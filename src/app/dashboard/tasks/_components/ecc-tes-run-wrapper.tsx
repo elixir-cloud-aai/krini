@@ -28,7 +28,7 @@ export function ECCClientGa4ghTesRunsClient() {
     );
   }
 
-  const baseURL = `${selectedServer.replace(/\/+$/, "")}/ga4gh/tes`;
+  const baseURL = `${selectedServer.replace(/\/+$/, "")}/ga4gh/tes/v1`;
 
   return (
     <ECCClientGa4ghTesRuns
