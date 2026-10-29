@@ -1,7 +1,7 @@
-import { useWESStore } from "@/stores/wes";
 import { RestWesProvider } from "@elixir-cloud/wes/providers";
 import { getCookie } from "cookies-next/client";
 import { useEffect, useState } from "react";
+import { useWESStore } from "@/stores/wes";
 
 class TokenWesProvider extends RestWesProvider {
     private getToken: () => string;

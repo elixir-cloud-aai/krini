@@ -1,6 +1,6 @@
 "use client";
-import { useTESStore } from "@/stores/tes";
 import dynamic from "next/dynamic";
+import { useTESStore } from "@/stores/tes";
 
 const ECCClientGa4ghTesRuns = dynamic(
     () =>
@@ -18,23 +18,19 @@ const ECCClientGa4ghTesRuns = dynamic(
 );
 
 export function ECCClientGa4ghTesRunsClient() {
-  const selectedServer = useTESStore((state) => state.selectedServer);
+    const selectedServer = useTESStore((state) => state.selectedServer);
 
-  if (!selectedServer) {
+    if (!selectedServer) {
+        return (
+            <div className="p-4 text-sm text-muted-foreground text-center">
+                Select a TES instance to view task runs.
+            </div>
+        );
+    }
+
+    const baseURL = `${selectedServer.replace(/\/+$/, "")}/ga4gh/tes/v1`;
+
     return (
-      <div className="p-4 text-sm text-muted-foreground text-center">
-        Select a TES instance to view task runs.
-      </div>
+        <ECCClientGa4ghTesRuns key={baseURL} baseURL={baseURL} pageSize={10} />
     );
-  }
-
-  const baseURL = `${selectedServer.replace(/\/+$/, "")}/ga4gh/tes/v1`;
-
-  return (
-    <ECCClientGa4ghTesRuns
-      key={baseURL}
-      baseURL={baseURL}
-      pageSize={10}
-    />
-  );
 }

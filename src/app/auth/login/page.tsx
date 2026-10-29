@@ -1,7 +1,7 @@
 "use client";
-import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 function Page() {
     return (

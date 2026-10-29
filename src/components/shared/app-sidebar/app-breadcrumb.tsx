@@ -11,9 +11,7 @@ function AppBreadcrumb() {
         <Breadcrumb>
             <BreadcrumbList className="hidden sm:flex">
                 <BreadcrumbItem>
-                    <BreadcrumbLink href="/dashboard">
-                        Krini
-                    </BreadcrumbLink>
+                    <BreadcrumbLink href="/dashboard">Krini</BreadcrumbLink>
                 </BreadcrumbItem>
 
                 <BreadcrumbClient />

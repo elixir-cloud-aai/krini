@@ -7,12 +7,15 @@ export async function GET() {
     const accessToken = await getCookie("access_token", { cookies });
 
     try {
-        const res = await axios.get(`${process.env.LS_LOGIN_URL}/oidc/userinfo`, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/json",
+        const res = await axios.get(
+            `${process.env.LS_LOGIN_URL}/oidc/userinfo`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: "application/json",
+                },
             },
-        });
+        );
 
         if (!res.data || typeof res.data !== "object") {
             throw new Error("Invalid JSON response");

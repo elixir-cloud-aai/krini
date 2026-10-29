@@ -1,5 +1,5 @@
-"use client"
-import { AxiosError } from "axios";
+"use client";
+import type { AxiosError } from "axios";
 import { useCallback, useEffect, useState } from "react";
 
 type UserInfoResponse = {

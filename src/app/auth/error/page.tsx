@@ -28,7 +28,8 @@ async function ErrorContent({ searchParams }: Props) {
                 <p>Please try logging in again.</p>
                 <Link
                     href="/auth/login"
-                    className="font-bold underline underline-offset-8">
+                    className="font-bold underline underline-offset-8"
+                >
                     Go to Login
                 </Link>
             </div>
@@ -43,7 +44,8 @@ export default function Page({ searchParams }: Props) {
                 <div className="flex h-screen items-center justify-center">
                     Loading...
                 </div>
-            }>
+            }
+        >
             <ErrorContent searchParams={searchParams} />
         </Suspense>
     );

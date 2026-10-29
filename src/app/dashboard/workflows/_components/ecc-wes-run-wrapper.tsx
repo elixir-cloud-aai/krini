@@ -1,7 +1,7 @@
 "use client";
+import dynamic from "next/dynamic";
 import { useWESProvider } from "@/hooks";
 import { useWESStore } from "@/stores/wes";
-import dynamic from "next/dynamic";
 
 const ECCClientGa4ghWesRuns = dynamic(
     () =>
@@ -19,17 +19,19 @@ const ECCClientGa4ghWesRuns = dynamic(
 );
 
 export function ECCClientGa4ghWesRunsClient() {
-  const { wesProvider } = useWESProvider()
+    const { wesProvider } = useWESProvider();
     const selectedServer = useWESStore((state) => state.selectedServer);
 
-    if (selectedServer === null || selectedServer === "" || wesProvider === null)
+    if (
+        selectedServer === null ||
+        selectedServer === "" ||
+        wesProvider === null
+    )
         return (
             <div className="h-full mt-10 gap-2 text-sm text-muted-foreground text-center">
                 Please select a WES Server to continue.
             </div>
         );
 
-    return (
-        <ECCClientGa4ghWesRuns provider={wesProvider} />
-    );
+    return <ECCClientGa4ghWesRuns provider={wesProvider} />;
 }

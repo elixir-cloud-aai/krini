@@ -1,5 +1,5 @@
-import { TESServer } from "@/types/tasks";
 import { create } from "zustand";
+import type { TESServer } from "@/types/tasks";
 
 interface TESStore {
     selectedServer: string;
@@ -16,6 +16,5 @@ export const useTESStore = create<TESStore>((set) => ({
 
     servers: [],
     serversLoaded: false,
-    setServers: (servers) =>
-        set({ servers, serversLoaded: true }),
+    setServers: (servers) => set({ servers, serversLoaded: true }),
 }));

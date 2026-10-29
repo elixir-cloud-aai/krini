@@ -1,11 +1,5 @@
-
-
 function DashboardPage() {
-    return (
-        <div>
-            WIP
-        </div>
-    )
+    return <div>WIP</div>;
 }
 
 export default DashboardPage;

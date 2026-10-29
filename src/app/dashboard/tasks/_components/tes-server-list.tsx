@@ -1,5 +1,8 @@
 "use client";
 
+import { LoaderCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
     Select,
     SelectContent,
@@ -9,9 +12,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useTESStore } from "@/stores/tes";
-import { LoaderCircle } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
 
 function TESServerList() {
     const servers = useTESStore((state) => state.servers);
@@ -93,7 +93,8 @@ function TESServerList() {
                     value: server.url,
                     label: server.name,
                 })),
-            ]}>
+            ]}
+        >
             <SelectTrigger>
                 <SelectValue placeholder="Select TES Instance" />
             </SelectTrigger>
@@ -102,17 +103,20 @@ function TESServerList() {
                 side="bottom"
                 align="start"
                 sideOffset={4}
-                className="min-w-87.5 max-w-[min(90vw,480px)]">
+                className="min-w-87.5 max-w-[min(90vw,480px)]"
+            >
                 <SelectGroup>
                     <SelectItem value="/tes-api">TEST SERVER</SelectItem>
 
                     {servers.map((server) => (
                         <SelectItem
                             key={server.url + Math.random()}
-                            value={server.url}>
+                            value={server.url}
+                        >
                             <span
                                 className="block truncate"
-                                title={server.name}>
+                                title={server.name}
+                            >
                                 {server.name}
                             </span>
                         </SelectItem>

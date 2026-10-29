@@ -8,7 +8,9 @@ export async function GET() {
 
     if (!loginUrl || !clientId || !redirectUri) {
         return NextResponse.json(
-            { error: "OIDC environment variables are not configured" },
+            {
+                error: "OIDC environment variables are not configured",
+            },
             { status: 500 },
         );
     }

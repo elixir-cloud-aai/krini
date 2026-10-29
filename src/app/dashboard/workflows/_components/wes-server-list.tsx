@@ -1,4 +1,7 @@
 "use client";
+import { LoaderCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
     Select,
     SelectContent,
@@ -8,9 +11,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useWESStore } from "@/stores/wes";
-import { LoaderCircle } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
 
 function WESServerList() {
     const servers = useWESStore((state) => state.servers);
@@ -81,9 +81,10 @@ function WESServerList() {
                 if (value != null) setSelectedServer(value);
             }}
             items={servers.map((server) => ({
-                    value: server.url,
-                    label: server.name,
-                }))}>
+                value: server.url,
+                label: server.name,
+            }))}
+        >
             <SelectTrigger>
                 <SelectValue placeholder="Select TES Instance" />
             </SelectTrigger>
@@ -92,15 +93,18 @@ function WESServerList() {
                 side="bottom"
                 align="start"
                 sideOffset={4}
-                className="min-w-87.5 max-w-[min(90vw,480px)]">
+                className="min-w-87.5 max-w-[min(90vw,480px)]"
+            >
                 <SelectGroup>
                     {servers.map((server) => (
                         <SelectItem
                             key={server.url + Math.random()}
-                            value={server.url}>
+                            value={server.url}
+                        >
                             <span
                                 className="block truncate"
-                                title={server.name}>
+                                title={server.name}
+                            >
                                 {server.name}
                             </span>
                         </SelectItem>

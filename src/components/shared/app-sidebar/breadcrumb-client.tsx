@@ -1,13 +1,12 @@
-
 "use client";
 
+import { usePathname } from "next/navigation";
 import {
     BreadcrumbItem,
     BreadcrumbLink,
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { usePathname } from "next/navigation";
 
 export function BreadcrumbClient() {
     const pathname = usePathname();
@@ -32,9 +31,7 @@ export function BreadcrumbClient() {
                         ? index + 1
                         : index;
 
-                const href = `/${segments
-                    .slice(0, originalIndex + 1)
-                    .join("/")}`;
+                const href = `/${segments.slice(0, originalIndex + 1).join("/")}`;
 
                 const isLast = index === visibleSegments.length - 1;
 
