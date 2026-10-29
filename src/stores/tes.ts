@@ -1,9 +1,5 @@
+import { TESServer } from "@/types/tasks";
 import { create } from "zustand";
-
-interface TESServer {
-    name: string;
-    url: string;
-}
 
 interface TESStore {
     selectedServer: string;

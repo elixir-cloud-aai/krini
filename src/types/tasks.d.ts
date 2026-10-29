@@ -1,20 +1,24 @@
-type TESServer = {
-  description?: string
+export type TESServer = {
+  contactUrl: string
+  createdAt: string
+  description: string
+  documentationUrl: string
   environment: string
   id: string
   name: string
   organization: Organization
   type: Type
+  updatedAt: string
   url: string
   version: string
 }
 
-type Organization = {
+interface Organization {
   name: string
   url: string
 }
 
-type Type = {
+interface Type {
   artifact: string
   group: string
   version: string
