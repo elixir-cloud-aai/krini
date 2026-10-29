@@ -1,26 +1,26 @@
 import axios from "axios";
-import { getCookie } from "cookies-next/server";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-    const accessToken = await getCookie("access_token", { cookies });
-
     try {
         const res = await axios.get(
             `${process.env.CLOUD_REGISTRY_URL}/services`,
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    Accept: "*/*",
-                },
-            },
         );
-        if (!res.data || typeof res.data !== "object") {
+        if (
+            !res.data ||
+            typeof res.data !== "object" ||
+            !Array.isArray(res.data)
+        ) {
             throw new Error("Invalid JSON response");
         }
 
-        return NextResponse.json(res.data);
+        const tesServices = res.data.filter(
+            (service) =>
+                service?.type?.artifact === "tes" ||
+                service?.type?.artifact === "tes-gateway",
+        );
+
+        return NextResponse.json(tesServices);
     } catch (err) {
         if (axios.isAxiosError(err)) {
             return NextResponse.json(err.response?.data ?? null, {

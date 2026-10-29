@@ -1,21 +1,35 @@
 "use client";
+import { useWESProvider } from "@/hooks";
+import { useWESStore } from "@/stores/wes";
 import dynamic from "next/dynamic";
 
 const ECCClientGa4ghWesRuns = dynamic(
-  () =>
-    import("@elixir-cloud/wes/react").then(
-      (mod) => mod.ECCClientGa4ghWesRuns
-    ),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="p-4 text-sm text-muted-foreground">
-        Loading task runs...
-      </div>
-    ),
-  }
+    () =>
+        import("@elixir-cloud/wes/react").then(
+            (mod) => mod.ECCClientGa4ghWesRuns,
+        ),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="p-4 text-sm text-muted-foreground">
+                Loading task runs...
+            </div>
+        ),
+    },
 );
 
 export function ECCClientGa4ghWesRunsClient() {
-  return <ECCClientGa4ghWesRuns baseUrl="https://weskit.bihealth.org/ga4gh/wes/v1"  />
+  const { wesProvider } = useWESProvider()
+    const selectedServer = useWESStore((state) => state.selectedServer);
+
+    if (selectedServer === null || selectedServer === "" || wesProvider === null)
+        return (
+            <div className="h-full mt-10 gap-2 text-sm text-muted-foreground text-center">
+                Please select a WES Server to continue.
+            </div>
+        );
+
+    return (
+        <ECCClientGa4ghWesRuns provider={wesProvider} />
+    );
 }

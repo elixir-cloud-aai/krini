@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 import Link from "next/link";
-import { ECCClientGa4ghWesCreateRunsClient } from "../_components";
+import { ECCClientGa4ghWesCreateRunsClient, WESServerList } from "../_components";
 
 function Page() {
     return (
@@ -14,6 +14,7 @@ function Page() {
                     </p>
                 </div>
                 <div className="hidden md:flex flex-wrap gap-2 justify-end">
+                    <WESServerList />
                     <Button className={'px-0'}>
                         <Link href={'/dashboard/workflows'} className={'flex gap-2 items-center h-full px-3'}>
                             View Workflows

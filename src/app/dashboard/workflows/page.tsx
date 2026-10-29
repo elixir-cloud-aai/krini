@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
-import { ECCClientGa4ghWesRunsClient } from "./_components";
+import { ECCClientGa4ghWesRunsClient, WESServerList } from "./_components";
 
 function WESPage() {
     return (
@@ -10,10 +10,11 @@ function WESPage() {
                 <div>
                     <h2 className="text-3xl font-semibold tracking-tight mt-2">Workflow Execution Service (WES)</h2>
                     <p className="leading-7 text-sm text-muted-foreground">
-                        Browse available workflows, monitor their execution, and submit new workflows to supported Workflow Execution Service (WES) instances.
+                        Browse available workflows, monitor their execution, and submit new workflows.
                     </p>
                 </div>
                 <div className="hidden md:flex flex-wrap gap-2 justify-end">
+                    <WESServerList />
                     <Button className={'px-0'}>
                         <Link href={'/dashboard/workflows/create'} className={'flex gap-2 items-center h-full px-3'}>
                             Create Workflow

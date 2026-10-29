@@ -2,7 +2,7 @@ import { WESServer } from "@/types/workflows";
 import { create } from "zustand";
 
 interface WESStore {
-    selectedServer: string;
+    selectedServer: string | null;
     setSelectedServer: (server: string) => void;
 
     servers: WESServer[];
@@ -11,7 +11,7 @@ interface WESStore {
 }
 
 export const useWESStore = create<WESStore>((set) => ({
-    selectedServer: "/tes-api",
+    selectedServer: null,
     setSelectedServer: (selectedServer) => set({ selectedServer }),
 
     servers: [],
