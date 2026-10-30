@@ -9,7 +9,7 @@ Check out the application in the [production](https://krini.rahtiapp.fi/). The r
 ### Prerequisites
 
 - Git
-- [Node & npm](https://nodejs.org/en/): Recent LTS version avaliable
+- [Bun](https://bun.com/): Recent LTS version avaliable
 
 ### Installation
 
@@ -23,17 +23,15 @@ cd krini
 - Install the packages to be used in the development:
 
 ```
-yarn
+bun i
 ```
 
-> **_NOTE:_** If haven't used the cypress before please run
-> `npm run cypress:install`
-> This will install cypress in your project & will allow you to run e2e tests.
+
 
 - Run the start script to start the development environment of the project:
 
 ```
-yarn dev
+bun run dev
 ```
 
 - This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
