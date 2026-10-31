@@ -1,7 +1,7 @@
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ECCClientGa4ghWesRunsClient, WESServerList } from "./_components";
+import { ECCClientGa4ghWesRunsClient, ServiceInfoButton, WESServerList } from "./_components";
 
 function WESPage() {
     return (
@@ -17,7 +17,10 @@ function WESPage() {
                     </p>
                 </div>
                 <div className="hidden md:flex flex-wrap gap-2 justify-end">
-                    <WESServerList />
+                    <div className="flex gap-2 items-center">
+                        <ServiceInfoButton />
+                        <WESServerList />
+                    </div>
                     <Button className={"px-0"}>
                         <Link
                             href={"/dashboard/workflows/create"}
