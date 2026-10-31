@@ -39,6 +39,39 @@ bun run dev
 
 Great, now you are good to go!
 
+
+### Environment Variables
+
+Create a `.env.local` file in the project root:
+
+```env
+# LS Login / OpenID Connect
+LS_LOGIN_URL=https://login.elixir-europe.org
+OIDC_CLIENT_ID=your-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
+
+# Cloud Registry
+CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev/
+```
+
+#### Configuration
+
+- `LS_LOGIN_URL`: Base URL of the LS Login identity provider.
+- `OIDC_CLIENT_ID`: Client ID registered with LS Login.
+- `OIDC_CLIENT_SECRET`: Client secret associated with the OIDC client. Keep this private.
+- `OIDC_REDIRECT_URI`: Callback URL registered with your LS Login client. It must match the redirect URI configured with the identity provider.
+- `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API.
+
+Make sure the OIDC client has the following redirect URI registered:
+
+```text
+http://localhost:3000/auth/api/callback
+```
+
+Do not commit `.env.local` or expose `OIDC_CLIENT_SECRET` to client-side code.
+
+
 ## Contributing
 
 This project is a community effort and lives off your contributions, be it in

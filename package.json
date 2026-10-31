@@ -45,5 +45,9 @@
     "trustedDependencies": [
         "sharp",
         "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+        "body-parser": "^2.4.0",
+        "systeminformation": "^5.33.16"
+    }
 }

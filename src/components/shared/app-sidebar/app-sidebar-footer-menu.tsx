@@ -1,6 +1,5 @@
 import { getCookie } from "cookies-next/client";
-import { Copy, LogOut } from "lucide-react";
-import Link from "next/link";
+import { Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -28,6 +27,23 @@ function AppSidebarFooterMenu({ user }: Props) {
                 .catch(() =>
                     toast.error("Please try again to copy the token."),
                 );
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            const response = await fetch("/auth/api/logout", {
+                method: "POST",
+                credentials: "same-origin",
+            });
+
+            if (!response.ok) {
+                throw new Error("Logout failed");
+            }
+            toast.success("Logged out successfully.");
+            window.location.reload();
+        } catch {
+            toast.error("Unable to log out. Please try again.");
         }
     };
 
@@ -63,16 +79,11 @@ function AppSidebarFooterMenu({ user }: Props) {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                    render={
-                        <Link
-                            href={"/auth/api/logout"}
-                            className="text-red-500"
-                        >
-                            <LogOut />
-                            Log out
-                        </Link>
-                    }
-                ></DropdownMenuItem>
+                    className="text-red-500"
+                    onClick={handleLogout}
+                >
+                    Logout
+                </DropdownMenuItem>
             </DropdownMenuGroup>
         </DropdownMenuContent>
     );

@@ -1,18 +1,28 @@
 import axios from "axios";
-import { getCookie, setCookie } from "cookies-next/server";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import type { NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get("code");
     const state = searchParams.get("state");
 
-    if (code === null || state === null) redirect("/auth/error?type=params");
+    if (!code || !state) {
+        return NextResponse.redirect(
+            new URL("/auth/error?type=params", request.url),
+        );
+    }
 
-    const authState = await getCookie("authState", { cookies });
-    if (authState !== state) redirect("/auth/error?type=state");
+    const cookieStore = await cookies();
+    const authState = cookieStore.get("authState")?.value;
+
+    if (!authState || authState !== state) {
+        return NextResponse.redirect(
+            new URL("/auth/error?type=state", request.url),
+        );
+    }
+
+    cookieStore.delete("authState");
 
     try {
         const baseUrl = `${process.env.LS_LOGIN_URL}/oidc/token`;
@@ -33,26 +43,42 @@ export async function GET(request: NextRequest) {
             },
         );
 
-        if (response.status === 200) {
-            setCookie("access_token", response.data.access_token, {
-                cookies: cookies,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                maxAge: 60 * 60 * 12,
-                path: "/",
-            });
-            setCookie("id_token", response.data.id_token, {
-                cookies: cookies,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                maxAge: 60 * 60 * 12,
-                path: "/",
-            });
-        }
-    } catch (err) {
-        console.log(err);
-        redirect("/auth/error?type=internal");
-    }
+        const { access_token, id_token, expires_in } = response.data;
 
-    redirect("/dashboard");
+        if (typeof access_token !== "string" || typeof id_token !== "string") {
+            return NextResponse.redirect(
+                new URL("/auth/error?type=internal", request.url),
+            );
+        }
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax" as const,
+            path: "/",
+        };
+
+        const responseRedirect = NextResponse.redirect(
+            new URL("/dashboard", request.url),
+        );
+
+        responseRedirect.cookies.set("access_token", access_token, {
+            ...cookieOptions,
+            maxAge:
+                typeof expires_in === "number" && expires_in > 0
+                    ? Math.floor(expires_in)
+                    : 60 * 60,
+        });
+
+        responseRedirect.cookies.set("id_token", id_token, {
+            ...cookieOptions,
+            maxAge: 60 * 60,
+        });
+
+        return responseRedirect;
+    } catch {
+        return NextResponse.redirect(
+            new URL("/auth/error?type=internal", request.url),
+        );
+    }
 }

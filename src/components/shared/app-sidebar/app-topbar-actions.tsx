@@ -28,17 +28,7 @@ async function AppTopbarActions() {
 
             <ThemeToggle />
 
-            {idToken ? (
-                <div className="opacity-80">
-                    <Image
-                        src="/ls-login-grey-wide.jpg"
-                        height={80}
-                        width={130}
-                        alt="Logged in with LS Login"
-                        loading="eager"
-                    />
-                </div>
-            ) : (
+            {!idToken && (
                 <a href="/auth/api/login-redirect">
                     <Image
                         src="/ls-login-grey-wide.jpg"
