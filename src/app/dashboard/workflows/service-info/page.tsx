@@ -1,4 +1,4 @@
-import { WESServiceInfo } from "@/types/workflows";
+import type { WESServiceInfo } from "@/types/workflows";
 import { ServiceInfoPage } from "../_components";
 
 interface PageProps {

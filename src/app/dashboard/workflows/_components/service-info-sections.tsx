@@ -1,5 +1,5 @@
 import { formatDate, STATE_LABELS } from "@/lib/utils";
-import { WESServiceInfo } from "@/types/workflows";
+import type { WESServiceInfo } from "@/types/workflows";
 import {
     Activity,
     BookOpen,

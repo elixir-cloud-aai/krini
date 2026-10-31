@@ -1,10 +1,10 @@
-
+import type { WESServer } from "@/types/workflows";
 import axios from "axios";
 import { NextResponse } from "next/server";
 
 const TIMEOUT = 5000;
 
-async function isValidWesService(service: any): Promise<boolean> {
+async function isValidWesService(service: WESServer): Promise<boolean> {
     if (
         service?.type?.artifact !== "wes" &&
         service?.type?.artifact !== "wes-gateway"
@@ -72,13 +72,13 @@ export async function GET() {
         }
 
         const wesServices = res.data.filter(
-            (service: any) =>
+            (service: WESServer) =>
                 service?.type?.artifact === "wes" ||
                 service?.type?.artifact === "wes-gateway",
         );
 
         const validationResults = await Promise.all(
-            wesServices.map(async (service: any) => ({
+            wesServices.map(async (service: WESServer) => ({
                 service,
                 valid: await isValidWesService(service),
             })),
