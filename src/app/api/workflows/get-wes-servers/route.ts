@@ -1,6 +1,6 @@
-import type { WESServer } from "@/types/workflows";
 import axios from "axios";
 import { NextResponse } from "next/server";
+import type { WESServer } from "@/types/workflows";
 
 const TIMEOUT = 5000;
 
@@ -36,8 +36,7 @@ async function isValidWesService(service: WESServer): Promise<boolean> {
             {
                 timeout: TIMEOUT,
                 maxRedirects: 0,
-                validateStatus: (status) =>
-                    status >= 200 && status < 300,
+                validateStatus: (status) => status >= 200 && status < 300,
             },
         );
 

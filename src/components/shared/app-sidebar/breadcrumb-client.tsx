@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
     BreadcrumbItem,
@@ -7,7 +8,6 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import Link from "next/link";
 
 export function BreadcrumbClient() {
     const pathname = usePathname();
@@ -46,12 +46,13 @@ export function BreadcrumbClient() {
                                     {formatSegment(segment)}
                                 </BreadcrumbPage>
                             ) : (
-                                <BreadcrumbLink render={
-                                    <Link href={href}>
-                                        {formatSegment(segment)}
-                                    </Link>
-                                }>
-                                </BreadcrumbLink>
+                                <BreadcrumbLink
+                                    render={
+                                        <Link href={href}>
+                                            {formatSegment(segment)}
+                                        </Link>
+                                    }
+                                ></BreadcrumbLink>
                             )}
                         </BreadcrumbItem>
                     </span>

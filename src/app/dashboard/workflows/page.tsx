@@ -1,7 +1,11 @@
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ECCClientGa4ghWesRunsClient, ServiceInfoButton, WESServerList } from "./_components";
+import {
+    ECCClientGa4ghWesRunsClient,
+    ServiceInfoButton,
+    WESServerList,
+} from "./_components";
 
 function WESPage() {
     return (

@@ -14,8 +14,8 @@ async function fetchServiceInfo(url: string): Promise<WESServiceInfo> {
         throw new Error("Only HTTPS endpoints are supported.");
     }
 
-    if(!parsedUrl.pathname.includes('/ga4gh/wes/v1'))
-        throw new Error("Not a GA4GH complaint WES service.")
+    if (!parsedUrl.pathname.includes("/ga4gh/wes/v1"))
+        throw new Error("Not a GA4GH complaint WES service.");
 
     const response = await fetch(parsedUrl.toString(), {
         cache: "no-store",
@@ -36,18 +36,12 @@ async function fetchServiceInfo(url: string): Promise<WESServiceInfo> {
 export default async function Page({ searchParams }: PageProps) {
     const { url } = await searchParams;
 
-    if (!url)
-        return <ServiceInfoPage error="No service URL was provided." />;
+    if (!url) return <ServiceInfoPage error="No service URL was provided." />;
 
     try {
         const serviceInfo = await fetchServiceInfo(url);
 
-        return (
-            <ServiceInfoPage
-                serviceInfo={serviceInfo}
-                sourceUrl={url}
-            />
-        );
+        return <ServiceInfoPage serviceInfo={serviceInfo} sourceUrl={url} />;
     } catch (error) {
         return (
             <ServiceInfoPage

@@ -1,5 +1,3 @@
-import { formatDate, STATE_LABELS } from "@/lib/utils";
-import type { WESServiceInfo } from "@/types/workflows";
 import {
     Activity,
     BookOpen,
@@ -9,6 +7,8 @@ import {
     Server,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { formatDate, STATE_LABELS } from "@/lib/utils";
+import type { WESServiceInfo } from "@/types/workflows";
 
 function Section({
     title,
@@ -82,7 +82,10 @@ function StatCard({ label, value }: { label: string; value: number }) {
 }
 
 function TagValue({ value }: { value: string }) {
-    const values = value.split("|").map((item) => item.trim()).filter(Boolean);
+    const values = value
+        .split("|")
+        .map((item) => item.trim())
+        .filter(Boolean);
 
     if (values.length > 1) {
         return (
@@ -91,7 +94,9 @@ function TagValue({ value }: { value: string }) {
                     let isUrl = false;
 
                     try {
-                        isUrl = ["https:", "http:"].includes(new URL(item).protocol);
+                        isUrl = ["https:", "http:"].includes(
+                            new URL(item).protocol,
+                        );
                     } catch {
                         // Keep non-URL tag values as text.
                     }
@@ -155,7 +160,10 @@ export function ServiceDetails({ service }: { service: WESServiceInfo }) {
                 }
             />
             <DetailRow label="Created" value={formatDate(service.createdAt)} />
-            <DetailRow label="Last updated" value={formatDate(service.updatedAt)} />
+            <DetailRow
+                label="Last updated"
+                value={formatDate(service.updatedAt)}
+            />
         </Section>
     );
 }
@@ -195,47 +203,78 @@ export function WorkflowCapabilities({ service }: { service: WESServiceInfo }) {
     const defaultParameters = service.default_workflow_engine_parameters ?? [];
 
     return (
-        <Section title="Workflow capabilities" icon={<Code2 className="size-4" />}>
+        <Section
+            title="Workflow capabilities"
+            icon={<Code2 className="size-4" />}
+        >
             <div className="space-y-4">
                 <div>
-                    <p className="mb-2 text-sm text-muted-foreground">Workflow types</p>
+                    <p className="mb-2 text-sm text-muted-foreground">
+                        Workflow types
+                    </p>
                     <div className="flex flex-wrap gap-2">
-                        {Object.entries(workflowTypes).map(([type, details]) => (
-                            <div key={type} className="rounded-lg border px-3 py-2 text-sm">
-                                <p className="font-medium">{type}</p>
-                                <p className="text-xs text-muted-foreground">
-                                    {details.workflow_type_version?.join(", ") || "No versions reported"}
-                                </p>
-                            </div>
-                        ))}
+                        {Object.entries(workflowTypes).map(
+                            ([type, details]) => (
+                                <div
+                                    key={type}
+                                    className="rounded-lg border px-3 py-2 text-sm"
+                                >
+                                    <p className="font-medium">{type}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {details.workflow_type_version?.join(
+                                            ", ",
+                                        ) || "No versions reported"}
+                                    </p>
+                                </div>
+                            ),
+                        )}
                         {!Object.keys(workflowTypes).length && (
-                            <p className="text-sm text-muted-foreground">Not reported</p>
+                            <p className="text-sm text-muted-foreground">
+                                Not reported
+                            </p>
                         )}
                     </div>
                 </div>
 
                 <div>
-                    <p className="mb-2 text-sm text-muted-foreground">Workflow engines</p>
+                    <p className="mb-2 text-sm text-muted-foreground">
+                        Workflow engines
+                    </p>
                     <div className="flex flex-wrap gap-2">
                         {Object.entries(engines).map(([engine, version]) => (
-                            <div key={engine} className="rounded-lg border px-3 py-2 text-sm">
+                            <div
+                                key={engine}
+                                className="rounded-lg border px-3 py-2 text-sm"
+                            >
                                 <p className="font-medium">{engine}</p>
-                                <p className="text-xs text-muted-foreground">{version}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {version}
+                                </p>
                             </div>
                         ))}
                         {!Object.keys(engines).length && (
-                            <p className="text-sm text-muted-foreground">Not reported</p>
+                            <p className="text-sm text-muted-foreground">
+                                Not reported
+                            </p>
                         )}
                     </div>
                 </div>
 
                 <DetailRow
                     label="Supported WES versions"
-                    value={wesVersions.length ? wesVersions.join(", ") : "Not reported"}
+                    value={
+                        wesVersions.length
+                            ? wesVersions.join(", ")
+                            : "Not reported"
+                    }
                 />
                 <DetailRow
                     label="Filesystem protocols"
-                    value={filesystemProtocols.length ? filesystemProtocols.join(", ") : "Not reported"}
+                    value={
+                        filesystemProtocols.length
+                            ? filesystemProtocols.join(", ")
+                            : "Not reported"
+                    }
                 />
                 <DetailRow
                     label="Default engine parameters"
@@ -250,11 +289,18 @@ export function WorkflowCapabilities({ service }: { service: WESServiceInfo }) {
     );
 }
 
-export function WorkflowStateBreakdown({ service }: { service: WESServiceInfo }) {
+export function WorkflowStateBreakdown({
+    service,
+}: {
+    service: WESServiceInfo;
+}) {
     const counts = service.system_state_counts ?? {};
 
     return (
-        <Section title="Workflow state breakdown" icon={<Activity className="size-4" />}>
+        <Section
+            title="Workflow state breakdown"
+            icon={<Activity className="size-4" />}
+        >
             <div className="divide-y">
                 {Object.entries(STATE_LABELS).map(([state, label]) => (
                     <div
@@ -278,18 +324,23 @@ export function ServiceTags({ service }: { service: WESServiceInfo }) {
 
     return (
         <Section title="Service tags" icon={<Globe className="size-4" />}>
-            {entries.filter(([key]) => !["key", "value"].includes(key)).length > 0 ? (
+            {entries.filter(([key]) => !["key", "value"].includes(key)).length >
+            0 ? (
                 <div className="divide-y">
-                    {entries.filter(([key]) => !["key", "value"].includes(key)).map(([key, value]) => (
-                        <DetailRow
-                            key={key}
-                            label={key.replaceAll("_", " ")}
-                            value={<TagValue value={value} />}
-                        />
-                    ))}
+                    {entries
+                        .filter(([key]) => !["key", "value"].includes(key))
+                        .map(([key, value]) => (
+                            <DetailRow
+                                key={key}
+                                label={key.replaceAll("_", " ")}
+                                value={<TagValue value={value} />}
+                            />
+                        ))}
                 </div>
             ) : (
-                <p className="text-sm text-muted-foreground">No tags reported.</p>
+                <p className="text-sm text-muted-foreground">
+                    No tags reported.
+                </p>
             )}
         </Section>
     );
@@ -298,7 +349,9 @@ export function ServiceTags({ service }: { service: WESServiceInfo }) {
 export function ServiceApiEndpoint({ url }: { url: string }) {
     return (
         <Section title="API endpoint" icon={<BookOpen className="size-4" />}>
-            <p className="break-all font-mono text-xs text-muted-foreground">{url}</p>
+            <p className="break-all font-mono text-xs text-muted-foreground">
+                {url}
+            </p>
             <a
                 href={url}
                 target="_blank"

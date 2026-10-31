@@ -59,7 +59,4 @@ function ServiceInfoPage({
     );
 }
 
-
-export {
-    ServiceInfoPage
-}
+export { ServiceInfoPage };
