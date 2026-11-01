@@ -11,6 +11,10 @@ export type WESServer = {
     updatedAt: string;
     url: string;
     version: string;
+    health: {
+        status: number;
+        reason?: string;
+    };
 };
 
 interface Organization {

@@ -1,52 +1,65 @@
 import axios from "axios";
 import { NextResponse } from "next/server";
+import { axiosBase } from "@/lib/axios";
 import type { WESServer } from "@/types/workflows";
 
 const TIMEOUT = 5000;
 
-async function isValidWesService(service: WESServer): Promise<boolean> {
-    if (
-        service?.type?.artifact !== "wes" &&
-        service?.type?.artifact !== "wes-gateway"
-    ) {
-        return false;
-    }
+type ProbeResult =
+    | { status: "valid" }
+    | { status: "invalid"; reason: string }
+    | { status: "unreachable"; reason: string };
 
+async function probeWesService(service: WESServer): Promise<ProbeResult> {
     const serviceUrl = service?.url;
 
     if (typeof serviceUrl !== "string") {
-        return false;
+        return { status: "invalid", reason: "missing url" };
     }
 
     let url: URL;
-
     try {
         url = new URL(serviceUrl);
     } catch {
-        return false;
+        return { status: "invalid", reason: "malformed url" };
     }
 
     if (url.protocol !== "https:") {
-        return false;
+        return { status: "invalid", reason: "url is not https" };
     }
 
     try {
-        const response = await axios.get(
+        const response = await axiosBase.get(
             `${url.origin}${url.pathname.replace(/\/$/, "")}/service-info`,
             {
                 timeout: TIMEOUT,
+                signal: AbortSignal.timeout(TIMEOUT),
                 maxRedirects: 0,
                 validateStatus: (status) => status >= 200 && status < 300,
             },
         );
 
-        return (
+        const ok =
             response.data !== null &&
             typeof response.data === "object" &&
-            !Array.isArray(response.data)
-        );
-    } catch {
-        return false;
+            !Array.isArray(response.data);
+
+        return ok
+            ? { status: "valid" }
+            : {
+                  status: "invalid",
+                  reason: "service-info is not a JSON object",
+              };
+    } catch (err) {
+        if (axios.isAxiosError(err) && err.response) {
+            const code = err.response.status;
+            const transient = code >= 500 || code === 408 || code === 429;
+            return transient
+                ? { status: "unreachable", reason: `upstream returned ${code}` }
+                : { status: "invalid", reason: `upstream returned ${code}` };
+        }
+
+        return { status: "unreachable", reason: "no response from server" };
     }
 }
 
@@ -61,35 +74,50 @@ export async function GET() {
             );
         }
 
-        const res = await axios.get(
+        const res = await axiosBase.get(
             `${registryUrl.replace(/\/$/, "")}/services`,
-            { timeout: TIMEOUT },
+            { timeout: TIMEOUT, signal: AbortSignal.timeout(TIMEOUT) },
         );
 
         if (!Array.isArray(res.data)) {
             throw new Error("Invalid registry response");
         }
 
-        const wesServices = res.data.filter(
+        const wesServices: WESServer[] = res.data.filter(
             (service: WESServer) =>
                 service?.type?.artifact === "wes" ||
                 service?.type?.artifact === "wes-gateway",
         );
 
-        const validationResults = await Promise.all(
-            wesServices.map(async (service: WESServer) => ({
+        const results = await Promise.all(
+            wesServices.map(async (service) => ({
                 service,
-                valid: await isValidWesService(service),
+                probe: await probeWesService(service),
             })),
         );
 
-        const verifiedServices = validationResults
-            .filter(({ valid }) => valid)
-            .map(({ service }) => service);
+        const servers = results
+            .filter(({ probe }) => probe.status !== "invalid")
+            .map(({ service, probe }) => ({
+                ...service,
+                health:
+                    probe.status === "valid"
+                        ? { status: "ok" as const }
+                        : {
+                              status: "unreachable" as const,
+                              reason: probe.reason,
+                          },
+            }));
 
-        return NextResponse.json(verifiedServices);
+        const unreachableCount = servers.filter(
+            (s) => s.health.status === "unreachable",
+        ).length;
+
+        return NextResponse.json(servers, {
+            headers: { "X-Unreachable-Count": String(unreachableCount) },
+        });
     } catch (err) {
-        if (axios.isAxiosError(err)) {
+        if (axios.isAxiosError(err) || axios.isCancel(err)) {
             return NextResponse.json(
                 { message: "Failed to fetch Cloud Registry services" },
                 { status: 502 },

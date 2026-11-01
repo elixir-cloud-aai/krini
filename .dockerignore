@@ -1,7 +1,17 @@
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# VCS and local junk
 .git
+.gitignore
 node_modules
-dist  # Or your build directory
 .next
-.DS_Store
-*.test.js
-*.test.tsx
+dist
+coverage
+npm-debug.log*
+Dockerfile
+.dockerignore

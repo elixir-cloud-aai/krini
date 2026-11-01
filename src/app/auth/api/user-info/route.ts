@@ -1,7 +1,7 @@
-import axios from "axios";
 import { getCookie } from "cookies-next/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { axiosBase } from "@/lib/axios";
 
 export async function GET() {
     const accessToken = await getCookie("access_token", { cookies });
@@ -10,7 +10,7 @@ export async function GET() {
         return NextResponse.json({ error: true, user: null }, { status: 401 });
 
     try {
-        const res = await axios.get(
+        const res = await axiosBase.get(
             `${process.env.LS_LOGIN_URL}/oidc/userinfo`,
             {
                 headers: {

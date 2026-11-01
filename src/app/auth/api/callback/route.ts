@@ -1,6 +1,6 @@
-import axios from "axios";
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
+import { axiosBase } from "@/lib/axios";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     try {
         const baseUrl = `${process.env.LS_LOGIN_URL}/oidc/token`;
-        const response = await axios.post(
+        const response = await axiosBase.post(
             baseUrl,
             new URLSearchParams({
                 grant_type: "authorization_code",
@@ -52,7 +52,6 @@ export async function GET(request: NextRequest) {
         }
 
         const cookieOptions = {
-            httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax" as const,
             path: "/",

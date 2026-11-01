@@ -36,7 +36,7 @@ jobs:
         env:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKERHUB_LOGIN }}
           DOCKER_HUB_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
-        run: docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
+        run: echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
       - name: Build Docker Image
         run: docker build -f Dockerfile -t anurag1201/krini:latest .
       - name: Docker Push
@@ -59,7 +59,7 @@ jobs:
         with:
           openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
           openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
-          insecure_skip_tls_verify: true
+          certificate_authority_data: ${{ secrets.OPENSHIFT_CA_DATA }}
           # namespace: krini
           # openshift_username: ${{ secrets.OPENSHIFT_USER }}
           # openshift_password: ${{ secrets.OPENSHIFT_PASSWORD }}
@@ -68,4 +68,5 @@ jobs:
       - name: Trigger Build
         run: oc rollout latest "krini"
       - name: OpenShift Logout
+        if: always()
         run: oc logout

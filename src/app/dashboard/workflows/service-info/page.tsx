@@ -1,4 +1,5 @@
 import axios from "axios";
+import { axiosBase } from "@/lib/axios";
 import type { WESServiceInfo } from "@/types/workflows";
 import { ServiceInfoPage } from "../_components";
 
@@ -16,7 +17,7 @@ export default async function Page({ searchParams }: PageProps) {
     }
 
     try {
-        const { data: serviceInfo } = await axios.get<WESServiceInfo>(
+        const { data: serviceInfo } = await axiosBase.get<WESServiceInfo>(
             `${process.env.APP_ORIGIN}/api/workflows/get-service-info`,
             {
                 params: { id },

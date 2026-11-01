@@ -105,7 +105,9 @@ function WESServerList() {
                                 className="block truncate"
                                 title={server.name}
                             >
-                                {server.name}
+                                {server.name} {"("}Health :{" "}
+                                {server.health.status}
+                                {")"}
                             </span>
                         </SelectItem>
                     ))}

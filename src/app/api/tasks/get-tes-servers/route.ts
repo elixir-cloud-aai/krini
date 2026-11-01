@@ -1,9 +1,10 @@
 import axios from "axios";
 import { NextResponse } from "next/server";
+import { axiosBase } from "@/lib/axios";
 
 export async function GET() {
     try {
-        const res = await axios.get(
+        const res = await axiosBase.get(
             `${process.env.CLOUD_REGISTRY_URL}/services`,
         );
         if (
