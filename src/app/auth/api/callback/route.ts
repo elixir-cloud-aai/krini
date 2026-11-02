@@ -76,7 +76,6 @@ export async function GET(request: NextRequest) {
 
         responseRedirect.cookies.set("access_token", access_token, {
             ...cookieOptions,
-            httpOnly: true,
             maxAge:
                 typeof expires_in === "number" && expires_in > 0
                     ? Math.floor(expires_in)
@@ -85,7 +84,6 @@ export async function GET(request: NextRequest) {
 
         responseRedirect.cookies.set("id_token", id_token, {
             ...cookieOptions,
-            httpOnly: true,
             maxAge: 60 * 60,
         });
 
