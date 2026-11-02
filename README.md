@@ -86,23 +86,9 @@ Make sure the OIDC client has the following redirect URI registered:
 http://localhost:3000/auth/api/callback
 ```
 
-#### Service Configuration
-
-For Krini to authenticate with TES and WES services, the following service-side configuration is required:
-
-**OIDC Client Allowlisting**
-
-- TES services must allowlist the `OIDC_CLIENT_ID` in their authorization configuration
-- WES services must allowlist the `OIDC_CLIENT_ID` in their authorization configuration
-- Only allowlisted clients can use their access tokens to authenticate with these services
-
-**RFC 9068 Token Type**
-
-- The OIDC provider must issue access tokens as JWT (JSON Web Tokens) per [RFC 9068](https://datatracker.ietf.org/doc/html/rfc9068)
-- TES and WES services expect JWT access tokens for authentication
-- Ensure your OIDC provider is configured to return JWT access tokens (not opaque tokens)
-
 Do not commit `.env.local` or expose `OIDC_CLIENT_SECRET` to client-side code.
+
+For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/DEPLOYMENT.md).
 
 
 ## Contributing
