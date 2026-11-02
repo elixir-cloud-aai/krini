@@ -15,7 +15,7 @@ export type WESServer = {
         status: "ok" | "unreachable";
         reason?: string;
     };
-    serviceInfo: WESServiceInfo
+    serviceInfo: WESServiceInfo | null;
 };
 
 interface Organization {

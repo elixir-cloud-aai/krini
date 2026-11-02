@@ -5,7 +5,8 @@ export async function GET() {
     const loginUrl = process.env.LS_LOGIN_URL;
     const clientId = process.env.OIDC_CLIENT_ID;
     const redirectUri = process.env.OIDC_REDIRECT_URI;
-    const scope = process.env.OIDC_SCOPE ?? "openid profile email offline_access";
+    const scope =
+        process.env.OIDC_SCOPE ?? "openid profile email offline_access";
 
     if (!loginUrl || !clientId || !redirectUri) {
         return NextResponse.json(

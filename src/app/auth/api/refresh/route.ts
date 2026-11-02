@@ -31,7 +31,12 @@ export async function POST() {
             },
         );
 
-        const { access_token, id_token, refresh_token: new_refresh_token, expires_in } = response.data;
+        const {
+            access_token,
+            id_token,
+            refresh_token: new_refresh_token,
+            expires_in,
+        } = response.data;
 
         if (typeof access_token !== "string" || typeof id_token !== "string") {
             return NextResponse.json(
@@ -48,7 +53,12 @@ export async function POST() {
 
         const jsonResponse = NextResponse.json({ success: true });
 
-        const expiresAt = Date.now() + (typeof expires_in === "number" && expires_in > 0 ? expires_in * 1000 : 60 * 60 * 1000) - 5 * 60 * 1000;
+        const expiresAt =
+            Date.now() +
+            (typeof expires_in === "number" && expires_in > 0
+                ? expires_in * 1000
+                : 60 * 60 * 1000) -
+            5 * 60 * 1000;
 
         jsonResponse.cookies.set("access_token", access_token, {
             ...cookieOptions,

@@ -7,8 +7,16 @@ const TIMEOUT = 8000;
 const CACHE_TTL = 60000;
 const MAX_CONCURRENCY = 8;
 
+type CachedWESServer = WESServer & {
+    health: {
+        status: "ok" | "unreachable";
+        reason?: string;
+    };
+    serviceInfo: WESServiceInfo | null;
+};
+
 let cache: {
-    data: any;
+    data: CachedWESServer[];
     timestamp: number;
 } | null = null;
 
@@ -70,7 +78,6 @@ async function probeWesService(service: WESServer): Promise<ProbeResult> {
     }
 }
 
-
 async function probeWithConcurrencyLimit<T>(
     items: T[],
     probeFn: (item: T) => Promise<ProbeResult>,
@@ -121,7 +128,7 @@ export async function GET() {
         const now = Date.now();
         if (cache && now - cache.timestamp < CACHE_TTL) {
             const unreachableCount = cache.data.filter(
-                (s: any) => s.health.status === "unreachable",
+                (s) => s.health.status === "unreachable",
             ).length;
 
             return NextResponse.json(cache.data, {
@@ -153,7 +160,7 @@ export async function GET() {
             MAX_CONCURRENCY,
         );
 
-        const servers = results
+        const servers: CachedWESServer[] = results
             .filter(({ probe }) => probe.status !== "invalid")
             .map(({ item: service, probe }) => ({
                 ...service,
@@ -164,7 +171,8 @@ export async function GET() {
                               status: "unreachable" as const,
                               reason: probe.reason,
                           },
-                serviceInfo: probe.status === "valid" ? probe.serviceInfo : null,
+                serviceInfo:
+                    probe.status === "valid" ? probe.serviceInfo : null,
             }));
 
         const unreachableCount = servers.filter(

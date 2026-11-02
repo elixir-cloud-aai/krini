@@ -20,8 +20,8 @@ export function WorkflowValidator({ children }: WorkflowValidatorProps) {
                             No WES Server Selected
                         </p>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Please select a WES server from the dropdown above to view
-                            supported workflow types and versions.
+                            Please select a WES server from the dropdown above
+                            to view supported workflow types and versions.
                         </p>
                     </div>
                 </div>
@@ -43,9 +43,9 @@ export function WorkflowValidator({ children }: WorkflowValidatorProps) {
                                 Service Information Unavailable
                             </p>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Could not fetch workflow type information for this
-                                server. You may still proceed with workflow submission,
-                                but compatibility is not guaranteed.
+                                Could not fetch workflow type information for
+                                this server. You may still proceed with workflow
+                                submission, but compatibility is not guaranteed.
                             </p>
                         </div>
                     </div>
@@ -74,9 +74,9 @@ export function WorkflowValidator({ children }: WorkflowValidatorProps) {
                                 No Workflow Types Reported
                             </p>
                             <p className="text-sm text-muted-foreground mt-1">
-                                This server did not report any supported workflow types. You
-                                may still be able to submit workflows, but compatibility is
-                                not guaranteed.
+                                This server did not report any supported
+                                workflow types. You may still be able to submit
+                                workflows, but compatibility is not guaranteed.
                             </p>
                         </div>
                     </div>
@@ -96,9 +96,9 @@ export function WorkflowValidator({ children }: WorkflowValidatorProps) {
                             Supported Workflow Types
                         </p>
                         <p className="text-sm text-muted-foreground mt-1">
-                            The selected server supports the following workflow types.
-                            Ensure your workflow matches one of these types and versions
-                            before submission.
+                            The selected server supports the following workflow
+                            types. Ensure your workflow matches one of these
+                            types and versions before submission.
                         </p>
                         <div className="mt-3 space-y-2">
                             {workflowTypesList.map(({ type, versions }) => (

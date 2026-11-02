@@ -1,5 +1,5 @@
 "use client";
-import { ChevronDown, Info, LoaderCircle } from "lucide-react";
+import { Info, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -104,15 +104,16 @@ function WESServerList() {
                 <SelectGroup>
                     {servers.map((server) => {
                         const info = server.serviceInfo;
-                        const workflowTypes = info?.workflow_type_versions ?? {};
+                        const workflowTypes =
+                            info?.workflow_type_versions ?? {};
                         const typeCount = Object.keys(workflowTypes).length;
 
-                        const workflowTypesList = Object.entries(workflowTypes).map(
-                            ([type, details]) => ({
-                                type,
-                                versions: details.workflow_type_version || [],
-                            }),
-                        );
+                        const workflowTypesList = Object.entries(
+                            workflowTypes,
+                        ).map(([type, details]) => ({
+                            type,
+                            versions: details.workflow_type_version || [],
+                        }));
 
                         return (
                             <SelectItem
@@ -129,8 +130,11 @@ function WESServerList() {
                                             {server.name}
                                         </span>
                                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <span>Health: {server.health.status}</span>
-                                            {server.health.status === "unreachable" && (
+                                            <span>
+                                                Health: {server.health.status}
+                                            </span>
+                                            {server.health.status ===
+                                                "unreachable" && (
                                                 <span className="text-xs text-muted-foreground">
                                                     ({server.health.reason})
                                                 </span>
@@ -139,8 +143,11 @@ function WESServerList() {
                                                 <>
                                                     <span>•</span>
                                                     <span>
-                                                        {typeCount} workflow type
-                                                        {typeCount !== 1 ? "s" : ""}
+                                                        {typeCount} workflow
+                                                        type
+                                                        {typeCount !== 1
+                                                            ? "s"
+                                                            : ""}
                                                     </span>
                                                 </>
                                             )}
@@ -151,19 +158,27 @@ function WESServerList() {
                                             <TooltipTrigger>
                                                 <Link
                                                     href={`/dashboard/workflows/service-info?id=${server.id}`}
-                                                    onClick={(e) => e.stopPropagation()}
+                                                    onClick={(e) =>
+                                                        e.stopPropagation()
+                                                    }
                                                     className="flex"
                                                 >
                                                     <Info className="size-4 text-muted-foreground hover:text-foreground" />
                                                 </Link>
                                             </TooltipTrigger>
-                                            <TooltipContent side="right" className="max-w-xs">
+                                            <TooltipContent
+                                                side="right"
+                                                className="max-w-xs"
+                                            >
                                                 <div className="space-y-2">
                                                     <p className="font-medium text-sm">
                                                         Supported Workflow Types
                                                     </p>
                                                     {workflowTypesList.map(
-                                                        ({ type, versions }) => (
+                                                        ({
+                                                            type,
+                                                            versions,
+                                                        }) => (
                                                             <div
                                                                 key={type}
                                                                 className="text-xs"
@@ -172,13 +187,17 @@ function WESServerList() {
                                                                     {type}
                                                                 </p>
                                                                 <p className="text-muted-foreground">
-                                                                    {versions.join(", v")}
+                                                                    {versions.join(
+                                                                        ", v",
+                                                                    )}
                                                                 </p>
                                                             </div>
                                                         ),
                                                     )}
                                                     <p className="text-xs text-muted-foreground pt-2 border-t">
-                                                        Click the info button to view full service details
+                                                        Click the info button to
+                                                        view full service
+                                                        details
                                                     </p>
                                                 </div>
                                             </TooltipContent>

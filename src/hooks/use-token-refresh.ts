@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef } from "react";
 import { getCookie } from "cookies-next/client";
+import { useEffect, useRef } from "react";
 import { axiosBase } from "@/lib/axios";
 
 export function useTokenRefresh() {
@@ -10,7 +10,9 @@ export function useTokenRefresh() {
         const checkAndRefreshToken = async () => {
             try {
                 const expiresAtCookie = getCookie("token_expires_at");
-                const expiresAt = expiresAtCookie ? Number.parseInt(expiresAtCookie, 10) : null;
+                const expiresAt = expiresAtCookie
+                    ? Number.parseInt(expiresAtCookie, 10)
+                    : null;
 
                 if (!expiresAt) {
                     return;
@@ -19,12 +21,17 @@ export function useTokenRefresh() {
                 const now = Date.now();
                 const timeUntilExpiry = expiresAt - now;
 
-
                 if (timeUntilExpiry < 5 * 60 * 1000) {
                     await axiosBase.post("/auth/api/refresh");
                 } else {
-                    const nextCheckTime = Math.max(timeUntilExpiry / 2, 120 * 1000);
-                    refreshTimerRef.current = setTimeout(checkAndRefreshToken, nextCheckTime);
+                    const nextCheckTime = Math.max(
+                        timeUntilExpiry / 2,
+                        120 * 1000,
+                    );
+                    refreshTimerRef.current = setTimeout(
+                        checkAndRefreshToken,
+                        nextCheckTime,
+                    );
                 }
             } catch {
                 window.location.href = "/auth/api/login-redirect";

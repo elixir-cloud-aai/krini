@@ -1,3 +1,4 @@
+import { TokenRefreshProvider } from "@/components/auth/token-refresh-provider";
 import {
     AppBreadcrumb,
     AppSidebar,
@@ -9,7 +10,6 @@ import {
     SidebarProvider,
     SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { TokenRefreshProvider } from "@/components/auth/token-refresh-provider";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     return (

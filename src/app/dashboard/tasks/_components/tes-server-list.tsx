@@ -109,10 +109,7 @@ function TESServerList() {
                     <SelectItem value="/tes-api">TEST SERVER</SelectItem>
 
                     {servers.map((server) => (
-                        <SelectItem
-                            key={server.id}
-                            value={server.url}
-                        >
+                        <SelectItem key={server.id} value={server.url}>
                             <span
                                 className="block truncate"
                                 title={server.name}
