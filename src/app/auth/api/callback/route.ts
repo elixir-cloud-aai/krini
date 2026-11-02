@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
+import axios from "axios";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     const cookieStore = await cookies();
-    const authState = cookieStore.get(`authState:${state}`)?.value;
+    const authState = cookieStore.get(`authState-${state}`)?.value;
 
     if (!authState || authState !== state) {
         return NextResponse.redirect(
@@ -22,7 +23,8 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    cookieStore.delete(`authState:${state}`);
+    cookieStore.delete(`authState-${state}`);
+    cookieStore.delete("logout_marker");
 
     try {
         const baseUrl = `${process.env.LS_LOGIN_URL}/oidc/token`;
@@ -47,6 +49,9 @@ export async function GET(request: NextRequest) {
             response.data;
 
         if (typeof access_token !== "string" || typeof id_token !== "string") {
+            console.error(
+                `OIDC callback error: category=invalid_response, url=${process.env.LS_LOGIN_URL}/oidc/token, has_access_token=${typeof access_token === "string"}, has_id_token=${typeof id_token === "string"}`,
+            );
             return NextResponse.redirect(
                 new URL("/auth/error?type=internal", request.url),
             );
@@ -71,6 +76,7 @@ export async function GET(request: NextRequest) {
 
         responseRedirect.cookies.set("access_token", access_token, {
             ...cookieOptions,
+            httpOnly: true,
             maxAge:
                 typeof expires_in === "number" && expires_in > 0
                     ? Math.floor(expires_in)
@@ -79,6 +85,7 @@ export async function GET(request: NextRequest) {
 
         responseRedirect.cookies.set("id_token", id_token, {
             ...cookieOptions,
+            httpOnly: true,
             maxAge: 60 * 60,
         });
 
@@ -96,7 +103,21 @@ export async function GET(request: NextRequest) {
         });
 
         return responseRedirect;
-    } catch {
+    } catch (err) {
+        if (axios.isAxiosError(err)) {
+            const errorCategory = err.code
+                ? `network_${err.code}`
+                : err.response
+                  ? `upstream_${err.response.status}`
+                  : "unknown";
+            console.error(
+                `OIDC callback error: category=${errorCategory}, url=${process.env.LS_LOGIN_URL}/oidc/token, has_response=${!!err.response}`,
+            );
+        } else {
+            console.error(
+                `OIDC callback error: category=unexpected, url=${process.env.LS_LOGIN_URL}/oidc/token`,
+            );
+        }
         return NextResponse.redirect(
             new URL("/auth/error?type=internal", request.url),
         );

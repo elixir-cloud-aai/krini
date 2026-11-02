@@ -23,9 +23,17 @@ export function useTokenRefresh() {
 
                 if (timeUntilExpiry < 5 * 60 * 1000) {
                     await axiosBase.post("/auth/api/refresh");
-                } else {
+                }
+
+                const updatedExpiresAtCookie = getCookie("token_expires_at");
+                const updatedExpiresAt = updatedExpiresAtCookie
+                    ? Number.parseInt(updatedExpiresAtCookie, 10)
+                    : null;
+
+                if (updatedExpiresAt) {
+                    const updatedTimeUntilExpiry = updatedExpiresAt - Date.now();
                     const nextCheckTime = Math.max(
-                        timeUntilExpiry / 2,
+                        updatedTimeUntilExpiry / 2,
                         120 * 1000,
                     );
                     refreshTimerRef.current = setTimeout(

@@ -1,14 +1,23 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
+import axios from "axios";
 
 export async function POST() {
     const cookieStore = await cookies();
     const refreshToken = cookieStore.get("refresh_token")?.value;
+    const logoutMarker = cookieStore.get("logout_marker")?.value;
 
     if (!refreshToken) {
         return NextResponse.json(
             { error: "No refresh token available" },
+            { status: 401 },
+        );
+    }
+
+    if (logoutMarker) {
+        return NextResponse.json(
+            { error: "Session terminated" },
             { status: 401 },
         );
     }
@@ -39,6 +48,9 @@ export async function POST() {
         } = response.data;
 
         if (typeof access_token !== "string" || typeof id_token !== "string") {
+            console.error(
+                `OIDC refresh error: category=invalid_response, url=${process.env.LS_LOGIN_URL}/oidc/token, has_access_token=${typeof access_token === "string"}, has_id_token=${typeof id_token === "string"}`,
+            );
             return NextResponse.json(
                 { error: "Invalid token response" },
                 { status: 500 },
@@ -53,6 +65,8 @@ export async function POST() {
 
         const jsonResponse = NextResponse.json({ success: true });
 
+        jsonResponse.cookies.delete("logout_marker");
+
         const expiresAt =
             Date.now() +
             (typeof expires_in === "number" && expires_in > 0
@@ -62,6 +76,7 @@ export async function POST() {
 
         jsonResponse.cookies.set("access_token", access_token, {
             ...cookieOptions,
+            httpOnly: true,
             maxAge:
                 typeof expires_in === "number" && expires_in > 0
                     ? Math.floor(expires_in)
@@ -70,12 +85,14 @@ export async function POST() {
 
         jsonResponse.cookies.set("id_token", id_token, {
             ...cookieOptions,
+            httpOnly: true,
             maxAge: 60 * 60,
         });
 
         if (typeof new_refresh_token === "string") {
             jsonResponse.cookies.set("refresh_token", new_refresh_token, {
                 ...cookieOptions,
+                httpOnly: true,
                 maxAge: 30 * 24 * 60 * 60,
             });
         }
@@ -86,12 +103,27 @@ export async function POST() {
         });
 
         return jsonResponse;
-    } catch {
+    } catch (err) {
+        if (axios.isAxiosError(err)) {
+            const errorCategory = err.code
+                ? `network_${err.code}`
+                : err.response
+                  ? `upstream_${err.response.status}`
+                  : "unknown";
+            console.error(
+                `OIDC refresh error: category=${errorCategory}, url=${process.env.LS_LOGIN_URL}/oidc/token, has_response=${!!err.response}`,
+            );
+        } else {
+            console.error(
+                `OIDC refresh error: category=unexpected, url=${process.env.LS_LOGIN_URL}/oidc/token`,
+            );
+        }
         const response = NextResponse.json(
             { error: "Failed to refresh token" },
             { status: 401 },
         );
 
+        response.cookies.delete("logout_marker");
         response.cookies.delete("access_token");
         response.cookies.delete("id_token");
         response.cookies.delete("refresh_token");

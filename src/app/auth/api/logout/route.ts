@@ -33,10 +33,20 @@ export async function POST(req: NextRequest) {
 
     const cookieStore = await cookies();
 
-    cookieStore.delete("access_token");
-    cookieStore.delete("id_token");
-    cookieStore.delete("refresh_token");
-    cookieStore.delete("token_expires_at");
+    const response = NextResponse.json({ success: true });
 
-    return NextResponse.json({ success: true });
+    response.cookies.set("logout_marker", Date.now().toString(), {
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax" as const,
+        path: "/",
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60,
+    });
+
+    response.cookies.delete("access_token");
+    response.cookies.delete("id_token");
+    response.cookies.delete("refresh_token");
+    response.cookies.delete("token_expires_at");
+
+    return response;
 }

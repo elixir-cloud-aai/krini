@@ -4,8 +4,14 @@ import { axiosBase } from "@/lib/axios";
 
 export async function GET() {
     try {
+        const registryUrl = process.env.CLOUD_REGISTRY_URL;
+
+        if (!registryUrl) {
+            throw new Error("Cloud Registry URL is not configured.");
+        }
+
         const res = await axiosBase.get(
-            `${process.env.CLOUD_REGISTRY_URL.replace(/\/+$/, "")}/services`,
+            `${registryUrl.replace(/\/+$/, "")}/services`,
         );
         if (
             !res.data ||
