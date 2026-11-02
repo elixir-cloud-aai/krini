@@ -1,5 +1,6 @@
 "use client";
 import { ChevronDown, Info, LoaderCircle } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -21,14 +22,11 @@ function WESServerList() {
     const servers = useWESStore((state) => state.servers);
     const serversLoaded = useWESStore((state) => state.serversLoaded);
     const setServers = useWESStore((state) => state.setServers);
-    const serviceInfo = useWESStore((state) => state.serviceInfo);
-    const setServiceInfo = useWESStore((state) => state.setServiceInfo);
 
     const selectedServer = useWESStore((state) => state.selectedServer);
     const setSelectedServer = useWESStore((state) => state.setSelectedServer);
 
     const [loading, setLoading] = useState(!serversLoaded);
-    const [dropdownOpen, setDropdownOpen] = useState(false);
 
     useEffect(() => {
         if (serversLoaded) {
@@ -73,44 +71,6 @@ function WESServerList() {
         };
     }, [serversLoaded, setServers]);
 
-
-    useEffect(() => {
-        if (!dropdownOpen || !servers.length) return;
-
-        let cancelled = false;
-        async function fetchServiceInfo() {
-            // Filter servers that need fetching
-            const serversToFetch = servers.filter(
-                (server) => !serviceInfo[server.id],
-            );
-
-            if (cancelled || serversToFetch.length === 0) return;
-
-            // Fetch all concurrently
-            const fetchPromises = serversToFetch.map(async (server) => {
-                try {
-                    const infoRes = await fetch(
-                        `/api/workflows/get-service-info?id=${server.id}`,
-                    );
-                    if (infoRes.ok && !cancelled) {
-                        const info = await infoRes.json();
-                        setServiceInfo(server.id, info);
-                    }
-                } catch {
-                    // Service info fetch failure is not critical
-                }
-            });
-
-            await Promise.all(fetchPromises);
-        }
-
-        void fetchServiceInfo();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [dropdownOpen, servers, serviceInfo, setServiceInfo]);
-
     if (loading) {
         return (
             <div className="flex h-10 items-center gap-2 text-sm text-muted-foreground">
@@ -126,7 +86,6 @@ function WESServerList() {
             onValueChange={(value) => {
                 if (value != null) setSelectedServer(value);
             }}
-            onOpenChange={setDropdownOpen}
             items={servers.map((server) => ({
                 value: server.url,
                 label: server.name,
@@ -144,7 +103,7 @@ function WESServerList() {
             >
                 <SelectGroup>
                     {servers.map((server) => {
-                        const info = serviceInfo[server.id];
+                        const info = server.serviceInfo;
                         const workflowTypes = info?.workflow_type_versions ?? {};
                         const typeCount = Object.keys(workflowTypes).length;
 
@@ -181,7 +140,13 @@ function WESServerList() {
                                     {workflowTypesList.length > 0 && (
                                         <Tooltip>
                                             <TooltipTrigger>
-                                                <Info className="size-4 text-muted-foreground" />
+                                                <Link
+                                                    href={`/dashboard/workflows/service-info?id=${server.id}`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="flex"
+                                                >
+                                                    <Info className="size-4 text-muted-foreground hover:text-foreground" />
+                                                </Link>
                                             </TooltipTrigger>
                                             <TooltipContent side="right" className="max-w-xs">
                                                 <div className="space-y-2">
@@ -203,6 +168,9 @@ function WESServerList() {
                                                             </div>
                                                         ),
                                                     )}
+                                                    <p className="text-xs text-muted-foreground pt-2 border-t">
+                                                        Click the info button to view full service details
+                                                    </p>
                                                 </div>
                                             </TooltipContent>
                                         </Tooltip>

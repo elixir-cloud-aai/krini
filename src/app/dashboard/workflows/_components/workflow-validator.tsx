@@ -1,7 +1,6 @@
 "use client";
-import { AlertCircle, CheckCircle2, Info } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { useWESStore } from "@/stores/wes";
-import type { WESServiceInfo } from "@/types/workflows";
 
 interface WorkflowValidatorProps {
     children: React.ReactNode;
@@ -9,8 +8,7 @@ interface WorkflowValidatorProps {
 
 export function WorkflowValidator({ children }: WorkflowValidatorProps) {
     const selectedServer = useWESStore((state) => state.selectedServer);
-    const serviceInfo = useWESStore((state) => state.serviceInfo);
-    const getIdByServerURL = useWESStore((state) => state.getIdByServerURL);
+    const servers = useWESStore((state) => state.servers);
 
     if (!selectedServer) {
         return (
@@ -31,27 +29,28 @@ export function WorkflowValidator({ children }: WorkflowValidatorProps) {
         );
     }
 
-    const serverId = getIdByServerURL(selectedServer);
-    if (!serverId) {
-        return null;
-    }
+    const server = servers.find((s) => s.url === selectedServer);
+    const info = server?.serviceInfo;
 
-    const info: WESServiceInfo | null = serviceInfo[serverId];
     if (!info) {
         return (
-            <div className="rounded-lg border bg-muted/50 p-4">
-                <div className="flex items-start gap-3">
-                    <Info className="size-5 text-muted-foreground shrink-0 mt-0.5" />
-                    <div>
-                        <p className="text-sm font-medium">
-                            Loading Service Information
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            Fetching supported workflow types and versions for the
-                            selected server...
-                        </p>
+            <div className="space-y-4">
+                <div className="rounded-lg border bg-muted/50 p-4">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="size-5 text-muted-foreground shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-sm font-medium">
+                                Service Information Unavailable
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Could not fetch workflow type information for this
+                                server. You may still proceed with workflow submission,
+                                but compatibility is not guaranteed.
+                            </p>
+                        </div>
                     </div>
                 </div>
+                {children}
             </div>
         );
     }
@@ -66,20 +65,23 @@ export function WorkflowValidator({ children }: WorkflowValidatorProps) {
 
     if (workflowTypesList.length === 0) {
         return (
-            <div className="rounded-lg border bg-muted/50 p-4">
-                <div className="flex items-start gap-3">
-                    <AlertCircle className="size-5 text-muted-foreground shrink-0 mt-0.5" />
-                    <div>
-                        <p className="text-sm font-medium">
-                            No Workflow Types Reported
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            This server did not report any supported workflow types. You
-                            may still be able to submit workflows, but compatibility is
-                            not guaranteed.
-                        </p>
+            <div className="space-y-4">
+                <div className="rounded-lg border bg-muted/50 p-4">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="size-5 text-muted-foreground shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-sm font-medium">
+                                No Workflow Types Reported
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                This server did not report any supported workflow types. You
+                                may still be able to submit workflows, but compatibility is
+                                not guaranteed.
+                            </p>
+                        </div>
                     </div>
                 </div>
+                {children}
             </div>
         );
     }

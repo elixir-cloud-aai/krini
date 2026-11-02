@@ -22,7 +22,6 @@ function WESPage() {
                 </div>
                 <div className="hidden md:flex flex-wrap gap-2 justify-end">
                     <div className="flex gap-2 items-center">
-                        <ServiceInfoButton />
                         <WESServerList />
                     </div>
                     <Button className={"px-0"}>

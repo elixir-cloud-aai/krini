@@ -15,6 +15,7 @@ export type WESServer = {
         status: number;
         reason?: string;
     };
+    serviceInfo: WESServiceInfo
 };
 
 interface Organization {

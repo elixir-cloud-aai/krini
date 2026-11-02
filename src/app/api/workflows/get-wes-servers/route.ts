@@ -1,7 +1,7 @@
 import axios from "axios";
 import { NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
-import type { WESServer } from "@/types/workflows";
+import type { WESServer, WESServiceInfo } from "@/types/workflows";
 
 const TIMEOUT = 8000;
 const CACHE_TTL = 60000;
@@ -13,7 +13,7 @@ let cache: {
 } | null = null;
 
 type ProbeResult =
-    | { status: "valid" }
+    | { status: "valid"; serviceInfo: WESServiceInfo }
     | { status: "invalid"; reason: string }
     | { status: "unreachable"; reason: string };
 
@@ -52,7 +52,7 @@ async function probeWesService(service: WESServer): Promise<ProbeResult> {
             !Array.isArray(response.data);
 
         return ok
-            ? { status: "valid" }
+            ? { status: "valid", serviceInfo: response.data }
             : {
                   status: "invalid",
                   reason: "service-info is not a JSON object",
@@ -164,6 +164,7 @@ export async function GET() {
                               status: "unreachable" as const,
                               reason: probe.reason,
                           },
+                serviceInfo: probe.status === "valid" ? probe.serviceInfo : null,
             }));
 
         const unreachableCount = servers.filter(
