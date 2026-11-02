@@ -5,6 +5,7 @@ import {
     ECCClientGa4ghWesCreateRunsClient,
     WESServerList,
 } from "../_components";
+import { WorkflowValidator } from "../_components/workflow-validator";
 
 function Page() {
     return (
@@ -31,9 +32,11 @@ function Page() {
                     </Button>
                 </div>
             </div>
-            <div className="overflow-hidden px-2">
-                <ECCClientGa4ghWesCreateRunsClient />
-            </div>
+            <WorkflowValidator>
+                <div className="overflow-hidden px-2">
+                    <ECCClientGa4ghWesCreateRunsClient />
+                </div>
+            </WorkflowValidator>
         </div>
     );
 }

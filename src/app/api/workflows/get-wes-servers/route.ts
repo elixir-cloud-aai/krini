@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
 import type { WESServer } from "@/types/workflows";
 
-const TIMEOUT = 5000;
+const TIMEOUT = 8000;
 const CACHE_TTL = 60000;
-const MAX_CONCURRENCY = 5;
+const MAX_CONCURRENCY = 8;
 
 let cache: {
     data: any;
