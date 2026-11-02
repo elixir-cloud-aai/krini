@@ -76,7 +76,6 @@ export async function POST() {
 
         jsonResponse.cookies.set("access_token", access_token, {
             ...cookieOptions,
-            httpOnly: true,
             maxAge:
                 typeof expires_in === "number" && expires_in > 0
                     ? Math.floor(expires_in)
