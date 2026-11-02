@@ -50,6 +50,7 @@ LS_LOGIN_URL=https://login.elixir-europe.org
 OIDC_CLIENT_ID=your-client-id
 OIDC_CLIENT_SECRET=your-client-secret
 OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
+OIDC_SCOPE=openid profile email offline_access
 
 # Cloud Registry
 CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev
@@ -64,6 +65,7 @@ APP_ORIGIN=http://localhost:3000
 - `OIDC_CLIENT_ID`: Client ID registered with LS Login.
 - `OIDC_CLIENT_SECRET`: Client secret associated with the OIDC client. Keep this private.
 - `OIDC_REDIRECT_URI`: Callback URL registered with your LS Login client. It must match the redirect URI configured with the identity provider.
+- `OIDC_SCOPE`: OAuth 2.0 scopes to request from the identity provider. Must include `offline_access` for refresh token support. Default: `openid profile email offline_access`.
 - `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API.
 - `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000` for local development or your production URL).
 

@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
             },
         );
 
-        const { access_token, id_token, expires_in } = response.data;
+        const { access_token, id_token, refresh_token, expires_in } = response.data;
 
         if (typeof access_token !== "string" || typeof id_token !== "string") {
             return NextResponse.redirect(
@@ -61,6 +61,8 @@ export async function GET(request: NextRequest) {
             new URL("/dashboard", request.url),
         );
 
+        const expiresAt = Date.now() + (typeof expires_in === "number" && expires_in > 0 ? expires_in * 1000 : 60 * 60 * 1000) - 5 * 60 * 1000;
+
         responseRedirect.cookies.set("access_token", access_token, {
             ...cookieOptions,
             maxAge:
@@ -72,6 +74,19 @@ export async function GET(request: NextRequest) {
         responseRedirect.cookies.set("id_token", id_token, {
             ...cookieOptions,
             maxAge: 60 * 60,
+        });
+
+        if (typeof refresh_token === "string") {
+            responseRedirect.cookies.set("refresh_token", refresh_token, {
+                ...cookieOptions,
+                httpOnly: true,
+                maxAge: 30 * 24 * 60 * 60,
+            });
+        }
+
+        responseRedirect.cookies.set("token_expires_at", String(expiresAt), {
+            ...cookieOptions,
+            maxAge: 30 * 24 * 60 * 60,
         });
 
         return responseRedirect;

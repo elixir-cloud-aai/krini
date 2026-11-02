@@ -35,6 +35,8 @@ export async function POST(req: NextRequest) {
 
     cookieStore.delete("access_token");
     cookieStore.delete("id_token");
+    cookieStore.delete("refresh_token");
+    cookieStore.delete("token_expires_at");
 
     return NextResponse.json({ success: true });
 }
