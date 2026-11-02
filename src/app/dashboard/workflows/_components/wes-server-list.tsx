@@ -115,7 +115,11 @@ function WESServerList() {
                         );
 
                         return (
-                            <SelectItem key={server.id} value={server.url}>
+                            <SelectItem
+                                key={server.id}
+                                value={server.url}
+                                disabled={server.health.status !== "ok"}
+                            >
                                 <div className="flex items-center justify-between gap-2 w-full">
                                     <div className="flex flex-col flex-1 min-w-0">
                                         <span
@@ -126,6 +130,11 @@ function WESServerList() {
                                         </span>
                                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                             <span>Health: {server.health.status}</span>
+                                            {server.health.status === "unreachable" && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    ({server.health.reason})
+                                                </span>
+                                            )}
                                             {typeCount > 0 && (
                                                 <>
                                                     <span>•</span>

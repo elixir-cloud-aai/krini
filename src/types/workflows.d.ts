@@ -12,7 +12,7 @@ export type WESServer = {
     url: string;
     version: string;
     health: {
-        status: number;
+        status: "ok" | "unreachable";
         reason?: string;
     };
     serviceInfo: WESServiceInfo
