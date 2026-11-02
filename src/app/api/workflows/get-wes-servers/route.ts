@@ -4,6 +4,13 @@ import { axiosBase } from "@/lib/axios";
 import type { WESServer } from "@/types/workflows";
 
 const TIMEOUT = 5000;
+const CACHE_TTL = 60000;
+const MAX_CONCURRENCY = 5;
+
+let cache: {
+    data: any;
+    timestamp: number;
+} | null = null;
 
 type ProbeResult =
     | { status: "valid" }
@@ -63,6 +70,43 @@ async function probeWesService(service: WESServer): Promise<ProbeResult> {
     }
 }
 
+
+async function probeWithConcurrencyLimit<T>(
+    items: T[],
+    probeFn: (item: T) => Promise<ProbeResult>,
+    limit: number,
+): Promise<Array<{ item: T; probe: ProbeResult }>> {
+    const results: Array<{ item: T; probe: ProbeResult }> = [];
+    let running = 0;
+    let index = 0;
+
+    const processNext = async (): Promise<void> => {
+        if (index >= items.length) return;
+
+        const item = items[index++];
+        running++;
+
+        try {
+            const probe = await probeFn(item);
+            results.push({ item, probe });
+        } finally {
+            running--;
+            if (running < limit && index < items.length) {
+                await processNext();
+            }
+        }
+    };
+
+    const workers = [];
+    const initialCount = Math.min(limit, items.length);
+    for (let i = 0; i < initialCount; i++) {
+        workers.push(processNext());
+    }
+
+    await Promise.all(workers);
+    return results;
+}
+
 export async function GET() {
     try {
         const registryUrl = process.env.CLOUD_REGISTRY_URL;
@@ -72,6 +116,20 @@ export async function GET() {
                 { message: "Cloud Registry URL is not configured" },
                 { status: 500 },
             );
+        }
+
+        const now = Date.now();
+        if (cache && now - cache.timestamp < CACHE_TTL) {
+            const unreachableCount = cache.data.filter(
+                (s: any) => s.health.status === "unreachable",
+            ).length;
+
+            return NextResponse.json(cache.data, {
+                headers: {
+                    "X-Unreachable-Count": String(unreachableCount),
+                    "X-Cache": "HIT",
+                },
+            });
         }
 
         const res = await axiosBase.get(
@@ -89,16 +147,15 @@ export async function GET() {
                 service?.type?.artifact === "wes-gateway",
         );
 
-        const results = await Promise.all(
-            wesServices.map(async (service) => ({
-                service,
-                probe: await probeWesService(service),
-            })),
+        const results = await probeWithConcurrencyLimit(
+            wesServices,
+            probeWesService,
+            MAX_CONCURRENCY,
         );
 
         const servers = results
             .filter(({ probe }) => probe.status !== "invalid")
-            .map(({ service, probe }) => ({
+            .map(({ item: service, probe }) => ({
                 ...service,
                 health:
                     probe.status === "valid"
@@ -113,8 +170,13 @@ export async function GET() {
             (s) => s.health.status === "unreachable",
         ).length;
 
+        cache = { data: servers, timestamp: now };
+
         return NextResponse.json(servers, {
-            headers: { "X-Unreachable-Count": String(unreachableCount) },
+            headers: {
+                "X-Unreachable-Count": String(unreachableCount),
+                "X-Cache": "MISS",
+            },
         });
     } catch (err) {
         if (axios.isAxiosError(err) || axios.isCancel(err)) {

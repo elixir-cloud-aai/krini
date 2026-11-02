@@ -26,7 +26,7 @@ export async function GET() {
 
     const response = NextResponse.redirect(authorizeUrl);
 
-    response.cookies.set("authState", state, {
+    response.cookies.set(`authState:${state}`, state, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",

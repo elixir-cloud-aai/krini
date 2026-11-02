@@ -5,7 +5,7 @@ import { axiosBase } from "@/lib/axios";
 export async function GET() {
     try {
         const res = await axiosBase.get(
-            `${process.env.CLOUD_REGISTRY_URL}/services`,
+            `${process.env.CLOUD_REGISTRY_URL.replace(/\/+$/, '')}/services`,
         );
         if (
             !res.data ||

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     const cookieStore = await cookies();
-    const authState = cookieStore.get("authState")?.value;
+    const authState = cookieStore.get(`authState:${state}`)?.value;
 
     if (!authState || authState !== state) {
         return NextResponse.redirect(
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    cookieStore.delete("authState");
+    cookieStore.delete(`authState:${state}`);
 
     try {
         const baseUrl = `${process.env.LS_LOGIN_URL}/oidc/token`;

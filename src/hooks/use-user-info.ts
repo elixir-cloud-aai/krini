@@ -19,8 +19,15 @@ export function useUserInfo() {
             const userRawResp = await fetch("/auth/api/user-info");
             const userResp: UserInfoResponse = await userRawResp.json();
 
-            if (userResp.error === false) setUser(userResp.user);
-            else setError(true);
+            if (userResp.error === false) {
+                setUser(userResp.user);
+            } else {
+                if (userRawResp.status === 401) {
+                    setUser(null);
+                } else {
+                    setError(true);
+                }
+            }
         } catch {
             setError(true);
         } finally {

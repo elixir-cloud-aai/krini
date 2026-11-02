@@ -1,5 +1,5 @@
 "use client";
-import { ChevronsUpDown } from "lucide-react";
+import { AlertCircle, ChevronsUpDown, RefreshCw } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
     DropdownMenu,
@@ -16,7 +16,7 @@ import AppSidebarFooterMenu from "./app-sidebar-footer-menu";
 import AppSidebarFooterMenuNoUser from "./app-sidebar-footer-menu-nologin";
 
 export function AppSidebarFooter() {
-    const { user, loading } = useUserInfo();
+    const { user, loading, error, refetch } = useUserInfo();
 
     if (loading) {
         return (
@@ -29,6 +29,31 @@ export function AppSidebarFooter() {
                             <Skeleton className="h-3 w-32" />
                         </div>
                         <Skeleton className="ml-auto h-4 w-4" />
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+        );
+    }
+
+    if (error && user !== null) {
+        return (
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton
+                        size="lg"
+                        className="text-destructive"
+                        onClick={() => refetch()}
+                    >
+                        <AlertCircle className="h-8 w-8 rounded-lg" />
+                        <div className="grid flex-1 text-left text-sm leading-tight">
+                            <span className="truncate font-medium">
+                                Identity Provider Error
+                            </span>
+                            <span className="truncate text-xs">
+                                Unable to connect to identity provider
+                            </span>
+                        </div>
+                        <RefreshCw className="ml-auto size-4" />
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>

@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
                 { status: 400 },
             );
         }
-        parsedUrl.pathname = `${parsedUrl.pathname.replace(/\/+$/, "")}/service-info`;
+        parsedUrl.pathname = `${parsedUrl.pathname.replace(/\/$/, "")}/service-info`;
 
         const { data: serviceInfo } = await axiosBase.get<WESServiceInfo>(
             parsedUrl.toString(),

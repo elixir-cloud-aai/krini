@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
 
     if (!appOrigin) {
         return NextResponse.json(
-            { error: "Invalid app configuration" },
+            { error: "APP_ORIGIN environment variable is not set" },
             { status: 500 },
         );
     }
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
         expectedOrigin = new URL(appOrigin).origin;
     } catch {
         return NextResponse.json(
-            { error: "Invalid app configuration" },
+            { error: "Invalid APP_ORIGIN format" },
             { status: 500 },
         );
     }

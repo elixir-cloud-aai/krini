@@ -110,7 +110,7 @@ function TESServerList() {
 
                     {servers.map((server) => (
                         <SelectItem
-                            key={server.url + Math.random()}
+                            key={server.id}
                             value={server.url}
                         >
                             <span

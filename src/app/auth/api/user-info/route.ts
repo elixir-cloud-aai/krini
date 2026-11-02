@@ -1,6 +1,7 @@
 import { getCookie } from "cookies-next/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import axios from "axios";
 import { axiosBase } from "@/lib/axios";
 
 export async function GET() {
@@ -25,7 +26,17 @@ export async function GET() {
         }
 
         return NextResponse.json({ error: false, user: res.data });
-    } catch {
-        return NextResponse.json({ error: true, user: null }, { status: 401 });
+    } catch (err) {
+        if (axios.isAxiosError(err)) {
+            return NextResponse.json(
+                { error: true, user: null },
+                { status: 502 },
+            );
+        }
+
+        return NextResponse.json(
+            { error: true, user: null },
+            { status: 500 },
+        );
     }
 }
