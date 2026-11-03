@@ -31,7 +31,8 @@ export function useTokenRefresh() {
                     : null;
 
                 if (updatedExpiresAt) {
-                    const updatedTimeUntilExpiry = updatedExpiresAt - Date.now();
+                    const updatedTimeUntilExpiry =
+                        updatedExpiresAt - Date.now();
                     const nextCheckTime = Math.max(
                         updatedTimeUntilExpiry / 2,
                         120 * 1000,

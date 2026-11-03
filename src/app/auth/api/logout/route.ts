@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -30,8 +29,6 @@ export async function POST(req: NextRequest) {
             { status: 403 },
         );
     }
-
-    const cookieStore = await cookies();
 
     const response = NextResponse.json({ success: true });
 

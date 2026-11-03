@@ -1,7 +1,7 @@
+import axios from "axios";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
-import axios from "axios";
 
 export async function POST() {
     const cookieStore = await cookies();
@@ -90,7 +90,7 @@ export async function POST() {
                     : 60 * 60,
         });
 
-        if(typeof id_token === "string")
+        if (typeof id_token === "string")
             jsonResponse.cookies.set("id_token", id_token, {
                 ...cookieOptions,
                 maxAge: 60 * 60,

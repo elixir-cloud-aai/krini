@@ -78,11 +78,14 @@ export async function GET(request: NextRequest) {
             },
         );
 
-        return NextResponse.json({...serviceInfo, url: parsedUrl.toString()}, {
-            headers: {
-                "Cache-Control": "no-store",
+        return NextResponse.json(
+            { ...serviceInfo, url: parsedUrl.toString() },
+            {
+                headers: {
+                    "Cache-Control": "no-store",
+                },
             },
-        });
+        );
     } catch (error) {
         if (axios.isAxiosError(error)) {
             if (error.response) {

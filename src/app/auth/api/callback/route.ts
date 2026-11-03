@@ -1,7 +1,7 @@
+import axios from "axios";
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
-import axios from "axios";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
