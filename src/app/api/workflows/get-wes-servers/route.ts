@@ -179,7 +179,10 @@ export async function GET() {
             (s) => s.health.status === "unreachable",
         ).length;
 
-        cache = { data: servers, timestamp: now };
+        const completionTime = Date.now();
+        if (!cache || completionTime > cache.timestamp) {
+            cache = { data: servers, timestamp: completionTime };
+        }
 
         return NextResponse.json(servers, {
             headers: {

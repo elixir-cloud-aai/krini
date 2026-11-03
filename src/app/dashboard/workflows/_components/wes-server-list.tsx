@@ -1,8 +1,9 @@
 "use client";
-import { Info, LoaderCircle } from "lucide-react";
+import { Info, LoaderCircle, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
     Select,
     SelectContent,
@@ -27,20 +28,19 @@ function WESServerList() {
     const setSelectedServer = useWESStore((state) => state.setSelectedServer);
 
     const [loading, setLoading] = useState(!serversLoaded);
+    const [error, setError] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        if (serversLoaded) {
-            setLoading(false);
-            return;
-        }
-
-        let cancelled = false;
-        async function fetchServers() {
+    const fetchServers = useCallback(
+        async (isBackground = false) => {
             try {
                 const res = await fetch("/api/workflows/get-wes-servers");
 
                 if (!res.ok) {
-                    toast.error("Failed to fetch WES servers.");
+                    if (!isBackground) {
+                        toast.error("Failed to fetch WES servers.");
+                        setError(true);
+                    }
                     return;
                 }
 
@@ -50,32 +50,66 @@ function WESServerList() {
                     throw new Error("Invalid WES server response");
                 }
 
-                if (!cancelled) {
-                    setServers(data);
-                }
+                setServers(data);
+                setError(false);
             } catch {
-                if (!cancelled) {
+                if (!isBackground) {
                     toast.error("Failed to fetch WES servers.");
+                    setError(true);
                 }
             } finally {
-                if (!cancelled) {
+                if (!isBackground) {
                     setLoading(false);
                 }
+                setRefreshing(false);
             }
+        },
+        [setServers],
+    );
+
+    useEffect(() => {
+        if (serversLoaded) {
+            setLoading(false);
+            setError(false);
+            return;
         }
 
-        void fetchServers();
+        void fetchServers(false);
+    }, [serversLoaded, fetchServers]);
 
-        return () => {
-            cancelled = true;
-        };
-    }, [serversLoaded, setServers]);
+    const handleRetry = () => {
+        setLoading(true);
+        setError(false);
+        void fetchServers(false);
+    };
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        void fetchServers(true);
+    };
 
     if (loading) {
         return (
             <div className="flex h-10 items-center gap-2 text-sm text-muted-foreground">
                 <LoaderCircle className="size-4 animate-spin" />
                 Loading WES instances...
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex h-10 items-center gap-2 text-sm text-muted-foreground">
+                <span>Failed to load WES instances</span>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRetry}
+                    className="h-7 px-2"
+                >
+                    <RefreshCw className="size-3" />
+                    Retry
+                </Button>
             </div>
         );
     }
@@ -102,6 +136,23 @@ function WESServerList() {
                 className="min-w-87.5 max-w-[min(90vw,480px)]"
             >
                 <SelectGroup>
+                    <div className="flex items-center justify-between px-2 py-1.5 border-b">
+                        <span className="text-xs text-muted-foreground">
+                            WES Instances
+                        </span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleRefresh}
+                            disabled={refreshing}
+                            className="h-6 px-2"
+                        >
+                            <RefreshCw
+                                className={`size-3 ${refreshing ? "animate-spin" : ""}`}
+                            />
+                            Refresh
+                        </Button>
+                    </div>
                     {servers.map((server) => {
                         const info = server.serviceInfo;
                         const workflowTypes =
@@ -133,6 +184,12 @@ function WESServerList() {
                                             <span>
                                                 Health: {server.health.status}
                                             </span>
+                                            {server.health.status ===
+                                                "unreachable" && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    ({server.health.reason})
+                                                </span>
+                                            )}
                                             {server.health.status ===
                                                 "unreachable" && (
                                                 <span className="text-xs text-muted-foreground">
