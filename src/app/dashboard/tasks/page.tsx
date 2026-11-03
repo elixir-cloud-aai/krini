@@ -6,9 +6,9 @@ import { ECCClientGa4ghTesRunsClient, TESServerList } from "./_components";
 function Page() {
     return (
         <div className="space-y-6">
-            <div className="flex justify-between w-full items-center">
+            <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-semibold tracking-tight mt-2">
+                    <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mt-2">
                         Task Execution Service (TES)
                     </h2>
                     <p className="leading-7 text-sm text-muted-foreground">
@@ -16,7 +16,7 @@ function Page() {
                         new tasks to supported services.
                     </p>
                 </div>
-                <div className="hidden md:flex flex-wrap gap-2 justify-end">
+                <div className="flex flex-wrap gap-2 justify-end w-full md:w-auto">
                     <TESServerList />
                     <Button className={"px-0"}>
                         <Link

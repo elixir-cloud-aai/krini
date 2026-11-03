@@ -70,7 +70,6 @@ export async function GET(request: NextRequest) {
         const { data: serviceInfo } = await axiosBase.get<WESServiceInfo>(
             parsedUrl.toString(),
             {
-                timeout: 0,
                 maxRedirects: 0,
                 headers: {
                     Accept: "application/json",

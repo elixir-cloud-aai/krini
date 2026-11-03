@@ -6,9 +6,9 @@ import { ECCClientGa4ghWesRunsClient, WESServerList } from "./_components";
 function WESPage() {
     return (
         <div className="space-y-6">
-            <div className="flex justify-between w-full items-center">
+            <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-semibold tracking-tight mt-2">
+                    <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mt-2">
                         Workflow Execution Service (WES)
                     </h2>
                     <p className="leading-7 text-sm text-muted-foreground">
@@ -16,7 +16,7 @@ function WESPage() {
                         submit new workflows.
                     </p>
                 </div>
-                <div className="hidden md:flex flex-wrap gap-2 justify-end">
+                <div className="flex flex-wrap gap-2 justify-end w-full md:w-auto">
                     <div className="flex gap-2 items-center">
                         <WESServerList />
                     </div>

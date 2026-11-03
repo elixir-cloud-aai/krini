@@ -125,16 +125,22 @@ export async function POST() {
                 `OIDC refresh error: category=unexpected, url=${process.env.LS_LOGIN_URL}/oidc/token`,
             );
         }
+
+        const shouldClearCookies =
+            axios.isAxiosError(err) && err.response?.status === 401;
+
         const response = NextResponse.json(
             { error: "Failed to refresh token" },
             { status: 401 },
         );
 
-        response.cookies.delete("logout_marker");
-        response.cookies.delete("access_token");
-        response.cookies.delete("id_token");
-        response.cookies.delete("refresh_token");
-        response.cookies.delete("token_expires_at");
+        if (shouldClearCookies) {
+            response.cookies.delete("logout_marker");
+            response.cookies.delete("access_token");
+            response.cookies.delete("id_token");
+            response.cookies.delete("refresh_token");
+            response.cookies.delete("token_expires_at");
+        }
 
         return response;
     }
