@@ -27,7 +27,7 @@ export default async function Page({ searchParams }: PageProps) {
             },
         );
 
-        return <ServiceInfoPage serviceInfo={serviceInfo} />;
+        return <ServiceInfoPage serviceInfo={serviceInfo} sourceUrl={serviceInfo.url} />;
     } catch (error) {
         console.log(error);
         const message = axios.isAxiosError(error)

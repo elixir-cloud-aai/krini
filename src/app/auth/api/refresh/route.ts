@@ -47,7 +47,7 @@ export async function POST() {
             expires_in,
         } = response.data;
 
-        if (typeof access_token !== "string" || typeof id_token !== "string") {
+        if (typeof access_token !== "string") {
             console.error(
                 `OIDC refresh error: category=invalid_response, url=${process.env.LS_LOGIN_URL}/oidc/token, has_access_token=${typeof access_token === "string"}, has_id_token=${typeof id_token === "string"}`,
             );
@@ -63,9 +63,15 @@ export async function POST() {
             path: "/",
         };
 
-        const jsonResponse = NextResponse.json({ success: true });
+        const cookieStoreAfter = await cookies();
+        const logoutMarkerAfter = cookieStoreAfter.get("logout_marker")?.value;
 
-        jsonResponse.cookies.delete("logout_marker");
+        if (logoutMarkerAfter) {
+            return NextResponse.json(
+                { error: "Session terminated" },
+                { status: 401 },
+            );
+        }
 
         const expiresAt =
             Date.now() +
@@ -73,6 +79,8 @@ export async function POST() {
                 ? expires_in * 1000
                 : 60 * 60 * 1000) -
             5 * 60 * 1000;
+
+        const jsonResponse = NextResponse.json({ success: true });
 
         jsonResponse.cookies.set("access_token", access_token, {
             ...cookieOptions,
@@ -82,11 +90,11 @@ export async function POST() {
                     : 60 * 60,
         });
 
-        jsonResponse.cookies.set("id_token", id_token, {
-            ...cookieOptions,
-            httpOnly: true,
-            maxAge: 60 * 60,
-        });
+        if(typeof id_token === "string")
+            jsonResponse.cookies.set("id_token", id_token, {
+                ...cookieOptions,
+                maxAge: 60 * 60,
+            });
 
         if (typeof new_refresh_token === "string") {
             jsonResponse.cookies.set("refresh_token", new_refresh_token, {

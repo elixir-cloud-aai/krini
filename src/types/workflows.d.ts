@@ -68,4 +68,5 @@ export type WESServiceInfo = {
             workflow_type_version: string[];
         }
     >;
+    url: string
 };

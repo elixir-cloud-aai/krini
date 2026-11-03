@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
             },
         );
 
-        return NextResponse.json(serviceInfo, {
+        return NextResponse.json({...serviceInfo, url: parsedUrl.toString()}, {
             headers: {
                 "Cache-Control": "no-store",
             },
