@@ -88,7 +88,6 @@ function TESServerList() {
                 if (value != null) setSelectedServer(value);
             }}
             items={[
-                { value: "/tes-api", label: "TEST SERVER" },
                 ...servers.map((server) => ({
                     value: server.url,
                     label: server.name,

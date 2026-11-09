@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { TESServer } from "@/types/tasks";
 
 interface TESStore {
-    selectedServer: string;
+    selectedServer: string | null;
     setSelectedServer: (server: string) => void;
 
     servers: TESServer[];
@@ -11,7 +11,7 @@ interface TESStore {
 }
 
 export const useTESStore = create<TESStore>((set) => ({
-    selectedServer: "/tes-api",
+    selectedServer: null,
     setSelectedServer: (selectedServer) => set({ selectedServer }),
 
     servers: [],
