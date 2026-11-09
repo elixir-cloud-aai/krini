@@ -1,6 +1,10 @@
 .git
 node_modules
-dist  # Or your build directory
+# Build output
+dist
 .DS_Store
 *.test.js
 *.test.tsx
+# Environment files: only the committed, non-secret .env.production is used
+.env*
+!.env.production
