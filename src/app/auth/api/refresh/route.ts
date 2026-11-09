@@ -61,6 +61,7 @@ export async function POST() {
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax" as const,
             path: "/",
+            httpOnly: true,
         };
 
         const cookieStoreAfter = await cookies();
@@ -99,13 +100,13 @@ export async function POST() {
         if (typeof new_refresh_token === "string") {
             jsonResponse.cookies.set("refresh_token", new_refresh_token, {
                 ...cookieOptions,
-                httpOnly: true,
                 maxAge: 30 * 24 * 60 * 60,
             });
         }
 
         jsonResponse.cookies.set("token_expires_at", String(expiresAt), {
             ...cookieOptions,
+            httpOnly: false,
             maxAge: 30 * 24 * 60 * 60,
         });
 

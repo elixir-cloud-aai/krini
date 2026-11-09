@@ -1,19 +1,18 @@
 import { RestWesProvider } from "@elixir-cloud/wes/providers";
-import { getCookie } from "cookies-next/client";
 import { useEffect, useState } from "react";
 import { useWESStore } from "@/stores/wes";
 
 class TokenWesProvider extends RestWesProvider {
-    private getToken: () => string;
+    private getToken: () => Promise<string>;
 
-    constructor(baseUrl: string, getToken: () => string) {
+    constructor(baseUrl: string, getToken: () => Promise<string>) {
         super(baseUrl);
         this.getToken = getToken;
     }
 
     async fetch(input: string, init: RequestInit = {}) {
         const headers = new Headers(init.headers);
-        const token = this.getToken();
+        const token = await this.getToken();
 
         if (token) {
             headers.set("Authorization", `Bearer ${token}`);
@@ -26,10 +25,23 @@ class TokenWesProvider extends RestWesProvider {
     }
 }
 
-function getAccessToken(): string {
-    const token = getCookie("access_token");
+async function getAccessToken(): Promise<string> {
+    try {
+        const response = await fetch("/auth/api/token", {
+            method: "GET",
+            credentials: "same-origin",
+            cache: "no-store",
+        });
 
-    return typeof token === "string" ? token : "";
+        if (!response.ok) {
+            return "";
+        }
+
+        const data: { access_token: string } = await response.json();
+        return data.access_token || "";
+    } catch {
+        return "";
+    }
 }
 
 function useWESProvider() {

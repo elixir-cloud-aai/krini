@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax" as const,
             path: "/",
+            httpOnly: true,
         };
 
         const responseRedirect = NextResponse.redirect(
@@ -90,13 +91,13 @@ export async function GET(request: NextRequest) {
         if (typeof refresh_token === "string") {
             responseRedirect.cookies.set("refresh_token", refresh_token, {
                 ...cookieOptions,
-                httpOnly: true,
                 maxAge: 30 * 24 * 60 * 60,
             });
         }
 
         responseRedirect.cookies.set("token_expires_at", String(expiresAt), {
             ...cookieOptions,
+            httpOnly: false,
             maxAge: 30 * 24 * 60 * 60,
         });
 

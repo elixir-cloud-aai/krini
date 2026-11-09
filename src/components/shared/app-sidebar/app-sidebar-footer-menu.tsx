@@ -1,4 +1,3 @@
-import { getCookie } from "cookies-next/client";
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -18,15 +17,26 @@ type Props = {
 function AppSidebarFooterMenu({ user }: Props) {
     const { isMobile } = useSidebar();
 
-    const copyToken = () => {
-        const token = getCookie("access_token");
-        if (token && typeof token === "string") {
-            navigator.clipboard
-                .writeText(token as string)
-                .then(() => toast.success("Token copied successfully."))
-                .catch(() =>
-                    toast.error("Please try again to copy the token."),
-                );
+    const copyToken = async () => {
+        try {
+            const response = await fetch("/auth/api/token", {
+                credentials: "same-origin",
+                cache: "no-store",
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to fetch token");
+            }
+
+            const data = await response.json();
+            if (data.access_token) {
+                await navigator.clipboard.writeText(data.access_token);
+                toast.success("Token copied successfully.");
+            } else {
+                toast.error("No token available.");
+            }
+        } catch {
+            toast.error("Please try again to copy the token.");
         }
     };
 
