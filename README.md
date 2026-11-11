@@ -9,7 +9,7 @@ Check out the application in the [production](https://krini.rahtiapp.fi/). The r
 ### Prerequisites
 
 - Git
-- [Node & npm](https://nodejs.org/en/): Recent LTS version avaliable
+- [Bun](https://bun.com/): Recent LTS version avaliable
 
 ### Installation
 
@@ -23,23 +23,73 @@ cd krini
 - Install the packages to be used in the development:
 
 ```
-yarn
+bun i
 ```
 
-> **_NOTE:_** If haven't used the cypress before please run
-> `npm run cypress:install`
-> This will install cypress in your project & will allow you to run e2e tests.
+
 
 - Run the start script to start the development environment of the project:
 
 ```
-yarn dev
+bun run dev
 ```
 
 - This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
   > **_NOTE:_** You might face a problem while login if your application isn't running on `http://localhost:3000/`. In the case of port change, change the environment variable `VITE_HOST_URI` in file `.env.development` file to the required url.
 
 Great, now you are good to go!
+
+
+### Environment Variables
+
+Create a `.env.local` file in the project root:
+
+```env
+# LS Login / OpenID Connect
+LS_LOGIN_URL=https://login.elixir-europe.org
+OIDC_CLIENT_ID=your-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
+OIDC_SCOPE=openid profile email offline_access
+
+# Cloud Registry
+CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev
+
+# Application
+APP_ORIGIN=http://localhost:3000
+```
+
+#### Configuration
+
+- `LS_LOGIN_URL`: Base URL of the LS Login identity provider.
+- `OIDC_CLIENT_ID`: Client ID registered with LS Login.
+- `OIDC_CLIENT_SECRET`: Client secret associated with the OIDC client. Keep this private.
+- `OIDC_REDIRECT_URI`: Callback URL registered with your LS Login client. It must match the redirect URI configured with the identity provider.
+- `OIDC_SCOPE`: OAuth 2.0 scopes to request from the identity provider. Must include `offline_access` for refresh token support. Default: `openid profile email offline_access`.
+- `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API.
+- `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000` for local development or your production URL).
+
+#### Cloud Component Versions
+
+This application supports the following GA4GH Cloud Component API versions:
+
+- **TES (Task Execution Service)**: v1
+- **WES (Workflow Execution Service)**: v1
+
+The application uses the following client libraries:
+- `@elixir-cloud/tes`: ^1.0.1
+- `@elixir-cloud/wes`: ^2.0.0-alpha.49
+
+Make sure the OIDC client has the following redirect URI registered:
+
+```text
+http://localhost:3000/auth/api/callback
+```
+
+Do not commit `.env.local` or expose `OIDC_CLIENT_SECRET` to client-side code.
+
+For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/DEPLOYMENT.md).
+
 
 ## Contributing
 

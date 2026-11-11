@@ -1,42 +1,27 @@
-# Stage 1: Build React app
-FROM node:alpine AS build
+FROM oven/bun:1.3.14 AS build
+
 WORKDIR /app
 
-# Copy package files first for better caching
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
-COPY . /app
-RUN yarn build
+COPY . .
+RUN bun run build
 
-# Stage 2: Serve with Nginx
-FROM nginx:alpine
+FROM oven/bun:1.3.14-slim AS runtime
 
-# Copy built files from the build stage
-COPY --from=build /app/dist /usr/share/nginx/html
+WORKDIR /app
 
-# Copy nginx configuration (consider using a volume for easier changes)
-COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
+ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 
-# Optimization and Security:
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/.next ./.next
+COPY --from=build /app/public ./public
 
-# Permissions - Combined commands and more efficient
-RUN chown -R nginx:root /var/cache/nginx /var/run /var/log/nginx /usr/share/nginx/html && \
-    chmod -R g+rw /var/cache/nginx /var/run /var/log/nginx /usr/share/nginx/html
+USER bun
+EXPOSE 3000
 
-# Port change (consider using a variable for flexibility)
-RUN sed -i 's/listen\(.*\)80;/listen 8081;/' /etc/nginx/conf.d/default.conf
-
-# Remove unnecessary file and directory creation/chmod
-# Nginx user directive - No longer needed in most cases (OpenShift)
-RUN sed -i 's/^user/#user/' /etc/nginx/conf.d/default.conf
-
-# Worker connections - Only if necessary
-RUN sed -i 's/worker_connections\s*1024/worker_connections 10240/' /etc/nginx/conf.d/default.conf
-
-EXPOSE 8081
-
-# Set user in the final stage (more secure)
-USER nginx:root
-
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["bun", "run", "start"]
