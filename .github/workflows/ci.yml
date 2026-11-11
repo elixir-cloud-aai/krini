@@ -174,13 +174,18 @@ jobs:
       - name: Audit production dependencies
         run: bun audit --prod --audit-level=high
 
-  # Builds the image as `docker build` does, without settings, and checks
-  # that it serves the app as a non-root user with a read-only root file
-  # system and a writable `/tmp` (see "Container image" in
-  # `docs/deployment.md`). For pull requests, the image is handed to `scan`,
-  # so that exactly the checked image is scanned
+  # Checks that the image serves the app as a non-root user with a
+  # read-only root file system and a writable `/tmp` (see "Container Image"
+  # in `docs/deployment.md`): for pull requests an image built as
+  # `docker build` builds it, without settings, which is handed to `scan`;
+  # for pushes exactly the digest pushed by `push` (public, so pulling it
+  # needs no login), in a job without credentials, so that the published
+  # image is the checked one
   image:
     name: Build image
+    # For pull requests, `push` is skipped
+    needs: push
+    if: ${{ !cancelled() && (github.event_name == 'pull_request' || needs.push.result == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -191,12 +196,26 @@ jobs:
       # Named as the pushed image, so that code scanning matches the findings
       # of both
       - name: Build the Docker image
+        if: ${{ github.event_name != 'push' }}
         run: docker build -t "${IMAGE_NAME}:scan" .
+      - name: Pull the pushed image
+        if: ${{ github.event_name == 'push' }}
+        env:
+          DIGEST: ${{ needs.push.outputs.digest }}
+        run: |
+          if [[ ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Invalid image digest '${DIGEST}'"
+            exit 1
+          fi
+          docker pull "${IMAGE_NAME}@${DIGEST}"
+          docker tag "${IMAGE_NAME}@${DIGEST}" "${IMAGE_NAME}:scan"
+      # The optimized image is `public/ls-login-grey-wide.jpg` (shown on the
+      # login page): change it here if it is renamed
       - name: Check that the image serves the app
         run: |
+          trap 'docker rm -f app >/dev/null 2>&1 || true' EXIT
           docker run -d --name app -p 127.0.0.1:3000:3000 \
             --read-only --tmpfs /tmp "${IMAGE_NAME}:scan"
-          trap 'docker rm -f app >/dev/null' EXIT
           if [[ "$(docker exec app id -u)" == 0 ]]; then
             echo "::error::The container runs as root"
             exit 1
@@ -241,8 +260,8 @@ jobs:
           if-no-files-found: error
 
   # On pushes, builds the image once and pushes it by digest only (untagged,
-  # with SBOM and provenance attestations, `mode=max`), for `scan` to scan
-  # and `publish` to sign and tag. Runs alongside the checks, so that the
+  # with SBOM and provenance attestations, `mode=max`), for `image` to check,
+  # `scan` to scan and `publish` to sign and tag. Runs alongside the checks, so that the
   # scan starts early; digests of runs that fail (or fail the scan) are never
   # signed or tagged, but stay on Docker Hub, untagged (pullable by digest
   # only)
@@ -361,7 +380,7 @@ jobs:
   # attestation, also pushed to the registry), signs it with Sigstore keyless
   # signing (`cosign`, via the workflow's OIDC token) and only then tags
   # exactly that digest, so that the published image is the scanned one; see
-  # "Container image" in `docs/deployment.md`
+  # "Container Image" in `docs/deployment.md`
   publish:
     name: Publish image
     runs-on: ubuntu-latest
