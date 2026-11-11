@@ -9,7 +9,7 @@ CI publishes the Docker image of the `Dockerfile` to
 
 | Tag | Points to |
 | --- | --- |
-| `dev` | The newest commit on `dev` that passed CI |
+| `dev` | The newest commit that passed CI while it was the head of `dev` |
 | `sha-<commit>` | That commit (full commit SHA) |
 
 Only a commit that is still the head of `dev` when its checks have passed
