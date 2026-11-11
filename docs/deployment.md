@@ -2,6 +2,75 @@
 
 This guide covers configuration requirements for deploying Krini in production environments.
 
+## Container Image
+
+CI publishes the Docker image of the `Dockerfile` to
+`docker.io/elixircloud/krini` for every push to `dev`:
+
+| Tag | Points to |
+| --- | --- |
+| `dev` | The latest commit on `dev` |
+| `sha-<commit>` | A given commit on `dev` (full commit SHA) |
+
+CI never sets `latest`: that tag is reserved for releases. Deployments pull
+these images and update themselves (e.g. with their own CD); the repository
+doesn't deploy anywhere itself.
+
+Before CI tags an image, it checks it (lint, type check, build, dependency
+audit, a smoke test of the image), scans exactly the pushed digest for
+known vulnerabilities (Trivy, failing on fixable critical and high
+findings), attests its build provenance and signs it with Sigstore keyless
+signing. The image also carries an SBOM and BuildKit provenance.
+
+### Running the Image
+
+The image has no settings of its own: pass all environment variables of
+the [README](../README.md#environment-variables) when the container starts,
+so that one image serves any deployment. For example:
+
+```bash
+docker run --rm -p 3000:3000 \
+    --read-only --tmpfs /tmp \
+    --env-file krini.env \
+    docker.io/elixircloud/krini:dev
+```
+
+- The server listens on port `3000` (`PORT`) on all IPv4 interfaces; set
+  `LISTEN_HOSTNAME` (e.g. `::` for IPv6) to change the interface.
+- It runs as the non-root user `bun` (UID 1000) and can't change its own
+  code.
+- It works with a read-only root file system: only `/tmp` must be
+  writable (e.g. an `emptyDir` volume in Kubernetes). Next.js caches, such
+  as optimized images, go to `/tmp/next-cache`.
+- The image has a health check that requests the start page.
+
+### Verifying Images
+
+Check the signature and the build provenance of an image before deploying
+it, e.g. with [cosign](https://docs.sigstore.dev/cosign/) and the
+[GitHub CLI](https://cli.github.com/):
+
+```bash
+image=docker.io/elixircloud/krini:dev
+cosign verify "${image}" \
+    --certificate-identity-regexp '^https://github\.com/elixir-cloud-aai/krini/\.github/workflows/ci\.yml@refs/heads/dev$' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify "oci://${image}" --repo elixir-cloud-aai/krini
+```
+
+### Building the Image
+
+To build the image yourself:
+
+```bash
+docker build -t krini .
+```
+
+The build uses no settings or `.env*` files (`.dockerignore` keeps them out
+of the build context). The Bun version of both stages of the `Dockerfile`
+must match `packageManager` in `package.json`, pinned by digest; CI checks
+this.
+
 ## Service Configuration
 
 For Krini to authenticate with TES and WES services, the following service-side configuration is required:

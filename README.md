@@ -88,7 +88,8 @@ http://localhost:3000/auth/api/callback
 
 Do not commit `.env.local` or expose `OIDC_CLIENT_SECRET` to client-side code.
 
-For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/DEPLOYMENT.md).
+For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/deployment.md). It also describes the
+[container image](./docs/deployment.md#container-image) that CI publishes.
 
 
 ## Contributing
