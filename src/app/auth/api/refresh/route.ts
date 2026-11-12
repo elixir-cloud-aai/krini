@@ -64,16 +64,6 @@ export async function POST() {
             httpOnly: true,
         };
 
-        const cookieStoreAfter = await cookies();
-        const logoutMarkerAfter = cookieStoreAfter.get("logout_marker")?.value;
-
-        if (logoutMarkerAfter) {
-            return NextResponse.json(
-                { error: "Session terminated" },
-                { status: 401 },
-            );
-        }
-
         const expiresAt =
             Date.now() +
             (typeof expires_in === "number" && expires_in > 0
