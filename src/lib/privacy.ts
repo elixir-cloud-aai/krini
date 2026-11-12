@@ -18,7 +18,8 @@ type PrivacySettings = {
 
 type Env = Record<string, string | undefined>;
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** An email address whose domain has at least two labels, none empty */
+const EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
 /**
  * Get a setting, without surrounding white space

@@ -51,6 +51,9 @@ describe("privacySettings", () => {
         "http://example.org/contact",
         "not a contact",
         "a@b@example.org",
+        "privacy@example..org",
+        "privacy@.example.org",
+        "privacy@example.org.",
     ])("ignores the contact %s with a warning", (value) => {
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         expect(privacySettings({ PRIVACY_CONTACT: value }).contact).toBeNull();
@@ -79,6 +82,7 @@ describe("privacySettings", () => {
     });
 
     it("reads the environment by default", () => {
-        expect(privacySettings()).toHaveProperty("controller");
+        vi.stubEnv("PRIVACY_CONTROLLER", "Example Institute");
+        expect(privacySettings().controller).toBe("Example Institute");
     });
 });

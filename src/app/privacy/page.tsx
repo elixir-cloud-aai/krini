@@ -104,16 +104,17 @@ async function PrivacyPage() {
                 <ul className="list-disc space-y-1 pl-6">
                     <li>
                         <span className="font-medium">No tracking.</span> Krini
-                        has no analytics and no advertising, and it sets no
-                        cookies for visitors who don&apos;t log in, apart from
-                        the display setting below.
+                        has no analytics and no advertising. Visitors get no
+                        cookies, apart from the display setting below and, once
+                        they start a login, the cookie that protects it.
                     </li>
                     <li>
                         <span className="font-medium">Your user info</span> from
                         the login provider: what it releases to Krini, such as
                         your name, email address, identifier and group
-                        memberships. Krini shows it while you&apos;re logged in
-                        and doesn&apos;t store it on its server.
+                        memberships. Krini shows your name and your email
+                        address or identifier while you&apos;re logged in, and
+                        doesn&apos;t store any of it on its server.
                     </li>
                     <li>
                         <span className="font-medium">Display settings</span>{" "}
@@ -128,10 +129,12 @@ async function PrivacyPage() {
                 <h2 className="text-lg font-semibold">Cookies</h2>
                 <p>
                     All cookies except the sidebar setting are strictly
-                    necessary for logging in and staying logged in. Only Krini
-                    reads them. Scripts on the page can&apos;t read the refresh
-                    and ID tokens. The page gets the access token from Krini, to
-                    send it to the services you use.
+                    necessary for logging in and staying logged in. Krini&apos;s
+                    server reads them. Scripts on the page can also read{" "}
+                    <code>token_expires_at</code> and <code>sidebar_state</code>
+                    , which hold no data about you, but not the tokens. The page
+                    gets the access token from Krini, to send it to the services
+                    you use.
                 </p>
                 <ul className="list-disc space-y-1 pl-6">
                     {COOKIES.map(({ name, purpose, lifetime }) => (
@@ -184,8 +187,9 @@ async function PrivacyPage() {
                         <span className="font-medium">
                             The service registry
                         </span>{" "}
-                        tells Krini which services exist. Krini reads it without
-                        any data about you.
+                        tells Krini which services exist. Krini&apos;s server
+                        reads it and checks the listed workflow services, both
+                        without any data about you.
                     </li>
                 </ul>
             </section>
