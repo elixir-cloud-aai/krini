@@ -92,7 +92,7 @@ For detailed deployment and service configuration requirements, see the [Deploym
 
 ### Tests
 
-CI runs both test levels on pull requests to `dev` and `master`. Neither calls real services.
+CI runs both test levels on pull requests and pushes to `dev`, `master` and `staging`. Neither calls real services.
 
 - **Unit tests** ([Vitest](https://vitest.dev/)): the route handlers and helpers, in `src/**/*.test.ts`. The code in `src/lib/`, `src/app/api/` and `src/app/auth/api/` must stay fully covered.
 
