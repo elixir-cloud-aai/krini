@@ -1,6 +1,7 @@
 import axios from "axios";
 import { NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
+import { fetchVerifiedServices } from "@/lib/registry";
 import type { WESServer, WESServiceInfo } from "@/types/workflows";
 
 const TIMEOUT = 8000;
@@ -139,20 +140,11 @@ export async function GET() {
             });
         }
 
-        const res = await axiosBase.get(
-            `${registryUrl.replace(/\/$/, "")}/services`,
-            { timeout: TIMEOUT, signal: AbortSignal.timeout(TIMEOUT) },
-        );
-
-        if (!Array.isArray(res.data)) {
-            throw new Error("Invalid registry response");
-        }
-
-        const wesServices: WESServer[] = res.data.filter(
-            (service: WESServer) =>
-                service?.type?.artifact === "wes" ||
-                service?.type?.artifact === "wes-gateway",
-        );
+        // Only verified services: the selected one gets the user's token
+        const wesServices = await fetchVerifiedServices<WESServer>([
+            "wes",
+            "wes-gateway",
+        ]);
 
         const results = await probeWithConcurrencyLimit(
             wesServices,

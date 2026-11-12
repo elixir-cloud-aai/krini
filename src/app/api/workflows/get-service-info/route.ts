@@ -1,6 +1,7 @@
 import axios from "axios";
 import { type NextRequest, NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
+import { fetchVerifiedServices } from "@/lib/registry";
 import type { WESServer, WESServiceInfo } from "@/types/workflows";
 
 export async function GET(request: NextRequest) {
@@ -14,20 +15,10 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const registryUrl = process.env.CLOUD_REGISTRY_URL;
-
-        if (!registryUrl) {
-            throw new Error("Cloud Registry URL is not configured.");
-        }
-
-        const { data: servers } = await axiosBase.get<WESServer[]>(
-            `${registryUrl.replace(/\/+$/, "")}/services`,
-            {
-                headers: {
-                    Accept: "application/json",
-                },
-            },
-        );
+        const servers = await fetchVerifiedServices<WESServer>([
+            "wes",
+            "wes-gateway",
+        ]);
 
         const server = servers.find((item) => item.id === id);
 
