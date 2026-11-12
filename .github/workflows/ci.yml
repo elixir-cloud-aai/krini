@@ -225,7 +225,14 @@ jobs:
             # the start page redirects to the dashboard; the login page is
             # served without settings; an optimized image is written to
             # `.next/cache` (a link to `/tmp`)
-            if curl -fs -o /dev/null http://127.0.0.1:3000/auth/login; then
+            # (200, not a redirect, which `curl -f` would also accept)
+            login="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/auth/login || true)"
+            if [[ "${login}" =~ ^[1-5] && "${login}" != 200 ]]; then
+              docker logs app
+              echo "::error::The login page returned ${login}, expected 200"
+              exit 1
+            fi
+            if [[ "${login}" == 200 ]]; then
               status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/)"
               if [[ "${status}" != 307 ]]; then
                 echo "::error::The start page returned ${status}, expected a redirect (307)"
@@ -464,9 +471,11 @@ jobs:
           BRANCH: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
         run: |
-          tags=("${IMAGE_NAME}:${BRANCH}")
-          # Only "not found" adds the tag; other errors (e.g. rate limits)
-          # fail the step, so that a short registry error can't move it
+          # `sha-<commit>` first, so that a failure leaves the branch tag
+          # where it was. Only "not found" adds it; other errors (e.g. rate
+          # limits) fail the step, so that a short registry error can't move
+          # it
+          tags=()
           if err="$(docker buildx imagetools inspect "${IMAGE_NAME}:sha-${SHA}" 2>&1 >/dev/null)"; then
             echo "::notice::${IMAGE_NAME}:sha-${SHA} exists already; not moving it"
           elif grep -qiE 'not found|manifest unknown' <<< "${err}"; then
@@ -475,6 +484,7 @@ jobs:
             echo "::error::Could not look up ${IMAGE_NAME}:sha-${SHA}: ${err}"
             exit 1
           fi
+          tags+=("${IMAGE_NAME}:${BRANCH}")
           for tag in "${tags[@]}"; do
             docker buildx imagetools create --tag "${tag}" "${IMAGE_NAME}@${DIGEST}"
             actual="$(docker buildx imagetools inspect "${tag}" \
