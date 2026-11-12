@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { renewSession, TokenWesProvider } from "@/lib/token-wes-provider";
+import { TokenWesProvider } from "@/lib/token-wes-provider";
 
 const BASE_URL = "https://wes.example.org/ga4gh/wes/v1";
 
@@ -63,7 +63,7 @@ describe("TokenWesProvider", () => {
         expect(onUnauthorized).not.toHaveBeenCalled();
     });
 
-    it("asks to log in if the retry is rejected too", async () => {
+    it("reports a rejected token if the retry is rejected too", async () => {
         const { provider, fetchMock, renew, onUnauthorized } = setup([
             401, 401, 401,
         ]);
@@ -72,46 +72,36 @@ describe("TokenWesProvider", () => {
 
         expect(renew).toHaveBeenCalledOnce();
         expect(fetchMock).toHaveBeenCalledTimes(2);
-        expect(onUnauthorized).toHaveBeenCalledOnce();
+        expect(onUnauthorized).toHaveBeenCalledExactlyOnceWith(
+            "token-rejected",
+        );
     });
 
-    it("doesn't retry if the session can't be renewed", async () => {
+    it("reports an expired session if it can't be renewed", async () => {
         const { provider, fetchMock, onUnauthorized } = setup([401], false);
 
         await expect(provider.listRuns()).rejects.toThrow();
 
         expect(fetchMock).toHaveBeenCalledOnce();
-        expect(onUnauthorized).toHaveBeenCalledOnce();
-    });
-});
-
-describe("renewSession", () => {
-    afterEach(() => {
-        vi.unstubAllGlobals();
-    });
-
-    it("shares one refresh request between concurrent calls", async () => {
-        const fetchMock = vi.fn(
-            async () => new Response(null, { status: 200 }),
-        );
-        vi.stubGlobal("fetch", fetchMock);
-
-        const results = await Promise.all([renewSession(), renewSession()]);
-
-        expect(results).toEqual([true, true]);
-        expect(fetchMock).toHaveBeenCalledOnce();
-        expect(fetchMock).toHaveBeenCalledWith(
-            "/auth/api/refresh",
-            expect.objectContaining({ method: "POST" }),
+        expect(onUnauthorized).toHaveBeenCalledExactlyOnceWith(
+            "session-expired",
         );
     });
 
-    it("reports a failed refresh", async () => {
-        vi.stubGlobal(
-            "fetch",
-            vi.fn(async () => new Response(null, { status: 401 })),
-        );
+    it("sends the form body again on the retry", async () => {
+        const { provider, fetchMock } = setup([401, 200]);
 
-        await expect(renewSession()).resolves.toBe(false);
+        await provider
+            .runWorkflow({
+                workflow_url: "https://example.org/workflow.cwl",
+                workflow_type: "CWL",
+                workflow_type_version: "v1.2",
+            } as never)
+            .catch(() => {});
+
+        const bodies = fetchMock.mock.calls.map(([, init]) => init?.body);
+        expect(bodies).toHaveLength(2);
+        expect(bodies[1]).toBeInstanceOf(FormData);
+        expect(bodies[1]).toBe(bodies[0]);
     });
 });
