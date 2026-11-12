@@ -44,6 +44,27 @@ describe("renewSession", () => {
 
         await expect(renewSession()).resolves.toBe(false);
     });
+
+    it("gives up on a refresh request that doesn't settle", async () => {
+        vi.useFakeTimers();
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                (_input: RequestInfo | URL, init?: RequestInit) =>
+                    new Promise<Response>((_resolve, reject) => {
+                        init?.signal?.addEventListener("abort", () =>
+                            reject(init.signal?.reason),
+                        );
+                    }),
+            ),
+        );
+
+        const renewal = renewSession();
+        await vi.advanceTimersByTimeAsync(15_000);
+
+        await expect(renewal).resolves.toBe(false);
+        vi.useRealTimers();
+    });
 });
 
 describe("getAccessToken", () => {
