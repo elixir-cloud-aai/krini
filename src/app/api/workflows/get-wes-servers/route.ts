@@ -88,6 +88,8 @@ async function probeWithConcurrencyLimit<T>(
     let index = 0;
 
     const processNext = async (): Promise<void> => {
+        // guard only: every caller checks the index first
+        /* v8 ignore next */
         if (index >= items.length) return;
 
         const item = items[index++];
