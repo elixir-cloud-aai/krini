@@ -6,6 +6,7 @@ import {
     mockHttpPort,
     mockHttpsPort,
     mockURL,
+    privacy,
 } from "./e2e/settings";
 
 // end-to-end tests (`e2e/`) against the mock services of
@@ -62,6 +63,10 @@ export default defineConfig({
                 OIDC_SCOPE: "openid profile email",
                 CLOUD_REGISTRY_URL: `${mockHttp}/ga4gh/registry/v1`,
                 APP_ORIGIN: baseURL,
+                PRIVACY_CONTROLLER: privacy.controller,
+                PRIVACY_CONTACT: privacy.contact,
+                PRIVACY_NOTICE_URL: privacy.noticeUrl,
+                PRIVACY_LOGIN_NOTICE_URL: privacy.loginNoticeUrl,
             },
         },
     ],

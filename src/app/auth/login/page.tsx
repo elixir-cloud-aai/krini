@@ -1,11 +1,12 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 function Page() {
     return (
-        <div className="flex justify-center items-center h-screen">
+        <div className="flex flex-col gap-4 justify-center items-center h-screen">
             <Button
                 className="cursor-pointer"
                 size={"icon-lg"}
@@ -24,6 +25,15 @@ function Page() {
                     loading="eager"
                 />
             </Button>
+            <p className="text-sm text-muted-foreground">
+                Before you log in, read what happens with your data:{" "}
+                <Link
+                    href="/privacy"
+                    className="font-medium underline underline-offset-4"
+                >
+                    Privacy notice
+                </Link>
+            </p>
         </div>
     );
 }

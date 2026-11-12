@@ -16,6 +16,14 @@ const mockURL = `http://127.0.0.1:${mockHttpPort}`;
 /** Client of the app at the mock login provider */
 const client = { id: "krini-e2e", secret: "e2e-secret" };
 
+/** Settings of the privacy notice */
+const privacy = {
+    controller: "Example Institute, Example Street 1, Example City",
+    contact: "privacy@example.org",
+    noticeUrl: "https://example.org/privacy",
+    loginNoticeUrl: "https://login.example.org/privacy",
+};
+
 /** A request that the mock WES service received */
 type WesRequest = {
     method: string;
@@ -32,5 +40,6 @@ export {
     mockHttpPort,
     mockHttpsPort,
     mockURL,
+    privacy,
     type WesRequest,
 };
