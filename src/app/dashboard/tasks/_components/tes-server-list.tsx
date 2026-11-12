@@ -105,8 +105,6 @@ function TESServerList() {
                 className="min-w-87.5 max-w-[min(90vw,480px)]"
             >
                 <SelectGroup>
-                    <SelectItem value="/tes-api">TEST SERVER</SelectItem>
-
                     {servers.map((server) => (
                         <SelectItem key={server.id} value={server.url}>
                             <span
