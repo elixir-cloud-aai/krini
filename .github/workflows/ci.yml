@@ -465,10 +465,15 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           tags=("${IMAGE_NAME}:${BRANCH}")
-          if docker buildx imagetools inspect "${IMAGE_NAME}:sha-${SHA}" >/dev/null 2>&1; then
+          # Only "not found" adds the tag; other errors (e.g. rate limits)
+          # fail the step, so that a short registry error can't move it
+          if err="$(docker buildx imagetools inspect "${IMAGE_NAME}:sha-${SHA}" 2>&1 >/dev/null)"; then
             echo "::notice::${IMAGE_NAME}:sha-${SHA} exists already; not moving it"
-          else
+          elif grep -qiE 'not found|manifest unknown' <<< "${err}"; then
             tags+=("${IMAGE_NAME}:sha-${SHA}")
+          else
+            echo "::error::Could not look up ${IMAGE_NAME}:sha-${SHA}: ${err}"
+            exit 1
           fi
           for tag in "${tags[@]}"; do
             docker buildx imagetools create --tag "${tag}" "${IMAGE_NAME}@${DIGEST}"

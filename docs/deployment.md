@@ -65,10 +65,13 @@ it, e.g. with [cosign](https://docs.sigstore.dev/cosign/) and the
 ```bash
 image=docker.io/elixircloud/krini:staging
 cosign verify "${image}" \
-    --certificate-identity-regexp '^https://github\.com/elixir-cloud-aai/krini/\.github/workflows/ci\.yml@refs/heads/(staging|dev)$' \
+    --certificate-identity-regexp '^https://github\.com/elixir-cloud-aai/krini/\.github/workflows/ci\.yml@refs/heads/staging$' \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 gh attestation verify "oci://${image}" --repo elixir-cloud-aai/krini
 ```
+
+For the tag `dev`, use `refs/heads/dev$` in the regular expression; for a
+`sha-<commit>` tag, `refs/heads/(staging|dev)$`.
 
 ### Building the Image
 
