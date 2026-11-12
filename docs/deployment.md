@@ -11,7 +11,11 @@ CI publishes the Docker image of the `Dockerfile` to
 | --- | --- |
 | `staging` | The newest commit that passed CI while it was the head of `staging` |
 | `dev` | The newest commit that passed CI while it was the head of `dev` |
-| `sha-<commit>` | That commit (full commit SHA) |
+| `sha-<commit>` | That commit (full commit SHA); for a commit on both branches, the image published first |
+
+The label `org.opencontainers.image.version` of each image is
+`<version in package.json>-<branch>+<short commit SHA>`, e.g.
+`0.1.0-staging+1a2b3c4`.
 
 Only a commit that is still the head of its branch when its checks have
 passed is tagged: when commits are pushed in quick succession, the earlier
@@ -61,7 +65,7 @@ it, e.g. with [cosign](https://docs.sigstore.dev/cosign/) and the
 ```bash
 image=docker.io/elixircloud/krini:staging
 cosign verify "${image}" \
-    --certificate-identity-regexp '^https://github\.com/elixir-cloud-aai/krini/\.github/workflows/ci\.yml@refs/heads/staging$' \
+    --certificate-identity-regexp '^https://github\.com/elixir-cloud-aai/krini/\.github/workflows/ci\.yml@refs/heads/(staging|dev)$' \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 gh attestation verify "oci://${image}" --repo elixir-cloud-aai/krini
 ```
@@ -89,7 +93,8 @@ repository needs:
   the smoke test pull the pushed digest without login;
 - the environment `dev-images`, limited to the branches `staging` and
   `dev`, with the secrets `DOCKERHUB_LOGIN` and `DOCKERHUB_TOKEN` (a token
-  that can push to that repository).
+  that can push to that repository). The name is kept from when only `dev`
+  published images.
 
 To verify such images, use the fork's repository in the
 `--certificate-identity-regexp` of `cosign verify` and in the `--repo` of

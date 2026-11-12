@@ -6,10 +6,11 @@
 # (with SBOM and provenance attestations), scan exactly that digest, then
 # attest, sign (Sigstore) and tag it with the branch name (`staging` or
 # `dev`) and `sha-<commit>` (never `latest`, which is for releases). The
-# gate `passed` ("CI passed") is the only required check. No `paths:` filters, so that the gate always reports; skip jobs with `if:`
-# instead (and allow the skip in the gate). Runs also when a pull request is
-# edited, so that the title check follows the title; all jobs run then, as a
-# run that skipped the checks would report "CI passed" for the commit. Bun
+# gate `passed` ("CI passed") is the only required check. No `paths:`
+# filters, so that the gate always reports; skip jobs with `if:` instead (and
+# allow the skip in the gate). Runs also when a pull request is edited, so
+# that the title check follows the title; all jobs run then, as a run that
+# skipped the checks would report "CI passed" for the commit. Bun
 # comes in the version of `packageManager` in `package.json`
 # (`bun-version-file`). Adapted from the CI workflows of cloud-registry and
 # cloud-registry-ui
@@ -454,14 +455,22 @@ jobs:
         run: cosign sign --yes "${IMAGE_NAME}@${DIGEST}"
       # Tags `<branch>` and `sha-<commit>` (never `latest`, which is for
       # releases) point to the scanned and signed digest: a single source is
-      # copied as is
+      # copied as is. A commit pushed to both branches gets two images (their
+      # version label and provenance differ); `sha-<commit>` stays on the
+      # first one published and is never moved
       - name: Tag image
         if: steps.head.outputs.current == 'true'
         env:
           BRANCH: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
         run: |
-          for tag in "${IMAGE_NAME}:${BRANCH}" "${IMAGE_NAME}:sha-${SHA}"; do
+          tags=("${IMAGE_NAME}:${BRANCH}")
+          if docker buildx imagetools inspect "${IMAGE_NAME}:sha-${SHA}" >/dev/null 2>&1; then
+            echo "::notice::${IMAGE_NAME}:sha-${SHA} exists already; not moving it"
+          else
+            tags+=("${IMAGE_NAME}:sha-${SHA}")
+          fi
+          for tag in "${tags[@]}"; do
             docker buildx imagetools create --tag "${tag}" "${IMAGE_NAME}@${DIGEST}"
             actual="$(docker buildx imagetools inspect "${tag}" \
               --format '{{ json .Manifest }}' | jq -r .digest)"

@@ -2,7 +2,9 @@ version: 2
 # Every entry targets `staging` (`target-branch`); commit messages start with
 # `build(deps)` (Conventional Commits), and pull requests have the
 # organization's label `type: dependencies` (not Dependabot's own labels).
-# Security updates always target the default branch
+# Security updates always target the default branch. Dependabot reads this
+# file only from the default branch (currently `dev`), so it takes effect
+# once it is there or `staging` becomes the default branch
 updates:
   # Dependencies in `package.json` and the lock (`bun.lock`), updated
   # together
