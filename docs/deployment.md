@@ -122,5 +122,5 @@ For a complete list of required environment variables, see the main [README.md](
 2. **Secure Cookies**: Production deployments use `Secure` flag on cookies automatically when `NODE_ENV=production`
 3. **Secret Management**: Never commit `.env.local` or expose secrets in client-side code
 4. **Origin Validation**: The logout endpoint validates requests against `APP_ORIGIN` to prevent CSRF
-5. **Token Refresh**: The `offline_access` scope enables silent token renewal, improving user experience
+5. **Token Refresh**: The `offline_access` scope enables silent token renewal, improving user experience. If a WES service rejects a request with `401`, Krini renews the session once and retries the request once; if that fails too, it asks the user to log in again
 6. **CORS Restrictions**: Configure CORS to only allow trusted origins
