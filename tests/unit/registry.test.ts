@@ -5,7 +5,12 @@ import {
     isAllowedServiceUrl,
     RegistryConfigError,
 } from "@/lib/registry";
-import { REGISTRY_URL, services, verifications } from "../fixtures/registry";
+import {
+    httpError,
+    REGISTRY_URL,
+    services,
+    verifications,
+} from "../fixtures/registry";
 
 const get = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/axios", () => ({ axiosBase: { get } }));
@@ -95,16 +100,28 @@ describe("fetchVerifiedServices", () => {
         }
     });
 
-    it("offers no services if the registry has no verifications", async () => {
+    it.each([
+        404, 405,
+    ])("offers no services if the registry has no verifications (%i)", async (status) => {
         get.mockImplementation(async (url: string) => {
-            if (url.endsWith("/verifications")) {
-                throw new Error("Not Found");
-            }
+            if (url.endsWith("/verifications")) throw httpError(status);
             return { data: services };
         });
 
         await expect(fetchVerifiedServices(["wes"])).resolves.toEqual([]);
         expect(console.error).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        ["a server error", httpError(503)],
+        ["a network error", new Error("timeout")],
+    ])("fails on %s of the verifications", async (_label, error) => {
+        get.mockImplementation(async (url: string) => {
+            if (url.endsWith("/verifications")) throw error;
+            return { data: services };
+        });
+
+        await expect(fetchVerifiedServices(["wes"])).rejects.toBe(error);
     });
 
     it("fails if the service list can't be read", async () => {

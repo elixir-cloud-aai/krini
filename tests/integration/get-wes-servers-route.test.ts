@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { REGISTRY_URL, services, verifications } from "../fixtures/registry";
+import {
+    httpError,
+    REGISTRY_URL,
+    services,
+    verifications,
+} from "../fixtures/registry";
 
 const get = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/axios", () => ({ axiosBase: { get } }));
@@ -55,7 +60,7 @@ describe("GET /api/workflows/get-wes-servers", () => {
     it("lists nothing if the registry has no verifications", async () => {
         get.mockImplementation(async (url: string) => {
             if (url === `${REGISTRY_URL}/services`) return { data: services };
-            throw new Error("Not Found");
+            throw httpError(404);
         });
         const { GET } = await loadRoute();
 
@@ -64,5 +69,17 @@ describe("GET /api/workflows/get-wes-servers", () => {
         expect(response.status).toBe(200);
         expect(await response.json()).toEqual([]);
         expect(get).toHaveBeenCalledTimes(2);
+    });
+
+    it("reports a registry failure instead of an empty list", async () => {
+        get.mockImplementation(async (url: string) => {
+            if (url === `${REGISTRY_URL}/services`) return { data: services };
+            throw httpError(503);
+        });
+        const { GET } = await loadRoute();
+
+        const response = await GET();
+
+        expect(response.status).toBe(502);
     });
 });

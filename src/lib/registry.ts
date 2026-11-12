@@ -23,6 +23,9 @@ type ServiceVerification = {
 
 export class RegistryConfigError extends Error {}
 
+export const WES_ARTIFACTS = ["wes", "wes-gateway"] as const;
+export const TES_ARTIFACTS = ["tes", "tes-gateway"] as const;
+
 /**
  * Whether a service URL may be offered to users: an absolute `https` URL
  * without user info.
@@ -95,7 +98,8 @@ export function filterVerifiedServices<T>(
  * `GET /verifications` yields no services.
  *
  * @throws {RegistryConfigError} If `CLOUD_REGISTRY_URL` isn't set.
- * @throws If `GET /services` fails or doesn't return a list.
+ * @throws If `GET /services` fails or doesn't return a list, or if
+ *     `GET /verifications` fails other than with `404` or `405`.
  */
 export async function fetchVerifiedServices<T>(
     artifacts: readonly string[],
@@ -119,8 +123,12 @@ export async function fetchVerifiedServices<T>(
             const status = axios.isAxiosError(err)
                 ? err.response?.status
                 : undefined;
+
+            // Other failures (e.g. timeouts, 5xx) may be transient
+            if (status !== 404 && status !== 405) throw err;
+
             console.error(
-                `Cloud Registry error: category=verifications_unavailable, status=${status ?? "none"}; no services are offered`,
+                `Cloud Registry error: category=verifications_unsupported, status=${status}; no services are offered`,
             );
             return { data: [] };
         }),

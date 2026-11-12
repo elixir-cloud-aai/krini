@@ -1,5 +1,7 @@
 /** Registry entries and verifications for tests; no real services. */
 
+import { AxiosError } from "axios";
+
 const wesType = { group: "org.ga4gh", artifact: "wes", version: "1.1.0" };
 const tesType = { group: "org.ga4gh", artifact: "tes", version: "1.1.0" };
 
@@ -62,3 +64,14 @@ export const verifications = [
 ];
 
 export const REGISTRY_URL = "https://registry.example.org/ga4gh/registry/v1";
+
+/** An axios error for an HTTP response with the given status. */
+export function httpError(status: number) {
+    return new AxiosError(
+        `Request failed with status code ${status}`,
+        "ERR_BAD_RESPONSE",
+        undefined,
+        undefined,
+        { status } as never,
+    );
+}
