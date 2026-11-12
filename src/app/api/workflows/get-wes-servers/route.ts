@@ -1,7 +1,7 @@
 import axios from "axios";
 import { NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
-import { fetchVerifiedServices } from "@/lib/registry";
+import { fetchVerifiedServices, WES_ARTIFACTS } from "@/lib/registry";
 import type { WESServer, WESServiceInfo } from "@/types/workflows";
 
 const TIMEOUT = 8000;
@@ -141,10 +141,8 @@ export async function GET() {
         }
 
         // Only verified services: the selected one gets the user's token
-        const wesServices = await fetchVerifiedServices<WESServer>([
-            "wes",
-            "wes-gateway",
-        ]);
+        const wesServices =
+            await fetchVerifiedServices<WESServer>(WES_ARTIFACTS);
 
         const results = await probeWithConcurrencyLimit(
             wesServices,

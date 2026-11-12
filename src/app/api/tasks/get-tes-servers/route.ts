@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
-import { fetchVerifiedServices, RegistryConfigError } from "@/lib/registry";
+import {
+    fetchVerifiedServices,
+    RegistryConfigError,
+    TES_ARTIFACTS,
+} from "@/lib/registry";
 import type { TESServer } from "@/types/tasks";
 
 export async function GET() {
     try {
         // Only verified services: the selected one gets the user's tasks
-        const tesServices = await fetchVerifiedServices<TESServer>([
-            "tes",
-            "tes-gateway",
-        ]);
+        const tesServices =
+            await fetchVerifiedServices<TESServer>(TES_ARTIFACTS);
 
         return NextResponse.json(tesServices);
     } catch (err) {
