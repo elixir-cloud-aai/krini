@@ -1,12 +1,12 @@
-# Everything that must pass on pull requests and pushes to `dev`: the pull
-# request title, lint and formatting (Biome), the type check, the build, an
-# audit of the production dependencies, the Docker image (a smoke test with a
-# read-only root file system) and its scan for known vulnerabilities
-# (Trivy), and, on pushes, push the image by digest (with SBOM and
-# provenance attestations), scan exactly that digest, then attest, sign
-# (Sigstore) and tag it `dev` and `sha-<commit>` (never `latest`, which is
-# for releases). The gate `passed` ("CI passed") is the only required check.
-# No `paths:` filters, so that the gate always reports; skip jobs with `if:`
+# Everything that must pass on pull requests and pushes to `staging` and
+# `dev`: the pull request title, lint and formatting (Biome), the type
+# check, the build, an audit of the production dependencies, the Docker
+# image (a smoke test with a read-only root file system) and its scan for
+# known vulnerabilities (Trivy), and, on pushes, push the image by digest
+# (with SBOM and provenance attestations), scan exactly that digest, then
+# attest, sign (Sigstore) and tag it with the branch name (`staging` or
+# `dev`) and `sha-<commit>` (never `latest`, which is for releases). The
+# gate `passed` ("CI passed") is the only required check. No `paths:` filters, so that the gate always reports; skip jobs with `if:`
 # instead (and allow the skip in the gate). Runs also when a pull request is
 # edited, so that the title check follows the title; all jobs run then, as a
 # run that skipped the checks would report "CI passed" for the commit. Bun
@@ -16,10 +16,10 @@
 name: CI
 on:
   push:
-    branches: [dev]
+    branches: [staging, dev]
   pull_request:
     types: [opened, synchronize, reopened, edited]
-    branches: [dev]
+    branches: [staging, dev]
 
 permissions:
   contents: read
@@ -52,11 +52,11 @@ concurrency:
     && github.run_attempt == 1 }}
 
 jobs:
-  # Pull request titles become the commit messages on `dev` (squash merges):
-  # Conventional Commits, at most 50 characters (shared action of
-  # elixir-cloud-aai/.github, pinned to the commit of a release). Skipped on
-  # pushes and for Dependabot, whose titles can't be configured to pass,
-  # unless someone else edits the title
+  # Pull request titles become the commit messages on the base branch
+  # (squash merges): Conventional Commits, at most 50 characters (shared
+  # action of elixir-cloud-aai/.github, pinned to the commit of a release).
+  # Skipped on pushes and for Dependabot, whose titles can't be configured to
+  # pass, unless someone else edits the title
   title:
     name: PR title
     if: >-
@@ -270,7 +270,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ github.event_name == 'push' }}
-    # Docker Hub secrets; the environment only allows branch `dev`
+    # Docker Hub secrets; the environment only allows the branches `staging`
+    # and `dev`
     environment: dev-images
     permissions:
       contents: read
@@ -281,13 +282,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # `<version of package.json>-dev+<commit>`, e.g. `0.1.0-dev+1a2b3c4`
+      # `<version of package.json>-<branch>+<commit>`, e.g.
+      # `0.1.0-staging+1a2b3c4`
       - name: Derive version
         id: version
         env:
+          BRANCH: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
         run: |
-          version="$(jq -r .version package.json)-dev+${SHA::7}"
+          version="$(jq -r .version package.json)-${BRANCH}+${SHA::7}"
           echo "Version: ${version}"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
@@ -300,7 +303,7 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           flavor: latest=false
-          tags: type=raw,value=dev
+          tags: type=raw,value=${{ github.ref_name }}
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
       - name: Log in to Docker Hub
@@ -387,14 +390,16 @@ jobs:
     timeout-minutes: 30
     if: ${{ github.event_name == 'push' }}
     needs: [lint, typecheck, build, audit, image, push, scan]
-    # Docker Hub secrets; the environment only allows branch `dev`
+    # Docker Hub secrets; the environment only allows the branches `staging`
+    # and `dev`
     environment: dev-images
     permissions:
       contents: read
       id-token: write # Sigstore signing certificates
       attestations: write # GitHub artifact attestations
     # Publish one image at a time, and only for the newest commit on the
-    # branch, so that an older run cannot overwrite `dev` with older code
+    # branch, so that an older run cannot overwrite the branch tag with older
+    # code
     concurrency:
       group: ${{ github.workflow }}-publish-${{ github.ref }}
       cancel-in-progress: false
@@ -447,15 +452,16 @@ jobs:
       - name: Sign image
         if: steps.head.outputs.current == 'true'
         run: cosign sign --yes "${IMAGE_NAME}@${DIGEST}"
-      # Tags `dev` and `sha-<commit>` (never `latest`, which is for releases)
-      # point to the scanned and signed digest: a single source is copied as
-      # is
+      # Tags `<branch>` and `sha-<commit>` (never `latest`, which is for
+      # releases) point to the scanned and signed digest: a single source is
+      # copied as is
       - name: Tag image
         if: steps.head.outputs.current == 'true'
         env:
+          BRANCH: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
         run: |
-          for tag in "${IMAGE_NAME}:dev" "${IMAGE_NAME}:sha-${SHA}"; do
+          for tag in "${IMAGE_NAME}:${BRANCH}" "${IMAGE_NAME}:sha-${SHA}"; do
             docker buildx imagetools create --tag "${tag}" "${IMAGE_NAME}@${DIGEST}"
             actual="$(docker buildx imagetools inspect "${tag}" \
               --format '{{ json .Manifest }}' | jq -r .digest)"

@@ -5,19 +5,20 @@ This guide covers configuration requirements for deploying Krini in production e
 ## Container Image
 
 CI publishes the Docker image of the `Dockerfile` to
-`docker.io/elixircloud/krini` for pushes to `dev`:
+`docker.io/elixircloud/krini` for pushes to `staging` and `dev`:
 
 | Tag | Points to |
 | --- | --- |
+| `staging` | The newest commit that passed CI while it was the head of `staging` |
 | `dev` | The newest commit that passed CI while it was the head of `dev` |
 | `sha-<commit>` | That commit (full commit SHA) |
 
-Only a commit that is still the head of `dev` when its checks have passed
-is tagged: when commits are pushed in quick succession, the earlier ones
-get no tags, and `dev` can lag behind the branch until the run of its
-newest commit passes. CI never sets `latest`: that tag is reserved for
-releases. Deployments pull these images and update themselves (e.g. with
-their own CD); the repository doesn't deploy anywhere itself.
+Only a commit that is still the head of its branch when its checks have
+passed is tagged: when commits are pushed in quick succession, the earlier
+ones get no tags, and the branch tag can lag behind the branch until the
+run of its newest commit passes. CI never sets `latest`: that tag is
+reserved for releases. Deployments pull these images and update themselves
+(e.g. with their own CD); the repository doesn't deploy anywhere itself.
 
 Before CI tags an image, the commit passes lint, type check, build and a
 dependency audit, and exactly the pushed digest passes a smoke test
@@ -36,7 +37,7 @@ so that one image serves any deployment. For example:
 docker run --rm -p 3000:3000 \
     --read-only --tmpfs /tmp \
     --env-file krini.env \
-    docker.io/elixircloud/krini:dev
+    docker.io/elixircloud/krini:staging
 ```
 
 - The server listens on port `3000` (`PORT`) on all IPv4 interfaces; set
@@ -58,9 +59,9 @@ it, e.g. with [cosign](https://docs.sigstore.dev/cosign/) and the
 [GitHub CLI](https://cli.github.com/):
 
 ```bash
-image=docker.io/elixircloud/krini:dev
+image=docker.io/elixircloud/krini:staging
 cosign verify "${image}" \
-    --certificate-identity-regexp '^https://github\.com/elixir-cloud-aai/krini/\.github/workflows/ci\.yml@refs/heads/dev$' \
+    --certificate-identity-regexp '^https://github\.com/elixir-cloud-aai/krini/\.github/workflows/ci\.yml@refs/heads/staging$' \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 gh attestation verify "oci://${image}" --repo elixir-cloud-aai/krini
 ```
@@ -86,9 +87,9 @@ repository needs:
 - the variable `DOCKERHUB_ORG`, the Docker Hub namespace (by default
   `elixircloud`), with a public repository `krini` in it, as the scan and
   the smoke test pull the pushed digest without login;
-- the environment `dev-images`, limited to the branch `dev`, with the
-  secrets `DOCKERHUB_LOGIN` and `DOCKERHUB_TOKEN` (a token that can push
-  to that repository).
+- the environment `dev-images`, limited to the branches `staging` and
+  `dev`, with the secrets `DOCKERHUB_LOGIN` and `DOCKERHUB_TOKEN` (a token
+  that can push to that repository).
 
 To verify such images, use the fork's repository in the
 `--certificate-identity-regexp` of `cosign verify` and in the `--repo` of

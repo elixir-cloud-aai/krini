@@ -1,5 +1,5 @@
 version: 2
-# Every entry targets `dev` (`target-branch`); commit messages start with
+# Every entry targets `staging` (`target-branch`); commit messages start with
 # `build(deps)` (Conventional Commits), and pull requests have the
 # organization's label `type: dependencies` (not Dependabot's own labels).
 # Security updates always target the default branch
@@ -10,7 +10,7 @@ updates:
     directory: /
     schedule:
       interval: monthly
-    target-branch: dev
+    target-branch: staging
     labels: ["type: dependencies"]
     commit-message:
       prefix: build
@@ -30,7 +30,7 @@ updates:
     directory: /
     schedule:
       interval: monthly
-    target-branch: dev
+    target-branch: staging
     labels: ["type: dependencies"]
     commit-message:
       prefix: build
@@ -45,7 +45,7 @@ updates:
     directory: /
     schedule:
       interval: monthly
-    target-branch: dev
+    target-branch: staging
     labels: ["type: dependencies"]
     commit-message:
       prefix: build
