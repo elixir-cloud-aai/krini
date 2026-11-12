@@ -15,6 +15,8 @@ export async function POST() {
         );
     }
 
+    // The only check needed: cookies() returns the cookies of this request,
+    // so they can't change while the refresh runs
     if (logoutMarker) {
         return NextResponse.json(
             { error: "Session terminated" },

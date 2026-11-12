@@ -1,3 +1,4 @@
+import type { RunRequest } from "@elixir-cloud/wes/providers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TokenWesProvider } from "@/lib/token-wes-provider";
 
@@ -91,17 +92,23 @@ describe("TokenWesProvider", () => {
     it("sends the form body again on the retry", async () => {
         const { provider, fetchMock } = setup([401, 200]);
 
-        await provider
-            .runWorkflow({
-                workflow_url: "https://example.org/workflow.cwl",
-                workflow_type: "CWL",
-                workflow_type_version: "v1.2",
-            } as never)
-            .catch(() => {});
+        const request: RunRequest = {
+            workflow_params: {},
+            workflow_url: "https://example.org/workflow.cwl",
+            workflow_type: "CWL",
+            workflow_type_version: "v1.2",
+        };
+
+        await expect(provider.runWorkflow(request)).resolves.toBeDefined();
 
         const bodies = fetchMock.mock.calls.map(([, init]) => init?.body);
         expect(bodies).toHaveLength(2);
-        expect(bodies[1]).toBeInstanceOf(FormData);
-        expect(bodies[1]).toBe(bodies[0]);
+        for (const body of bodies) {
+            expect(body).toBeInstanceOf(FormData);
+            expect((body as FormData).get("workflow_url")).toBe(
+                request.workflow_url,
+            );
+            expect((body as FormData).get("workflow_type")).toBe("CWL");
+        }
     });
 });
