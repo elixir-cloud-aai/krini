@@ -74,7 +74,7 @@ PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
 - `OIDC_SCOPE`: OAuth 2.0 scopes to request from the identity provider. Must include `offline_access` for refresh token support. Default: `openid profile email offline_access`.
 - `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API.
 - `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000` for local development or your production URL).
-- Privacy notice at `/privacy`, linked from the login page and the sidebar and reachable without login. It describes what Krini processes and what happens at the login provider and the services. The deployment adds who is responsible. All four settings are optional and read at runtime. Invalid values are ignored, with a warning in the server log.
+- Privacy notice at `/privacy`, linked from the login page and the sidebar and reachable without login. It describes what Krini processes, lists its cookies, and says what happens at the login provider and the services. The text is the same for every deployment. Each deployment adds who is responsible and can link its own full notice. All four settings are optional and read at runtime. Invalid values are ignored, with a warning in the server log.
   - `PRIVACY_CONTROLLER`: Name and address of the operator who is responsible for the processing (the controller).
   - `PRIVACY_CONTACT`: The controller's contact for privacy questions: an email address or an `https` URL.
   - `PRIVACY_NOTICE_URL`: `https` URL of the deployment's full privacy notice, if it has one.

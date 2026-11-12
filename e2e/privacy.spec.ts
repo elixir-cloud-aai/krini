@@ -6,7 +6,8 @@
 import { expect, login, test } from "./fixtures";
 import { privacy } from "./settings";
 
-/** Cookies of a session; all are strictly necessary */
+/** Cookies of a session, as the notice lists them (`COOKIES` in
+ * `src/app/privacy/page.tsx`): keep both in step */
 const sessionCookies = [
     "access_token",
     "id_token",
@@ -63,4 +64,22 @@ test("members get only the session's cookies", async ({ page }) => {
     await expect(page.getByRole("option")).toHaveCount(1);
     const names = (await page.context().cookies()).map((val) => val.name);
     expect(names.sort()).toEqual([...sessionCookies].sort());
+});
+
+test("after logout, only the logout marker is left", async ({ page }) => {
+    await login(page);
+    await page.getByRole("button", { name: /Alice Example/ }).click();
+    await page.getByRole("menuitem", { name: "Logout" }).click();
+    await expect(page.getByRole("button", { name: /Anonymous/ })).toBeVisible();
+    const names = (await page.context().cookies()).map((val) => val.name);
+    expect(names).toEqual(["logout_marker"]);
+});
+
+test("every cookie of the app is in the notice", async ({ page }) => {
+    await page.goto("/privacy");
+    for (const name of [...sessionCookies, "logout_marker", "sidebar_state"])
+        await expect(
+            page.getByRole("listitem").filter({ hasText: name }),
+        ).toHaveCount(1);
+    await expect(page.getByText("authState-…")).toBeVisible();
 });

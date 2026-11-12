@@ -115,8 +115,9 @@ For a complete list of required environment variables, see the main [README.md](
 - Configure `APP_ORIGIN` to your production domain
 - Store `OIDC_CLIENT_SECRET` securely (e.g., using a secrets manager)
 - Rotate credentials regularly
-- Set the `PRIVACY_*` variables, so that the privacy notice at `/privacy` names who is responsible and how to reach them. Without them, the page says that the operator hasn't named anyone.
-- Krini sets no cookies for visitors who aren't logged in, apart from the sidebar setting that they choose. After login, it sets only the session's cookies, which are strictly necessary. It has no analytics, so it needs no consent banner. Keep it that way, or update the privacy notice and add consent.
+- Set the `PRIVACY_*` variables (see the [README](../README.md#configuration)), so that the privacy notice at `/privacy` names who is responsible and how to reach them. Without them, the page says that the operator hasn't named anyone. They are read at runtime, so changing them needs a restart, not a new image. Values that aren't valid (e.g. a URL that isn't `https`) are ignored, with a warning in the server log.
+- The notice's text is the same for every deployment. It describes what Krini itself does. Put anything specific to your deployment (purposes, legal basis, retention, rights) into your own notice and link it with `PRIVACY_NOTICE_URL`.
+- Krini sets no cookies for visitors, unless they start a login or change the sidebar. Its cookies are listed in the notice, with their lifetimes. All except the sidebar setting are strictly necessary. Krini has no analytics, so it needs no consent banner. If you add anything that sets other cookies or tracks users, update the notice and add consent.
 
 ## Security Recommendations
 

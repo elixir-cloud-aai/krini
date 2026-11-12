@@ -9,6 +9,46 @@ export const metadata: Metadata = {
 
 const linkClass = "font-medium underline underline-offset-4";
 
+/** The cookies that Krini sets; `e2e/privacy.spec.ts` checks the list */
+const COOKIES = [
+    {
+        name: "authState-…",
+        purpose: "protects a login in progress",
+        lifetime: "10 minutes, or until the login ends",
+    },
+    {
+        name: "access_token",
+        purpose: "your access token, which Krini passes to the services",
+        lifetime: "until the token expires, usually an hour",
+    },
+    {
+        name: "id_token",
+        purpose: "the login provider's confirmation of your login",
+        lifetime: "an hour",
+    },
+    {
+        name: "refresh_token",
+        purpose: "renews your access token while you stay logged in",
+        lifetime: "up to 30 days; deleted when you log out",
+    },
+    {
+        name: "token_expires_at",
+        purpose: "when your access token needs to be renewed",
+        lifetime: "up to 30 days; deleted when you log out",
+    },
+    {
+        name: "logout_marker",
+        purpose:
+            "keeps you logged out, so that no open page renews the session",
+        lifetime: "30 days after you log out, or until you log in again",
+    },
+    {
+        name: "sidebar_state",
+        purpose: "whether the sidebar is open, only if you change it",
+        lifetime: "7 days",
+    },
+];
+
 /** Privacy notice, for everyone and before login */
 async function PrivacyPage() {
     // the settings are read per request, not at build time
@@ -63,31 +103,41 @@ async function PrivacyPage() {
                 <h2 className="text-lg font-semibold">What Krini processes</h2>
                 <ul className="list-disc space-y-1 pl-6">
                     <li>
-                        <span className="font-medium">
-                            Without login, nothing about you.
-                        </span>{" "}
-                        Until you log in, Krini keeps only the display settings
-                        below, and it has no tracking or analytics.
-                    </li>
-                    <li>
-                        <span className="font-medium">Session cookies</span>{" "}
-                        when you log in: the tokens of your login and their
-                        expiry, and short-lived values that protect the login
-                        itself. They are strictly necessary for the session and
-                        end with it, at the latest when you log out.
+                        <span className="font-medium">No tracking.</span> Krini
+                        has no analytics and no advertising, and it sets no
+                        cookies for visitors who don&apos;t log in, apart from
+                        the display setting below.
                     </li>
                     <li>
                         <span className="font-medium">Your user info</span> from
-                        the login provider, such as your name, email address and
-                        identifier, to show who is logged in. Krini doesn't
-                        store it.
+                        the login provider: what it releases to Krini, such as
+                        your name, email address, identifier and group
+                        memberships. Krini shows it while you&apos;re logged in
+                        and doesn&apos;t store it on its server.
                     </li>
                     <li>
                         <span className="font-medium">Display settings</span>{" "}
                         that you choose, in your browser only: the color theme
                         (local storage) and whether the sidebar is open (a
-                        cookie).
+                        cookie, see below).
                     </li>
+                </ul>
+            </section>
+
+            <section className="space-y-2">
+                <h2 className="text-lg font-semibold">Cookies</h2>
+                <p>
+                    All cookies except the sidebar setting are strictly
+                    necessary for logging in and staying logged in. Only Krini
+                    reads them, and scripts on the page can&apos;t read the
+                    tokens.
+                </p>
+                <ul className="list-disc space-y-1 pl-6">
+                    {COOKIES.map(({ name, purpose, lifetime }) => (
+                        <li key={name}>
+                            <code>{name}</code>: {purpose} ({lifetime})
+                        </li>
+                    ))}
                 </ul>
             </section>
 
