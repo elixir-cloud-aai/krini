@@ -35,7 +35,9 @@ afterEach(() => {
  * @param reply Result of the token request: data, or an error to throw
  */
 async function refresh(
-    cookies: Record<string, string | undefined> = { refresh_token: "refresh" },
+    cookies: Record<string, string | undefined> = {
+        refresh_token: "rt-SECRET-1",
+    },
     reply: unknown = tokens,
 ) {
     setUp(cookies);
@@ -65,7 +67,7 @@ describe("POST /auth/api/refresh", () => {
         expect(endpoint).toBe(`${loginUrl}/oidc/token`);
         expect(Object.fromEntries(body as URLSearchParams)).toEqual({
             grant_type: "refresh_token",
-            refresh_token: "refresh",
+            refresh_token: "rt-SECRET-1",
             client_id: "client",
             client_secret: "client-secret",
         });
@@ -85,7 +87,7 @@ describe("POST /auth/api/refresh", () => {
     });
 
     it("sends empty client settings that aren't set", async () => {
-        setUp({ refresh_token: "refresh" });
+        setUp({ refresh_token: "rt-SECRET-1" });
         vi.stubEnv("OIDC_CLIENT_ID", undefined);
         vi.stubEnv("OIDC_CLIENT_SECRET", undefined);
         const post = vi
@@ -136,7 +138,7 @@ describe("POST /auth/api/refresh", () => {
 
     it("fails after a logout", async () => {
         const { response, post } = await refresh({
-            refresh_token: "refresh",
+            refresh_token: "rt-SECRET-1",
             logout_marker: "1",
         });
         expect(response.status).toBe(401);
@@ -145,7 +147,7 @@ describe("POST /auth/api/refresh", () => {
     });
 
     it("drops the new tokens after a logout during the refresh", async () => {
-        setUp({ refresh_token: "refresh" });
+        setUp({ refresh_token: "rt-SECRET-1" });
         vi.spyOn(await http(), "post").mockImplementation(async () => {
             jar.set("logout_marker", { name: "logout_marker", value: "1" });
             return { status: 200, data: tokens };
@@ -187,6 +189,8 @@ describe("POST /auth/api/refresh", () => {
         expect(response.status).toBe(401);
         expect(response.headers.getSetCookie()).toEqual([]);
         expect(error.mock.calls[0][0]).toContain(`category=${category}`);
-        expect(error.mock.calls[0][0]).not.toMatch(/refresh-?\d?\b.*secret/);
+        // the log has no tokens or secrets
+        expect(error.mock.calls[0][0]).not.toContain("rt-SECRET-1");
+        expect(error.mock.calls[0][0]).not.toContain("client-secret");
     });
 });

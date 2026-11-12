@@ -43,6 +43,8 @@ function setUp(cookies: Record<string, string | undefined> = {}) {
     vi.stubEnv("OIDC_REDIRECT_URI", `${appOrigin}/auth/api/callback`);
     vi.stubEnv("CLOUD_REGISTRY_URL", registryUrl);
     vi.stubEnv("APP_ORIGIN", appOrigin);
+    // the default scope, whatever the shell sets
+    vi.stubEnv("OIDC_SCOPE", undefined);
 }
 
 /**

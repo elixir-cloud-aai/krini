@@ -1,9 +1,9 @@
 # Environment files and secrets
-.env
-.env.*
-!.env.example
-*.pem
-*.key
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/*.key
 
 # VCS and local junk
 .git
@@ -14,6 +14,8 @@ dist
 coverage
 test-results
 playwright-report
+e2e
+playwright.config.ts
 npm-debug.log*
 Dockerfile
 .dockerignore

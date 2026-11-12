@@ -189,6 +189,10 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
         return send(res, 200, user);
     }
 
+    // a WES service over http, which only the app's https rule drops
+    if (req.method === "GET" && url.pathname === "/ga4gh/wes/v1/service-info")
+        return send(res, 200, serviceInfo);
+
     if (req.method === "GET" && url.pathname === "/ga4gh/registry/v1/services")
         return send(res, 200, services);
 
