@@ -85,7 +85,17 @@ test.describe("members", () => {
             );
         await expect.poll(submissions).toHaveLength(1);
         expect(await submissions()).toEqual([
-            { method: "POST", path: "/runs", authorization: `Bearer ${token}` },
+            {
+                method: "POST",
+                path: "/runs",
+                authorization: `Bearer ${token}`,
+                fields: {
+                    workflow_url: "https://example.org/workflows/hello.cwl",
+                    workflow_type: "CWL",
+                    workflow_type_version: "v1.2",
+                    workflow_params: "{}",
+                },
+            },
         ]);
         // the form is empty again
         await expect(page.getByRole("textbox", workflowUrl)).toHaveValue("");

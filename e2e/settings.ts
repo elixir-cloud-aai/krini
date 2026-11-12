@@ -21,6 +21,8 @@ type WesRequest = {
     method: string;
     path: string;
     authorization: string | null;
+    /** Fields of a run request */
+    fields?: Record<string, string>;
 };
 
 export {

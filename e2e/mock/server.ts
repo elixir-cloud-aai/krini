@@ -245,7 +245,35 @@ async function handleHttps(req: IncomingMessage, res: ServerResponse) {
         return send(res, 200, { runs, next_page_token: "" }, cors);
 
     if (req.method === "POST" && path === "/runs") {
-        await bodyOf(req);
+        // a run request of WES 1.x: multipart form data
+        const form = await new Response(await bodyOf(req), {
+            headers: { "Content-Type": req.headers["content-type"] ?? "" },
+        })
+            .formData()
+            .catch(() => null);
+        const fields = Object.fromEntries(
+            [
+                "workflow_url",
+                "workflow_type",
+                "workflow_type_version",
+                "workflow_params",
+            ].map((name) => [name, String(form?.get(name) ?? "")]),
+        );
+        requests[requests.length - 1].fields = fields;
+        const versions =
+            serviceInfo.workflow_type_versions[
+                fields.workflow_type as keyof typeof serviceInfo.workflow_type_versions
+            ]?.workflow_type_version ?? [];
+        if (
+            !URL.canParse(fields.workflow_url) ||
+            !versions.includes(fields.workflow_type_version)
+        )
+            return send(
+                res,
+                400,
+                { msg: "invalid run request", status_code: 400 },
+                cors,
+            );
         const run = { run_id: `run-${runs.length + 1}`, state: "QUEUED" };
         runs.push(run);
         return send(res, 200, { run_id: run.run_id }, cors);
