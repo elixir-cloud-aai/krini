@@ -129,8 +129,9 @@ async function PrivacyPage() {
                 <p>
                     All cookies except the sidebar setting are strictly
                     necessary for logging in and staying logged in. Only Krini
-                    reads them, and scripts on the page can&apos;t read the
-                    tokens.
+                    reads them. Scripts on the page can&apos;t read the refresh
+                    and ID tokens. The page gets the access token from Krini, to
+                    send it to the services you use.
                 </p>
                 <ul className="list-disc space-y-1 pl-6">
                     {COOKIES.map(({ name, purpose, lifetime }) => (
@@ -160,12 +161,24 @@ async function PrivacyPage() {
                     </li>
                     <li>
                         <span className="font-medium">
-                            The services that run your tasks and workflows
+                            The services that run tasks and workflows
                         </span>{" "}
-                        get your access token from your browser, and record your
-                        user identifier with each task or workflow, for
-                        ownership, accounting and audit. Each service is listed
-                        with its organization, whose terms apply.
+                        are contacted by your browser directly once you select
+                        one, also without login, so they see your IP address and
+                        browser. Workflow services (WES) also get your access
+                        token and record your user identifier with each
+                        workflow, for ownership, accounting and audit. Task
+                        services (TES) are called without your token for now.
+                        Each service is listed with its organization, whose
+                        terms apply.
+                    </li>
+                    <li>
+                        <span className="font-medium">
+                            A content delivery network
+                        </span>{" "}
+                        (cdn.jsdelivr.net) serves a helper script of the code
+                        editor in the workflow form, so it sees your IP address
+                        and browser when you open the form.
                     </li>
                     <li>
                         <span className="font-medium">

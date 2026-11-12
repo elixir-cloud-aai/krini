@@ -48,7 +48,9 @@ export default defineConfig({
             },
         },
         {
-            command: `bun run build && bun run start --port ${port}`,
+            // the build doesn't get the privacy settings, so the test fails if
+            // the notice is rendered at build time
+            command: `env -u PRIVACY_CONTROLLER -u PRIVACY_CONTACT -u PRIVACY_NOTICE_URL -u PRIVACY_LOGIN_NOTICE_URL bun run build && bun run start --port ${port}`,
             url: `${baseURL}/auth/login`,
             reuseExistingServer: !process.env.CI,
             timeout: 300_000,

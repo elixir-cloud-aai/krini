@@ -75,11 +75,28 @@ test("after logout, only the logout marker is left", async ({ page }) => {
     expect(names).toEqual(["logout_marker"]);
 });
 
-test("every cookie of the app is in the notice", async ({ page }) => {
+test("the notice lists exactly the cookies of the app", async ({ page }) => {
+    const seen = new Set<string>();
+    const collect = async () => {
+        for (const { name } of await page.context().cookies())
+            seen.add(name.replace(/^authState-.+$/, "authState-…"));
+    };
+    // a visitor changes the sidebar
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+    await collect();
+    // a login in progress, before the provider sends the browser back
+    await page.request.get("/auth/api/login-redirect", { maxRedirects: 0 });
+    await collect();
+    // a session, and its logout
+    await login(page);
+    await collect();
+    await page.getByRole("button", { name: /Alice Example/ }).click();
+    await page.getByRole("menuitem", { name: "Logout" }).click();
+    await expect(page.getByRole("button", { name: /Anonymous/ })).toBeVisible();
+    await collect();
+
     await page.goto("/privacy");
-    for (const name of [...sessionCookies, "logout_marker", "sidebar_state"])
-        await expect(
-            page.getByRole("listitem").filter({ hasText: name }),
-        ).toHaveCount(1);
-    await expect(page.getByText("authState-…")).toBeVisible();
+    const listed = await page.locator("main li code").allTextContents();
+    expect(listed.sort()).toEqual([...seen].sort());
 });

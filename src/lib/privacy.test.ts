@@ -72,7 +72,10 @@ describe("privacySettings", () => {
         });
         expect(settings.noticeUrl).toBeNull();
         expect(settings.loginNoticeUrl).toBeNull();
-        expect(warn).toHaveBeenCalledTimes(2);
+        expect(warn.mock.calls).toEqual([
+            ["PRIVACY_NOTICE_URL is not an https URL; it is ignored"],
+            ["PRIVACY_LOGIN_NOTICE_URL is not an https URL; it is ignored"],
+        ]);
     });
 
     it("reads the environment by default", () => {
