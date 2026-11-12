@@ -190,12 +190,6 @@ function WESServerList() {
                                                     ({server.health.reason})
                                                 </span>
                                             )}
-                                            {server.health.status ===
-                                                "unreachable" && (
-                                                <span className="text-xs text-muted-foreground">
-                                                    ({server.health.reason})
-                                                </span>
-                                            )}
                                             {typeCount > 0 && (
                                                 <>
                                                     <span>•</span>
