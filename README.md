@@ -1,4 +1,4 @@
-# <img src="https://github.com/elixir-cloud-aai/krini/blob/master/public/logo.png?raw=true" align="left" height="38" alt=""> <span >Krini</span>
+# <img src="public/logo.svg" align="left" height="38" alt=""> <span >Krini</span>
 
 **The Krini is a virtual research environment allowing users to run, manage, share and publish life science analyses.**
 
@@ -35,7 +35,7 @@ bun run dev
 ```
 
 - This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
-  > **_NOTE:_** You might face a problem while login if your application isn't running on `http://localhost:3000/`. In the case of port change, change the environment variable `VITE_HOST_URI` in file `.env.development` file to the required url.
+  > **_NOTE:_** Login works only on the host and port of `OIDC_REDIRECT_URI` and `APP_ORIGIN` (see [Environment Variables](#environment-variables)). If you run Krini elsewhere, e.g. on another port, set both to that address and register the redirect URI with your OIDC client.
 
 Great, now you are good to go!
 
@@ -52,7 +52,7 @@ Create a `.env.local` file in the project root:
 
 ```env
 # LS Login / OpenID Connect
-LS_LOGIN_URL=https://login.elixir-europe.org
+LS_LOGIN_URL=https://login.aai.lifescience-ri.eu
 OIDC_CLIENT_ID=your-client-id
 OIDC_CLIENT_SECRET=your-client-secret
 OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
@@ -114,8 +114,8 @@ The project adopts the [semantic versioning](https://semver.org/) scheme for ver
 
 ## License
 
-This project is covered by the MIT License also
-[shipped with this repository](https://github.com/elixir-cloud-aai/krini/blob/master/LICENSE).
+This project is covered by the Apache License 2.0, also
+[shipped with this repository](LICENSE).
 
 ## Contact
 
