@@ -11,7 +11,10 @@ function respond(status: number) {
 }
 
 function setup(statuses: number[], renewed = true) {
-    const fetchMock = vi.fn(async () => respond(statuses.shift() ?? 200));
+    const fetchMock = vi.fn(
+        async (_input: RequestInfo | URL, _init?: RequestInit) =>
+            respond(statuses.shift() ?? 200),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     let token = "first";
@@ -28,7 +31,7 @@ function setup(statuses: number[], renewed = true) {
 
     const authorization = () =>
         fetchMock.mock.calls.map(([, init]) =>
-            new Headers((init as RequestInit).headers).get("Authorization"),
+            new Headers(init?.headers).get("Authorization"),
         );
 
     return { provider, fetchMock, renew, onUnauthorized, authorization };
