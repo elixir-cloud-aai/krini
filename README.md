@@ -90,6 +90,26 @@ Do not commit `.env.local` or expose `OIDC_CLIENT_SECRET` to client-side code.
 
 For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/DEPLOYMENT.md).
 
+### Tests
+
+CI runs both test levels on pull requests to `dev` and `master`. Neither calls real services.
+
+- **Unit tests** ([Vitest](https://vitest.dev/)): the route handlers and helpers, in `src/**/*.test.ts`. The code in `src/lib/`, `src/app/api/` and `src/app/auth/api/` must stay fully covered.
+
+  ```sh
+  bun run test            # run once
+  bun run test:coverage   # with the coverage report and the 100% threshold
+  ```
+
+- **End-to-end tests** ([Playwright](https://playwright.dev/)): the main user journey in Chromium and Firefox, in `e2e/`. They browse anonymously, log in, submit a workflow with the user's token and log out. The mock services in `e2e/mock/server.ts` play the login provider, the registry and a WES service. The WES service runs over `https` with a self-signed certificate, which `openssl` creates at start. Playwright starts the mock services, builds the app and starts it on port 3210. The mock services use ports 8291 and 8444.
+
+  ```sh
+  bunx playwright install chromium firefox   # once
+  bun run test:e2e
+  ```
+
+  On Linux distributions that Playwright doesn't support yet, run the tests in the Playwright image, as CI does (see the `e2e` job in `.github/workflows/checks.yml`).
+
 
 ## Contributing
 
