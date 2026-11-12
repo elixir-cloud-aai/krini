@@ -86,6 +86,8 @@ The application uses the following client libraries:
 - `@elixir-cloud/tes`: ^1.0.1
 - `@elixir-cloud/wes`: ^2.0.0-alpha.49
 
+`@elixir-cloud/tes` 1.0.1 can't add the user's token to requests yet ([cloud-components#443](https://github.com/elixir-cloud-aai/cloud-components/issues/443)), so for now, tasks work only with TES services that don't require a token.
+
 Make sure the OIDC client has the following redirect URI registered:
 
 ```text
