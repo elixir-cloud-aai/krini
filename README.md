@@ -39,6 +39,12 @@ bun run dev
 
 Great, now you are good to go!
 
+- Run the unit and integration tests (Vitest; they use fixtures and mocks, no real services):
+
+```
+bun run test
+```
+
 
 ### Environment Variables
 
