@@ -24,14 +24,21 @@ import {
 } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { join } from "node:path";
+import {
+    appURL,
+    client,
+    mockHttpPort,
+    mockHttpsPort,
+    type WesRequest,
+} from "../settings";
 
-const httpPort = Number(process.env.MOCK_HTTP_PORT ?? 8291);
-const httpsPort = Number(process.env.MOCK_HTTPS_PORT ?? 8444);
-const appOrigin = process.env.MOCK_APP_ORIGIN ?? "http://localhost:3210";
+const httpPort = Number(process.env.MOCK_HTTP_PORT ?? mockHttpPort);
+const httpsPort = Number(process.env.MOCK_HTTPS_PORT ?? mockHttpsPort);
+const appOrigin = process.env.MOCK_APP_ORIGIN ?? appURL;
 const certDir = process.env.MOCK_CERT_DIR ?? "e2e/.certs";
 
-const clientId = "krini-e2e";
-const clientSecret = "e2e-secret";
+const clientId = client.id;
+const clientSecret = client.secret;
 
 /** The test user, whose claims the user info returns */
 const user = {
@@ -88,18 +95,15 @@ const serviceInfo = {
     tags: {},
 };
 
-/** Codes of logins that the app hasn't exchanged yet */
-const codes = new Set<string>();
+/** Codes of logins that the app hasn't exchanged yet, with their
+ * redirect URIs, which the token request must repeat */
+const codes = new Map<string, string>();
 /** Access tokens that the provider issued */
 const accessTokens = new Set<string>();
 /** Runs that the WES service accepted */
 const runs: { run_id: string; state: string }[] = [];
 /** Requests that the WES service received, for the tests */
-const requests: {
-    method: string;
-    path: string;
-    authorization: string | null;
-}[] = [];
+const requests: WesRequest[] = [];
 
 function send(
     res: ServerResponse,
@@ -142,10 +146,16 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
 
     if (req.method === "GET" && url.pathname === "/oidc/authorize") {
         const redirect = url.searchParams.get("redirect_uri");
-        if (url.searchParams.get("client_id") !== clientId || !redirect)
+        // only the app's callback, as registered at a real provider
+        if (
+            url.searchParams.get("client_id") !== clientId ||
+            url.searchParams.get("response_type") !== "code" ||
+            !url.searchParams.get("state") ||
+            redirect !== `${appOrigin}/auth/api/callback`
+        )
             return send(res, 400, { error: "invalid_request" });
         const code = randomUUID();
-        codes.add(code);
+        codes.set(code, redirect);
         const target = new URL(redirect);
         target.searchParams.set("code", code);
         target.searchParams.set("state", url.searchParams.get("state") ?? "");
@@ -162,7 +172,9 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
         const grant = form.get("grant_type");
         if (grant === "authorization_code") {
             const code = form.get("code") ?? "";
-            if (!codes.delete(code))
+            const redirect = codes.get(code);
+            codes.delete(code);
+            if (!redirect || form.get("redirect_uri") !== redirect)
                 return send(res, 400, { error: "invalid_grant" });
             return send(res, 200, issueTokens());
         }

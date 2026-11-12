@@ -8,15 +8,23 @@ import {
 } from "./axios";
 
 describe("axiosBase", () => {
-    it("times out requests after the default timeout", () => {
+    it("times out requests after 10 s", () => {
+        expect(DEFAULT_TIMEOUT_MS).toBe(10_000);
         expect(axiosBase.defaults.timeout).toBe(DEFAULT_TIMEOUT_MS);
     });
 });
 
 describe("deadline", () => {
-    it("returns a signal that isn't aborted yet", () => {
+    it("aborts with a timeout after the delay", async () => {
+        const signal = deadline(10);
+        expect(signal.aborted).toBe(false);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(signal.aborted).toBe(true);
+        expect(isTimeoutError(signal.reason)).toBe(true);
+    });
+
+    it("waits for the default timeout without a delay", () => {
         expect(deadline().aborted).toBe(false);
-        expect(deadline(50).aborted).toBe(false);
     });
 });
 

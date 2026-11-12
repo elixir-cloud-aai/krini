@@ -4,9 +4,10 @@
  * that no page throws or gets server errors from the app
  */
 import { test as base, expect, type Page } from "@playwright/test";
+import { mockURL, type WesRequest } from "./settings";
 
 /** Base URL of the mock login provider and registry (`e2e/mock/server.ts`) */
-const mock = "http://127.0.0.1:8291";
+const mock = mockURL;
 
 /** The test user of the mock provider */
 const user = { name: "Alice Example", email: "alice@example.org" };
@@ -26,12 +27,17 @@ async function login(page: Page) {
     ).toBeVisible();
 }
 
-/** A request that the mock WES service received */
-type WesRequest = {
-    method: string;
-    path: string;
-    authorization: string | null;
-};
+/**
+ * Get the access token of the page's session
+ * @param page Page
+ * @returns The token, from the session's cookie
+ */
+async function accessToken(page: Page) {
+    const cookies = await page.context().cookies();
+    const token = cookies.find((val) => val.name === "access_token");
+    expect(token?.httpOnly).toBe(true);
+    return token?.value as string;
+}
 
 /**
  * Get the requests that the mock WES service received, except for its
@@ -89,4 +95,4 @@ const test = base.extend<Fixtures>({
     ],
 });
 
-export { expect, login, test, user, wesRequests };
+export { accessToken, expect, login, test, user, wesRequests };

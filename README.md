@@ -94,14 +94,14 @@ For detailed deployment and service configuration requirements, see the [Deploym
 
 CI runs both test levels on pull requests and pushes to `dev`, `master` and `staging`. Neither calls real services.
 
-- **Unit tests** ([Vitest](https://vitest.dev/)): the route handlers and helpers, in `src/**/*.test.ts`. The code in `src/lib/`, `src/app/api/` and `src/app/auth/api/` must stay fully covered.
+- **Unit tests** ([Vitest](https://vitest.dev/)): the route handlers and helpers, in `src/**/*.test.ts`. The code in `src/lib/`, `src/app/api/` and `src/app/auth/api/` must stay fully covered: CI fails if new code there has no tests. Components and hooks have no unit tests yet.
 
   ```sh
   bun run test            # run once
   bun run test:coverage   # with the coverage report and the 100% threshold
   ```
 
-- **End-to-end tests** ([Playwright](https://playwright.dev/)): the main user journey in Chromium and Firefox, in `e2e/`. They browse anonymously, log in, submit a workflow with the user's token and log out. The mock services in `e2e/mock/server.ts` play the login provider, the registry and a WES service. The WES service runs over `https` with a self-signed certificate, which `openssl` creates at start. Playwright starts the mock services, builds the app and starts it on port 3210. The mock services use ports 8291 and 8444.
+- **End-to-end tests** ([Playwright](https://playwright.dev/)): the main user journey in Chromium and Firefox, in `e2e/`. They browse anonymously, log in, reject a forged login callback, submit a workflow with the user's token and log out. TES tasks aren't covered yet. The mock services in `e2e/mock/server.ts` play the login provider, the registry and a WES service. The WES service runs over `https` with a self-signed certificate, which `openssl` creates at start, so the tests need `bun` and `openssl`. Playwright starts the mock services, builds the app and starts it. The ports are in `e2e/settings.ts`.
 
   ```sh
   bunx playwright install chromium firefox   # once

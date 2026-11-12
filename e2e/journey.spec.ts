@@ -3,7 +3,14 @@
  * workflow to a WES service from the registry with the user's token, and
  * log out
  */
-import { expect, login, test, user, wesRequests } from "./fixtures";
+import {
+    accessToken,
+    expect,
+    login,
+    test,
+    user,
+    wesRequests,
+} from "./fixtures";
 
 const workflowUrl = { name: "https://example.com/workflow.cwl" };
 
@@ -29,6 +36,14 @@ test.describe("anonymous visitors", () => {
 });
 
 test.describe("members", () => {
+    test("can't log in with a callback of another login", async ({ page }) => {
+        // a state that the app didn't issue to this browser
+        await page.goto("/auth/api/callback?code=forged&state=forged");
+        await page.waitForURL(/\/auth\/error\?type=state$/);
+        const response = await page.request.get("/auth/api/token");
+        expect(response.status()).toBe(401);
+    });
+
     test("log in and out", async ({ page }) => {
         await login(page);
         await page.getByRole("button", { name: /Alice Example/ }).click();
@@ -36,9 +51,7 @@ test.describe("members", () => {
             page.getByRole("menu").getByText(user.email),
         ).toBeVisible();
         // the session's tokens are for the server only
-        const cookies = await page.context().cookies();
-        const access = cookies.find((val) => val.name === "access_token");
-        expect(access?.httpOnly).toBe(true);
+        await accessToken(page);
 
         await page.getByRole("menuitem", { name: "Logout" }).click();
         await expect(
@@ -50,8 +63,7 @@ test.describe("members", () => {
 
     test("submit a workflow with their token", async ({ page }) => {
         await login(page);
-        const cookies = await page.context().cookies();
-        const token = cookies.find((val) => val.name === "access_token")?.value;
+        const token = await accessToken(page);
 
         await page.goto("/dashboard/workflows/create");
         await page.getByRole("combobox").click();

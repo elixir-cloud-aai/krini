@@ -1,12 +1,20 @@
 import { defineConfig, devices } from "@playwright/test";
+import {
+    appPort,
+    appURL,
+    client,
+    mockHttpPort,
+    mockHttpsPort,
+    mockURL,
+} from "./e2e/settings";
 
 // end-to-end tests (`e2e/`) against the mock services of
 // `e2e/mock/server.ts` (login provider, registry, WES service), which start
 // first; then the app is built and started, on its own port. Nothing calls
-// real public services.
-const port = 3210;
-const baseURL = `http://localhost:${port}`;
-const mockHttp = "http://127.0.0.1:8291";
+// real public services. Ports are in `e2e/settings.ts`.
+const port = appPort;
+const baseURL = appURL;
+const mockHttp = mockURL;
 const certDir = "e2e/.certs";
 
 export default defineConfig({
@@ -32,8 +40,8 @@ export default defineConfig({
             url: `${mockHttp}/mock/health`,
             reuseExistingServer: !process.env.CI,
             env: {
-                MOCK_HTTP_PORT: "8291",
-                MOCK_HTTPS_PORT: "8444",
+                MOCK_HTTP_PORT: String(mockHttpPort),
+                MOCK_HTTPS_PORT: String(mockHttpsPort),
                 MOCK_APP_ORIGIN: baseURL,
                 MOCK_CERT_DIR: certDir,
             },
@@ -48,8 +56,8 @@ export default defineConfig({
                 // the app checks the mock WES service's certificate
                 NODE_EXTRA_CA_CERTS: `${certDir}/cert.pem`,
                 LS_LOGIN_URL: mockHttp,
-                OIDC_CLIENT_ID: "krini-e2e",
-                OIDC_CLIENT_SECRET: "e2e-secret",
+                OIDC_CLIENT_ID: client.id,
+                OIDC_CLIENT_SECRET: client.secret,
                 OIDC_REDIRECT_URI: `${baseURL}/auth/api/callback`,
                 OIDC_SCOPE: "openid profile email",
                 CLOUD_REGISTRY_URL: `${mockHttp}/ga4gh/registry/v1`,
