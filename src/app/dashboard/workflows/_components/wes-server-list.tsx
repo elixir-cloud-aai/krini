@@ -239,7 +239,7 @@ function WESServerList() {
                                                                 </p>
                                                                 <p className="text-muted-foreground">
                                                                     {versions.join(
-                                                                        ", v",
+                                                                        ", ",
                                                                     )}
                                                                 </p>
                                                             </div>

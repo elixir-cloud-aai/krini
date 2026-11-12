@@ -110,7 +110,7 @@ export function WorkflowValidator({ children }: WorkflowValidatorProps) {
                                         {type}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                        Versions: {versions.join(", v")}
+                                        Versions: {versions.join(", ")}
                                     </p>
                                 </div>
                             ))}
