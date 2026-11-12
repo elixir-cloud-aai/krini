@@ -7,11 +7,26 @@ import type { WESServer } from "@/types/workflows";
 const kept = "https://kept.example.org/ga4gh/wes/v1";
 const dropped = "https://dropped.example.org/ga4gh/wes/v1";
 
+type Server = WESServer & TESServer;
+
+/** What both stores have in common, for running the same tests. */
+type SelectionStore = {
+    getState: () => {
+        selectedServer: string | null;
+        setSelectedServer: (server: string) => void;
+        setServers: (servers: Server[]) => void;
+    };
+    setState: (state: {
+        selectedServer: null;
+        servers: [];
+        serversLoaded: false;
+    }) => void;
+};
+
 describe.each([
-    ["WES", useWESStore],
-    ["TES", useTESStore],
-] as const)("%s store", (_name, store) => {
-    type Server = WESServer & TESServer;
+    ["WES", useWESStore as unknown as SelectionStore],
+    ["TES", useTESStore as unknown as SelectionStore],
+])("%s store", (_name, store) => {
     const server = (url: string) => ({ id: url, url }) as Server;
 
     beforeEach(() => {
