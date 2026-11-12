@@ -134,7 +134,7 @@ export async function fetchVerifiedServices<T>(
         }),
     ]);
 
-    if (!Array.isArray(services.data)) {
+    if (!Array.isArray(services.data) || !Array.isArray(verifications.data)) {
         throw new Error("Invalid registry response");
     }
 

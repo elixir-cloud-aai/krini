@@ -124,9 +124,12 @@ describe("fetchVerifiedServices", () => {
         await expect(fetchVerifiedServices(["wes"])).rejects.toBe(error);
     });
 
-    it("fails if the service list can't be read", async () => {
+    it.each([
+        ["service list", "oops", verifications],
+        ["verifications", services, { verifications }],
+    ])("fails if the %s can't be read", async (_label, list, verified) => {
         get.mockImplementation(async (url: string) => ({
-            data: url.endsWith("/verifications") ? verifications : "oops",
+            data: url.endsWith("/verifications") ? verified : list,
         }));
 
         await expect(fetchVerifiedServices(["wes"])).rejects.toThrow(
