@@ -57,6 +57,12 @@ CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev
 
 # Application
 APP_ORIGIN=http://localhost:3000
+
+# Privacy notice (optional)
+PRIVACY_CONTROLLER="Example Institute, Example Street 1, Example City"
+PRIVACY_CONTACT=privacy@example.org
+PRIVACY_NOTICE_URL=https://example.org/privacy
+PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
 ```
 
 #### Configuration
@@ -68,6 +74,11 @@ APP_ORIGIN=http://localhost:3000
 - `OIDC_SCOPE`: OAuth 2.0 scopes to request from the identity provider. Must include `offline_access` for refresh token support. Default: `openid profile email offline_access`.
 - `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API.
 - `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000` for local development or your production URL).
+- Privacy notice at `/privacy`, linked from the login page and the sidebar and reachable without login. It describes what Krini processes, lists its cookies, and says what happens at the login provider and the services. The text is the same for every deployment. Each deployment adds who is responsible and can link its own full notice. All four settings are optional and read at runtime. Invalid values are ignored, with a warning in the server log.
+  - `PRIVACY_CONTROLLER`: Name and address of the operator who is responsible for the processing (the controller).
+  - `PRIVACY_CONTACT`: The controller's contact for privacy questions: an email address or an `https` URL.
+  - `PRIVACY_NOTICE_URL`: `https` URL of the deployment's full privacy notice, if it has one.
+  - `PRIVACY_LOGIN_NOTICE_URL`: `https` URL of the login provider's privacy notice.
 
 #### Cloud Component Versions
 
@@ -90,6 +101,26 @@ Do not commit `.env.local` or expose `OIDC_CLIENT_SECRET` to client-side code.
 
 For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/deployment.md). It also describes the
 [container image](./docs/deployment.md#container-image) that CI publishes.
+
+### Tests
+
+CI runs both test levels on pull requests and pushes to `dev`, `master` and `staging`. Neither calls real services.
+
+- **Unit tests** ([Vitest](https://vitest.dev/)): the route handlers and helpers, in `src/**/*.test.ts`. The code in `src/lib/`, `src/app/api/` and `src/app/auth/api/` must stay fully covered: CI fails if new code there has no tests. Components and hooks have no unit tests yet.
+
+  ```sh
+  bun run test            # run once
+  bun run test:coverage   # with the coverage report and the 100% threshold
+  ```
+
+- **End-to-end tests** ([Playwright](https://playwright.dev/)): the main user journey in Chromium and Firefox, in `e2e/`. They browse anonymously, log in, reject a forged login callback, submit a workflow with the user's token and log out. They also check the privacy notice and that visitors get no cookies and members only the session's. TES tasks aren't covered yet. The mock services in `e2e/mock/server.ts` play the login provider, the registry and a WES service. The WES service runs over `https` with a self-signed certificate, which `openssl` creates at start, so the tests need `bun` and `openssl`. Playwright starts the mock services, builds the app and starts it. The ports are in `e2e/settings.ts`.
+
+  ```sh
+  bunx playwright install chromium firefox   # once
+  bun run test:e2e
+  ```
+
+  On Linux distributions that Playwright doesn't support yet, run the tests in the Playwright image, as CI does (see the `e2e` job in `.github/workflows/checks.yml`).
 
 
 ## Contributing
