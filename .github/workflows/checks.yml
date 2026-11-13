@@ -24,6 +24,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # only `.env.example` may be committed; settings come in at runtime
+      - name: Check that no env files are committed
+        run: |
+          tracked="$(git ls-files | grep -E '(^|/)\.env' | grep -vE '(^|/)\.env\.example$' || true)"
+          if [ -n "$tracked" ]; then
+            echo "::error::Env files must not be committed: ${tracked}"
+            exit 1
+          fi
+
+      # local env files in the build context must not reach the image
+      - name: Check that env files stay out of the image
+        run: |
+          mkdir -p env-check
+          touch .env .env.local .env.production env-check/.env env-check/.env.local
+          docker build --no-cache --progress=plain --file - . <<'EOF'
+          FROM busybox:1.37
+          COPY . /context
+          RUN ! find /context -name '.env*' ! -name .env.example | grep .
+          RUN test -f /context/.env.example
+          EOF
+          rm -r env-check .env .env.local .env.production
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
