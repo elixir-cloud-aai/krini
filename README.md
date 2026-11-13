@@ -99,7 +99,7 @@ http://localhost:3000/auth/api/callback
 
 Do not commit `.env.local` or expose `OIDC_CLIENT_SECRET` to client-side code.
 
-`.env.example` is the only env file in the repository; Git ignores all others. All settings are read on the server, at runtime. Krini uses no `NEXT_PUBLIC_*` variables, so no setting is built into the code that the browser loads; never put a secret into a `NEXT_PUBLIC_*` variable. The Docker image contains no env files (see `.dockerignore`) and its build takes no settings: pass the settings to the container when it starts (see the [Deployment Guide](./docs/deployment.md#environment-variables)). CI fails if an env file other than `.env.example` is committed or would end up in the image.
+`.env.example` is the only env file in the repository; Git and the Docker build ignore all others, and CI fails if another one is committed or isn't excluded from the Docker build context. In production, pass the settings to the container when it starts, see the [Deployment Guide](./docs/deployment.md#environment-variables).
 
 For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/deployment.md).
 

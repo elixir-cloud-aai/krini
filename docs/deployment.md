@@ -108,16 +108,16 @@ Configure your TES and WES services to allowlist Krini's `OIDC_CLIENT_ID` in the
 
 For a complete list of required environment variables, see the main [README.md](../README.md#environment-variables).
 
-Krini reads all settings on the server, at runtime. The Docker image contains no env files (`.dockerignore` excludes them) and its build takes no settings, so one image works for every deployment. Pass the settings to the container when it starts, as environment variables, for example:
+Krini reads the settings listed in the README on the server, at runtime. The Docker image contains no env files (`.dockerignore` excludes them) and its build takes no settings, so one image works for every deployment. Pass the settings to the container when it starts, as environment variables, for example:
 
-- Docker: `docker run --env-file krini.env ...`, with `krini.env` kept outside the repository and the build context.
+- Docker: `docker run --env-file krini.env ...`, with `krini.env` kept outside the repository and the build context. Docker reads plain `KEY=value` lines and doesn't strip quotes, so write `PRIVACY_CONTROLLER=Example Institute, Example City`, not `PRIVACY_CONTROLLER="..."`.
 - Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `OIDC_CLIENT_SECRET`, referenced with `envFrom` or `env[].valueFrom` in the deployment.
 
 Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_*` variables, so no setting is sent to the browser; never put a secret into one.
 
 ### Production Considerations
 
-- Set `NODE_ENV=production` to enable secure cookies
+- Cookies get the `Secure` flag in production builds (`next build`, as in the Docker image); `NODE_ENV` is fixed when the app is built, so setting it at runtime changes nothing
 - Use HTTPS for all production deployments
 - Configure `APP_ORIGIN` to your production domain
 - Store `OIDC_CLIENT_SECRET` securely (e.g., using a secrets manager)
@@ -129,7 +129,7 @@ Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_
 ## Security Recommendations
 
 1. **HTTPS Only**: Always deploy Krini behind HTTPS in production
-2. **Secure Cookies**: Production deployments use `Secure` flag on cookies automatically when `NODE_ENV=production`
+2. **Secure Cookies**: Production builds set the `Secure` flag on cookies automatically
 3. **Secret Management**: Never commit `.env.local` or other env files (only `.env.example` belongs in the repository), never copy them into an image, and never expose secrets in client-side code
 4. **Origin Validation**: The logout endpoint validates requests against `APP_ORIGIN` to prevent CSRF
 5. **Token Refresh**: The `offline_access` scope enables silent token renewal, improving user experience
