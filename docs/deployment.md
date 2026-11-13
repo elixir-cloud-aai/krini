@@ -113,7 +113,7 @@ Krini reads the settings listed in the README on the server, at runtime. The Doc
 - Docker: `docker run --env-file krini.env ...`, with `krini.env` kept outside the repository and the build context. Docker reads plain `KEY=value` lines and doesn't strip quotes, so write `PRIVACY_CONTROLLER=Example Institute, Example City`, not `PRIVACY_CONTROLLER="..."`.
 - Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `OIDC_CLIENT_SECRET`, referenced with `envFrom` or `env[].valueFrom` in the deployment.
 
-Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_*` variables, so no setting is sent to the browser; never put a secret into one.
+Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_*` variables, so no setting is built into the JavaScript that the browser loads; never put a secret into one. Some settings are public by design and do reach the browser: the login redirect carries `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` and `OIDC_SCOPE`, and the privacy notice shows the `PRIVACY_*` values. `OIDC_CLIENT_SECRET` is only sent from Krini's server to LS Login.
 
 ### Production Considerations
 

@@ -24,10 +24,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # only `.env.example` may be committed; settings come in at runtime
+      # only the top-level `.env.example` may be committed; settings come in
+      # at runtime
       - name: Check that no env files are committed
         run: |
-          tracked="$(git ls-files | grep -E '(^|/)\.env(\..*)?$' | grep -vE '(^|/)\.env\.example$' || true)"
+          tracked="$(git ls-files | grep -E '(^|/)\.env(\..*)?$' | grep -vx '\.env\.example' || true)"
           if [ -n "$tracked" ]; then
             echo "::error::Env files must not be committed: ${tracked}"
             exit 1
@@ -41,13 +42,18 @@ jobs:
           context="$(mktemp -d)"
           git archive HEAD | tar -x -C "${context}"
           mkdir -p "${context}/env-check"
-          for file in .env .env.local .env.production env-check/.env env-check/.env.local; do
-            touch "${context}/${file}"
+          for dir in "${context}" "${context}/env-check"; do
+            for name in .env .env.local .env.development .env.development.local \
+                .env.production .env.production.local .env.test .env.test.local; do
+              touch "${dir}/${name}"
+            done
           done
+          # only the top-level example may enter the build context
+          touch "${context}/env-check/.env.example"
           docker build --progress=plain --file - "${context}" <<'EOF'
           FROM busybox:1.37
           COPY . /context
-          RUN ! find /context -name '.env*' ! -name .env.example | grep .
+          RUN ! find /context -name '.env*' ! -path /context/.env.example | grep .
           RUN test -f /context/.env.example
           EOF
 

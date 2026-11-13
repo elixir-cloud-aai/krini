@@ -35,7 +35,7 @@ yarn-error.log*
 
 # env files; only the example is committed
 .env*
-!.env.example
+!/.env.example
 
 # vercel
 .vercel
