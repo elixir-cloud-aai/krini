@@ -1,5 +1,5 @@
 "use client";
-import { Layers, Wrench } from "lucide-react";
+import { Layers, ShieldCheck, Wrench } from "lucide-react";
 import Link from "next/link";
 import {
     Sidebar,
@@ -29,6 +29,16 @@ const data = [
                 title: "Workflows",
                 url: "/dashboard/workflows",
                 icon: Layers,
+            },
+        ],
+    },
+    {
+        title: "About",
+        items: [
+            {
+                title: "Privacy",
+                url: "/privacy",
+                icon: ShieldCheck,
             },
         ],
     },
