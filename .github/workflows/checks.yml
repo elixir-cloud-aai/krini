@@ -27,24 +27,29 @@ jobs:
       # only `.env.example` may be committed; settings come in at runtime
       - name: Check that no env files are committed
         run: |
-          tracked="$(git ls-files | grep -E '(^|/)\.env' | grep -vE '(^|/)\.env\.example$' || true)"
+          tracked="$(git ls-files | grep -E '(^|/)\.env(\..*)?$' | grep -vE '(^|/)\.env\.example$' || true)"
           if [ -n "$tracked" ]; then
             echo "::error::Env files must not be committed: ${tracked}"
             exit 1
           fi
 
-      # local env files in the build context must not reach the image
-      - name: Check that env files stay out of the image
+      # `.dockerignore` must keep local env files out of the build context,
+      # which the Dockerfile copies with `COPY . .`
+      - name: Check that env files stay out of the build context
         run: |
-          mkdir -p env-check
-          touch .env .env.local .env.production env-check/.env env-check/.env.local
-          docker build --no-cache --progress=plain --file - . <<'EOF'
+          # in a copy of the checkout, so that no local env file is touched
+          context="$(mktemp -d)"
+          git archive HEAD | tar -x -C "${context}"
+          mkdir -p "${context}/env-check"
+          for file in .env .env.local .env.production env-check/.env env-check/.env.local; do
+            touch "${context}/${file}"
+          done
+          docker build --progress=plain --file - "${context}" <<'EOF'
           FROM busybox:1.37
           COPY . /context
           RUN ! find /context -name '.env*' ! -name .env.example | grep .
           RUN test -f /context/.env.example
           EOF
-          rm -r env-check .env .env.local .env.production
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
