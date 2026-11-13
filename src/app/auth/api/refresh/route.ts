@@ -15,6 +15,8 @@ export async function POST() {
         );
     }
 
+    // The only check needed: cookies() returns the cookies of this request,
+    // so they can't change while the refresh runs
     if (logoutMarker) {
         return NextResponse.json(
             { error: "Session terminated" },
@@ -63,16 +65,6 @@ export async function POST() {
             path: "/",
             httpOnly: true,
         };
-
-        const cookieStoreAfter = await cookies();
-        const logoutMarkerAfter = cookieStoreAfter.get("logout_marker")?.value;
-
-        if (logoutMarkerAfter) {
-            return NextResponse.json(
-                { error: "Session terminated" },
-                { status: 401 },
-            );
-        }
 
         const expiresAt =
             Date.now() +

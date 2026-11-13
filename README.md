@@ -1,4 +1,4 @@
-# <img src="https://github.com/elixir-cloud-aai/krini/blob/master/public/logo.png?raw=true" align="left" height="38" alt=""> <span >Krini</span>
+# <img src="public/logo.svg" align="left" height="38" alt=""> <span >Krini</span>
 
 **The Krini is a virtual research environment allowing users to run, manage, share and publish life science analyses.**
 
@@ -35,9 +35,15 @@ bun run dev
 ```
 
 - This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
-  > **_NOTE:_** You might face a problem while login if your application isn't running on `http://localhost:3000/`. In the case of port change, change the environment variable `VITE_HOST_URI` in file `.env.development` file to the required url.
+  > **_NOTE:_** Login works only on the host and port of `OIDC_REDIRECT_URI` and `APP_ORIGIN` (see [Environment Variables](#environment-variables)). If you run Krini elsewhere, e.g. on another port, set both to that address and register the redirect URI with your OIDC client.
 
 Great, now you are good to go!
+
+- Run the unit and integration tests (Vitest; they use fixtures and mocks, no real services):
+
+```
+bun run test
+```
 
 
 ### Environment Variables
@@ -46,7 +52,7 @@ Create a `.env.local` file in the project root:
 
 ```env
 # LS Login / OpenID Connect
-LS_LOGIN_URL=https://login.elixir-europe.org
+LS_LOGIN_URL=https://login.aai.lifescience-ri.eu
 OIDC_CLIENT_ID=your-client-id
 OIDC_CLIENT_SECRET=your-client-secret
 OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
@@ -72,7 +78,7 @@ PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
 - `OIDC_CLIENT_SECRET`: Client secret associated with the OIDC client. Keep this private.
 - `OIDC_REDIRECT_URI`: Callback URL registered with your LS Login client. It must match the redirect URI configured with the identity provider.
 - `OIDC_SCOPE`: OAuth 2.0 scopes to request from the identity provider. Must include `offline_access` for refresh token support. Default: `openid profile email offline_access`.
-- `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API.
+- `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API (e.g., `https://elixir-on.cloud/ga4gh/registry/v1`). Krini reads it without a token and lists only services that the registry's admins have verified (`GET /verifications`, same identifier, URL and type) and that have an `https` URL without user info. A registry without `GET /verifications` (Cloud Registry < 0.4.0) yields no services.
 - `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000` for local development or your production URL).
 - Privacy notice at `/privacy`, linked from the login page and the sidebar and reachable without login. It describes what Krini processes, lists its cookies, and says what happens at the login provider and the services. The text is the same for every deployment. Each deployment adds who is responsible and can link its own full notice. All four settings are optional and read at runtime. Invalid values are ignored, with a warning in the server log.
   - `PRIVACY_CONTROLLER`: Name and address of the operator who is responsible for the processing (the controller).
@@ -90,6 +96,8 @@ This application supports the following GA4GH Cloud Component API versions:
 The application uses the following client libraries:
 - `@elixir-cloud/tes`: ^1.0.1
 - `@elixir-cloud/wes`: ^2.0.0-alpha.49
+
+`@elixir-cloud/tes` 1.0.1 can't add the user's token to requests yet ([cloud-components#443](https://github.com/elixir-cloud-aai/cloud-components/issues/443)), so for now, tasks work only with TES services that don't require a token.
 
 Make sure the OIDC client has the following redirect URI registered:
 
@@ -137,8 +145,8 @@ The project adopts the [semantic versioning](https://semver.org/) scheme for ver
 
 ## License
 
-This project is covered by the MIT License also
-[shipped with this repository](https://github.com/elixir-cloud-aai/krini/blob/master/LICENSE).
+This project is covered by the Apache License 2.0, also
+[shipped with this repository](LICENSE).
 
 ## Contact
 

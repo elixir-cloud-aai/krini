@@ -34,14 +34,9 @@ function TESServerList() {
             try {
                 const res = await fetch("/api/tasks/get-tes-servers");
 
+                // Registry reads need no login, so there's no 401 case
                 if (!res.ok) {
-                    if (res.status === 401) {
-                        toast.error(
-                            "Login to fetch TES servers from registry.",
-                        );
-                    } else {
-                        toast.error("Failed to fetch TES servers.");
-                    }
+                    toast.error("Failed to fetch TES servers.");
                     return;
                 }
 
@@ -105,8 +100,6 @@ function TESServerList() {
                 className="min-w-87.5 max-w-[min(90vw,480px)]"
             >
                 <SelectGroup>
-                    <SelectItem value="/tes-api">TEST SERVER</SelectItem>
-
                     {servers.map((server) => (
                         <SelectItem key={server.id} value={server.url}>
                             <span

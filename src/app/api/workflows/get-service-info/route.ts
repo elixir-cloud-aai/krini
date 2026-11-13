@@ -1,6 +1,11 @@
 import axios from "axios";
 import { type NextRequest, NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
+import {
+    fetchVerifiedServices,
+    RegistryConfigError,
+    WES_ARTIFACTS,
+} from "@/lib/registry";
 import type { WESServer, WESServiceInfo } from "@/types/workflows";
 
 export async function GET(request: NextRequest) {
@@ -14,20 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const registryUrl = process.env.CLOUD_REGISTRY_URL;
-
-        if (!registryUrl) {
-            throw new Error("Cloud Registry URL is not configured.");
-        }
-
-        const { data: servers } = await axiosBase.get<WESServer[]>(
-            `${registryUrl.replace(/\/+$/, "")}/services`,
-            {
-                headers: {
-                    Accept: "application/json",
-                },
-            },
-        );
+        const servers = await fetchVerifiedServices<WESServer>(WES_ARTIFACTS);
 
         const server = servers.find((item) => item.id === id);
 
@@ -86,6 +78,13 @@ export async function GET(request: NextRequest) {
             },
         );
     } catch (error) {
+        if (error instanceof RegistryConfigError) {
+            return NextResponse.json(
+                { error: "Cloud Registry URL is not configured." },
+                { status: 500 },
+            );
+        }
+
         if (axios.isAxiosError(error)) {
             if (error.response) {
                 return NextResponse.json(

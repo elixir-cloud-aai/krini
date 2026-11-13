@@ -1,47 +1,31 @@
-import { RestWesProvider } from "@elixir-cloud/wes/providers";
+import type { RestWesProvider } from "@elixir-cloud/wes/providers";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { getAccessToken, renewSession } from "@/lib/session";
+import {
+    TokenWesProvider,
+    type UnauthorizedReason,
+} from "@/lib/token-wes-provider";
 import { useWESStore } from "@/stores/wes";
 
-class TokenWesProvider extends RestWesProvider {
-    private getToken: () => Promise<string>;
-
-    constructor(baseUrl: string, getToken: () => Promise<string>) {
-        super(baseUrl);
-        this.getToken = getToken;
+function handleUnauthorized(reason: UnauthorizedReason) {
+    if (reason === "token-rejected") {
+        toast.error(
+            "This WES service doesn't accept your login. Please contact the service.",
+            { id: "token-rejected" },
+        );
+        return;
     }
 
-    async fetch(input: string, init: RequestInit = {}) {
-        const headers = new Headers(init.headers);
-        const token = await this.getToken();
-
-        if (token) {
-            headers.set("Authorization", `Bearer ${token}`);
-        }
-
-        return super.fetch(input, {
-            ...init,
-            headers,
-        });
-    }
-}
-
-async function getAccessToken(): Promise<string> {
-    try {
-        const response = await fetch("/auth/api/token", {
-            method: "GET",
-            credentials: "same-origin",
-            cache: "no-store",
-        });
-
-        if (!response.ok) {
-            return "";
-        }
-
-        const data: { access_token: string } = await response.json();
-        return data.access_token || "";
-    } catch {
-        return "";
-    }
+    toast.error("Your session has expired. Please log in again.", {
+        id: "session-expired",
+        action: {
+            label: "Log in",
+            onClick: () => {
+                window.location.href = "/auth/api/login-redirect";
+            },
+        },
+    });
 }
 
 function useWESProvider() {
@@ -57,7 +41,11 @@ function useWESProvider() {
         }
 
         const baseUrl = selectedServer.replace(/\/+$/, "");
-        const provider = new TokenWesProvider(baseUrl, getAccessToken);
+        const provider = new TokenWesProvider(baseUrl, {
+            getToken: getAccessToken,
+            renew: renewSession,
+            onUnauthorized: handleUnauthorized,
+        });
         setWesProvider(provider);
 
         return () => {

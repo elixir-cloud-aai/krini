@@ -1,5 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
+import { tesBaseUrl } from "@/lib/tes";
 import { useTESStore } from "@/stores/tes";
 
 const ECCClientGa4ghTesCreateRuns = dynamic(
@@ -28,7 +29,7 @@ export function ECCClientGa4ghTesCreateRunsClient() {
         );
     }
 
-    const baseURL = `${selectedServer.replace(/\/+$/, "")}/ga4gh/tes/v1`;
+    const baseURL = tesBaseUrl(selectedServer);
 
     return <ECCClientGa4ghTesCreateRuns baseURL={baseURL} />;
 }
