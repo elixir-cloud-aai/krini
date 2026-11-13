@@ -35,14 +35,14 @@ bun run dev
 ```
 
 - This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
-  > **_NOTE:_** You might face a problem while login if your application isn't running on `http://localhost:3000/`. In the case of port change, change the environment variable `VITE_HOST_URI` in file `.env.development` file to the required url.
+  > **_NOTE:_** You might face a problem while login if your application isn't running on `http://localhost:3000/`. In the case of port change, change `APP_ORIGIN` and `OIDC_REDIRECT_URI` in your `.env.local` file (see [Environment Variables](#environment-variables)) and register the new redirect URI with your OIDC client.
 
 Great, now you are good to go!
 
 
 ### Environment Variables
 
-Create a `.env.local` file in the project root:
+For local development, copy `.env.example` to `.env.local` in the project root and fill in your values:
 
 ```env
 # LS Login / OpenID Connect
@@ -99,7 +99,9 @@ http://localhost:3000/auth/api/callback
 
 Do not commit `.env.local` or expose `OIDC_CLIENT_SECRET` to client-side code.
 
-For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/DEPLOYMENT.md).
+`.env.example` is the only env file in the repository; Git ignores all others. All settings are read on the server, at runtime. Krini uses no `NEXT_PUBLIC_*` variables, so no setting is built into the code that the browser loads; never put a secret into a `NEXT_PUBLIC_*` variable. The Docker image contains no env files (see `.dockerignore`) and its build takes no settings: pass the settings to the container when it starts (see the [Deployment Guide](./docs/deployment.md#environment-variables)). CI fails if an env file other than `.env.example` is committed or would end up in the image.
+
+For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/deployment.md).
 
 ### Tests
 
