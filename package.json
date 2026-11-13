@@ -7,7 +7,10 @@
         "build": "next build",
         "start": "next start",
         "lint": "biome check",
-        "format": "biome format --write"
+        "format": "biome format --write",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "test:e2e": "playwright test"
     },
     "dependencies": {
         "@base-ui/react": "^1.9.0",
@@ -29,13 +32,16 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.4.2",
+        "@playwright/test": "1.56.1",
         "@tailwindcss/turbopack": "^4",
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",
+        "@vitest/coverage-v8": "^4.1.12",
         "babel-plugin-react-compiler": "1.0.0",
         "tailwindcss": "^4",
-        "typescript": "^5"
+        "typescript": "^5",
+        "vitest": "^4.1.12"
     },
     "packageManager": "bun@1.2.21",
     "ignoreScripts": [
