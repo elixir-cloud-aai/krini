@@ -309,6 +309,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: release
+    # One at a time across tags, so that `latest` is decided and set by one
+    # run before the next one decides it (a run of a lower version can't
+    # overwrite it with a decision made before a higher version was tagged).
+    # A third waiting run cancels the pending one: re-run its failed jobs
+    concurrency:
+      group: ${{ github.workflow }}-release-image
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write # Sigstore signing certificates

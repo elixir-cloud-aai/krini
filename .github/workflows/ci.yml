@@ -456,7 +456,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ github.event_name == 'push' }}
-    needs: [lint, test, build, audit, e2e, image, push, scan]
+    needs: [lint, test, build, audit, e2e, readiness, image, push, scan]
     # Docker Hub secrets; the environment only allows the branch `dev`
     environment: dev-images
     permissions:
