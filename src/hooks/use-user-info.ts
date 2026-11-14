@@ -1,6 +1,6 @@
 "use client";
-import { UserTier } from "@/lib/oidc";
 import { useCallback, useEffect, useState } from "react";
+import type { UserTier } from "@/lib/oidc";
 
 type UserInfoResponse = {
     error: boolean;

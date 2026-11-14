@@ -1,4 +1,5 @@
 import { Copy, UserKey } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -9,8 +10,7 @@ import {
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useSidebar } from "@/components/ui/sidebar";
-import { UserTier } from "@/lib/oidc";
-import Link from "next/link";
+import type { UserTier } from "@/lib/oidc";
 
 type Props = {
     user: User;

@@ -17,7 +17,10 @@ function Page() {
                 <a
                     key={provider.id}
                     href={`/auth/api/login-redirect?provider=${encodeURIComponent(provider.id)}`}
-                    className={buttonVariants({ size: "lg", variant: provider.logo ? "link" : "default" })}
+                    className={buttonVariants({
+                        size: "lg",
+                        variant: provider.logo ? "link" : "default",
+                    })}
                 >
                     {provider.logo ? (
                         <Image
