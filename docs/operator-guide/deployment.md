@@ -1,4 +1,4 @@
-# Deployment Guide
+# Deployment
 
 This guide covers configuration requirements for deploying Krini in production environments.
 
@@ -9,7 +9,7 @@ This guide covers configuration requirements for deploying Krini in production e
 `dev` is the default branch: all pull requests go into it, and CI runs on
 pull requests into it and on pushes to it. `main` only moves forward to
 released commits, and releases are made from `v*` tags (see
-[Releasing](releasing.md)). `dev` was formerly called `staging` (the
+[Releasing](../development/releasing.md)). `dev` was formerly called `staging` (the
 branch `dev-legacy` holds the older code, and `main` was called
 `master`).
 
@@ -56,7 +56,7 @@ attests and signs them in the same way before it tags them.
 ### Running the Image
 
 The image has no settings of its own: pass all environment variables of
-the [README](../README.md#environment-variables) when the container starts,
+[Configuration](configuration.md) when the container starts,
 so that one image serves any deployment. For example:
 
 ```bash
@@ -132,7 +132,7 @@ repository needs:
   that can push to that repository). The name is kept from when only `dev`
   published images;
 - for releases, the environment `release` with the same secrets (see
-  [Releasing](releasing.md#repository-settings)). Set `DOCKERHUB_ORG`
+  [Releasing](../development/releasing.md#repository-settings)). Set `DOCKERHUB_ORG`
   before pushing a test tag, as the workflows fall back to `elixircloud`.
 
 To verify such images, use the fork's repository in the
@@ -243,9 +243,9 @@ Configure your TES and WES services to allowlist Krini's `OIDC_CLIENT_ID` in the
 
 ## Environment Variables
 
-For a complete list of required environment variables, see the main [README.md](../README.md#environment-variables).
+For a complete list of required environment variables, see [Configuration](configuration.md).
 
-Krini reads the settings listed in the README on the server, at runtime. The Docker image contains no env files (`.dockerignore` excludes them) and its build takes no settings, so one image works for every deployment. Pass the settings to the container when it starts, as environment variables, for example:
+Krini reads the settings listed in [Configuration](configuration.md) on the server, at runtime. The Docker image contains no env files (`.dockerignore` excludes them) and its build takes no settings, so one image works for every deployment. Pass the settings to the container when it starts, as environment variables, for example:
 
 - Docker: `docker run --env-file krini.env ...`, with `krini.env` kept outside the repository and the build context. Docker reads plain `KEY=value` lines and doesn't strip quotes, so write `PRIVACY_CONTROLLER=Example Institute, Example City`, not `PRIVACY_CONTROLLER="..."`.
 - Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `OIDC_CLIENT_SECRET`, referenced with `envFrom` or `env[].valueFrom` in the deployment.
@@ -259,7 +259,7 @@ Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_
 - Configure `APP_ORIGIN` to your production domain
 - Store `OIDC_CLIENT_SECRET` securely (e.g., using a secrets manager)
 - Rotate credentials regularly
-- Set the `PRIVACY_*` variables (see the [README](../README.md#configuration)), so that the privacy notice at `/privacy` names who is responsible and how to reach them. Without them, the page says that the operator hasn't named anyone. They are read at runtime, so changing them needs a restart, not a new image. Values that aren't valid (e.g. a URL that isn't `https`) are ignored, with a warning in the server log.
+- Set the `PRIVACY_*` variables (see [Privacy notice](configuration.md#privacy-notice)), so that the privacy notice at `/privacy` names who is responsible and how to reach them. Without them, the page says that the operator hasn't named anyone. They are read at runtime, so changing them needs a restart, not a new image. Values that aren't valid (e.g. a URL that isn't `https`) are ignored, with a warning in the server log.
 - The notice's text is the same for every deployment. It describes what Krini itself does. Put anything specific to your deployment (purposes, legal basis, retention, rights) into your own notice and link it with `PRIVACY_NOTICE_URL`.
 - Krini sets no cookies for visitors, unless they start a login or change the sidebar. Its cookies are listed in the notice, with their lifetimes. All except the sidebar setting are strictly necessary. Krini has no analytics, so it needs no consent banner. Krini's server reads the registry and checks the registered WES services, without user data. Browsers contact the selected TES and WES services directly, and the code editor of the workflow form loads a helper script from cdn.jsdelivr.net (from the Cloud Components); the notice says so. If you add anything that sets other cookies or tracks users, update the notice and add consent.
 

@@ -1,6 +1,7 @@
 # Releasing
 
-Features and fixes are merged into `dev`. Branch `main` only ever moves
+Krini follows [semantic versioning](https://semver.org/). Features and
+fixes are merged into `dev`. Branch `main` only ever moves
 forward to commits on `dev` that are released, and release tags are on
 `main`. Releases are cut by the maintainers with the release workflow
 (`.github/workflows/release.yml`), which publishes the image
@@ -11,7 +12,9 @@ all releases are GitHub pre-releases; stable versions (without `-alphaN`,
 ## Steps
 
 1. Shortly before the release, open a release-prep pull request into `dev`:
-   add the curated release notes as `docs/releases/<version>.md`, set the
+   add the curated release notes as `docs/releases/<version>.md` and to
+   `nav` in `mkdocs.yml` (under `Releases`, newest first; the strict docs
+   build fails on pages missing from `nav`), set the
    version in `package.json` and in `CITATION.cff` (`version`; add or
    update `date-released`), and update the authors in `CITATION.cff` (see
    "Citation metadata" in the
@@ -161,4 +164,4 @@ the fixable findings to code scanning and a full report as a workflow
 artifact, and fails on fixable critical and high vulnerabilities: release a
 patch version with the fix.
 
-[org-contributing]: https://github.com/elixir-cloud-aai/elixir-cloud-aai/blob/dev/CONTRIBUTING.md
+[org-contributing]: https://github.com/elixir-cloud-aai/.github/blob/main/CONTRIBUTING.md

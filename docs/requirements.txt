@@ -1,0 +1,6 @@
+# Python packages that build the docs (MkDocs), for Read the Docs
+# (`.readthedocs.yaml`) and the `docs` job in `.github/workflows/ci.yml`;
+# the app itself has no Python code, so there is no `pyproject.toml`
+mkdocs==1.6.1
+mkdocs-material==9.8.0
+pymdown-extensions==12.3

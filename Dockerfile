@@ -12,8 +12,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
-# No settings: all are read when the server starts (see "Environment
-# Variables" in `README.md`), so one image serves any deployment. Builds the
+# No settings: all are read when the server starts (see
+# `docs/operator-guide/configuration.md`), so one image serves any
+# deployment. Builds the
 # standalone server (`.dockerignore` lets in no `.env*` files or keys)
 COPY . .
 RUN NEXT_OUTPUT=standalone bun run build
