@@ -7,25 +7,32 @@ This guide covers configuration requirements for deploying Krini in production e
 ### Branches and Tags
 
 `dev` is the default branch: all pull requests go into it, and CI runs on
-pull requests into it and on pushes to it. `main` is frozen; releases
-will be made from `v*` tags (there is no release workflow yet, see
-[#62](https://github.com/elixir-cloud-aai/krini/issues/62)). `dev` was
-formerly called `staging` (the branch
-`dev-legacy` holds the older code, and `main` was called `master`).
+pull requests into it and on pushes to it. `main` only moves forward to
+released commits, and releases are made from `v*` tags (see
+[Releasing](releasing.md)). `dev` was formerly called `staging` (the
+branch `dev-legacy` holds the older code, and `main` was called
+`master`).
 
-CI publishes the Docker image of the `Dockerfile` to
-`docker.io/elixircloud/krini` for pushes to `dev`:
+The Docker image of the `Dockerfile` is published to
+`docker.io/elixircloud/krini`, by CI for pushes to `dev` and by the release
+workflow for releases:
 
 | Tag | Points to |
 | --- | --- |
+| `X.Y.Z` | The release `vX.Y.Z` (also pre-releases, e.g. `0.1.0-rc1`); never moved |
+| `latest` | The highest stable release (no `-alphaN`, `-betaN` or `-rcN`) |
 | `dev` | The newest commit that passed CI while it was the head of `dev` |
 | `sha-<commit>` | That commit (full commit SHA) |
+
+For deployments, prefer a release (`X.Y.Z`); `dev` follows the
+development branch.
 
 Images built before the rename carry the tag `staging`, which is no
 longer updated: deployments that pull `krini:staging` must switch to
 `krini:dev`.
 
-The label `org.opencontainers.image.version` of each image is
+The label `org.opencontainers.image.version` of a release image is its
+version (e.g. `0.1.0`), and of the images of `dev`
 `<version in package.json>-<branch>+<short commit SHA>`, e.g.
 `0.1.0-dev+1a2b3c4`.
 
@@ -42,7 +49,9 @@ pushed digest passes a smoke test (non-root, read-only root file system)
 and a scan for known vulnerabilities (Trivy, failing on fixable critical
 and high findings). CI then attests its build provenance and signs it
 with Sigstore keyless signing. The image also carries an SBOM and
-BuildKit provenance.
+BuildKit provenance. The release workflow builds release images afresh from
+the tagged commit, which must have passed CI on `dev`, and checks, scans,
+attests and signs them in the same way before it tags them.
 
 ### Running the Image
 
@@ -86,7 +95,16 @@ gh attestation verify "oci://${image}" --repo elixir-cloud-aai/krini
 This also verifies `sha-<commit>` tags of images built since the rename;
 for images built before it (the tag `staging` and their `sha-<commit>`
 tags), use `refs/heads/staging$` instead, or `refs/heads/(staging|dev)$`
-for any `sha-<commit>` tag.
+for any `sha-<commit>` tag. Release images are signed by the release
+workflow for their tag, e.g. for `0.1.0`:
+
+```bash
+image=docker.io/elixircloud/krini:0.1.0
+cosign verify "${image}" \
+    --certificate-identity 'https://github.com/elixir-cloud-aai/krini/.github/workflows/release.yml@refs/tags/v0.1.0' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify "oci://${image}" --repo elixir-cloud-aai/krini
+```
 
 ### Building the Image
 
@@ -112,7 +130,10 @@ repository needs:
 - the environment `dev-images`, limited to the branch `dev`, with the
   secrets `DOCKERHUB_LOGIN` and `DOCKERHUB_TOKEN` (a token
   that can push to that repository). The name is kept from when only `dev`
-  published images.
+  published images;
+- for releases, the environment `release` with the same secrets (see
+  [Releasing](releasing.md#repository-settings)). Set `DOCKERHUB_ORG`
+  before pushing a test tag, as the workflows fall back to `elixircloud`.
 
 To verify such images, use the fork's repository in the
 `--certificate-identity-regexp` of `cosign verify` and in the `--repo` of

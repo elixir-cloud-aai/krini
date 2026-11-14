@@ -266,51 +266,9 @@ jobs:
           fi
           docker pull "${IMAGE_NAME}@${DIGEST}"
           docker tag "${IMAGE_NAME}@${DIGEST}" "${IMAGE_NAME}:scan"
-      # The optimized image is `public/ls-login-grey-wide.jpg` (shown on the
-      # login page): change it here if it is renamed
+      # the smoke test, which `release.yml` also runs on release images
       - name: Check that the image serves the app
-        run: |
-          trap 'docker rm -f app >/dev/null 2>&1 || true' EXIT
-          docker run -d --name app -p 127.0.0.1:3000:3000 \
-            --read-only --tmpfs /tmp "${IMAGE_NAME}:scan"
-          if [[ "$(docker exec app id -u)" == 0 ]]; then
-            echo "::error::The container runs as root"
-            exit 1
-          fi
-          for _ in $(seq 30); do
-            # the start page redirects to the dashboard; the login page is
-            # served without settings; an optimized image is written to
-            # `.next/cache` (a link to `/tmp`)
-            # (200, not a redirect, which `curl -f` would also accept)
-            login="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/auth/login || true)"
-            if [[ "${login}" =~ ^[1-5] && "${login}" != 200 ]]; then
-              docker logs app
-              echo "::error::The login page returned ${login}, expected 200"
-              exit 1
-            fi
-            if [[ "${login}" == 200 ]]; then
-              status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/)"
-              if [[ "${status}" != 307 ]]; then
-                echo "::error::The start page returned ${status}, expected a redirect (307)"
-                exit 1
-              fi
-              if ! curl -fs -o /dev/null "http://127.0.0.1:3000/_next/image?url=%2Fls-login-grey-wide.jpg&w=640&q=75"; then
-                docker logs app
-                echo "::error::The image optimizer failed"
-                exit 1
-              fi
-              if ! docker exec app sh -c 'ls /tmp/next-cache/images | grep -q .'; then
-                docker logs app
-                echo "::error::The image optimizer didn't write to /tmp/next-cache"
-                exit 1
-              fi
-              exit 0
-            fi
-            sleep 2
-          done
-          docker logs app
-          echo "::error::The container didn't serve the login page"
-          exit 1
+        run: scripts/check-image.sh "${IMAGE_NAME}:scan"
       - name: Save the image
         if: ${{ github.event_name != 'push' }}
         run: docker save "${IMAGE_NAME}:scan" -o "${RUNNER_TEMP}/image.tar"
@@ -498,7 +456,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ github.event_name == 'push' }}
-    needs: [lint, test, build, audit, e2e, image, push, scan]
+    needs: [lint, test, build, audit, e2e, readiness, image, push, scan]
     # Docker Hub secrets; the environment only allows the branch `dev`
     environment: dev-images
     permissions:
@@ -594,6 +552,71 @@ jobs:
             fi
           done
 
+  # The release workflow (`release.yml`) checks the versions and the
+  # curated release notes only after the tag is pushed, and tags can't be
+  # moved: check them here, so that a release-prep pull request fails
+  # instead. The versions in `package.json` and `CITATION.cff` must always
+  # agree. A release is in preparation when the version isn't tagged on an
+  # earlier commit and `CITATION.cff` has a `date-released`, the notes
+  # (`docs/releases/<version>.md`) exist, or other versions are tagged
+  # (i.e. the version was bumped after a release): then `date-released`
+  # must be set and the notes must exist, without TODOs, in the
+  # organization's format (checker of the shared action that `release.yml`
+  # pins: keep the commit in sync with it and with `docs/releasing.md`)
+  readiness:
+    name: Release readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check versions and release notes
+        env:
+          SHA: ${{ github.sha }}
+          CHECKER: https://raw.githubusercontent.com/elixir-cloud-aai/.github/31f22fccc1f3c597ed7c1d1f75b2f85522155348/actions/publish-release/publish.py
+        run: |
+          if [[ ! -f CITATION.cff ]]; then
+            echo "::error::CITATION.cff is missing"
+            exit 1
+          fi
+          version="$(yq -r '.version // ""' CITATION.cff)"
+          package="$(jq -r '.version // ""' package.json)"
+          if [[ -z "${version}" || "${package}" != "${version}" ]]; then
+            echo "::error file=CITATION.cff::Version '${version}' isn't the version of package.json ('${package}')"
+            exit 1
+          fi
+          # The commit of the (annotated) tag, if any: later commits are
+          # skipped, but not the tagged commit itself
+          tagged="$(git ls-remote origin "refs/tags/v${version}^{}" | cut -f1)"
+          if [[ -n "${tagged}" && "${tagged}" != "${SHA}" ]]; then
+            echo "v${version} is tagged: no release in preparation"
+            exit 0
+          fi
+          released="$(yq -r '.date-released // ""' CITATION.cff)"
+          notes="docs/releases/${version}.md"
+          others="$(git ls-remote --tags origin 'refs/tags/v*' \
+            | awk -v tag="refs/tags/v${version}" '$2 != tag && $2 != tag "^{}"')"
+          if [[ -z "${released}" && ! -f "${notes}" && -z "${others}" ]]; then
+            echo "No date-released, notes or earlier release: no release in preparation"
+            exit 0
+          fi
+          if [[ -z "${released}" ]]; then
+            echo "::error file=CITATION.cff::Set date-released for the release of ${version}"
+            exit 1
+          fi
+          if [[ ! -f "${notes}" ]]; then
+            echo "::error file=CITATION.cff::No release notes ${notes} for version ${version}"
+            exit 1
+          fi
+          if grep -n "TODO" "${notes}"; then
+            echo "::error file=${notes}::Finish the release notes before tagging v${version}"
+            exit 1
+          fi
+          curl -fsSL "${CHECKER}" -o "${RUNNER_TEMP}/publish.py"
+          python3 -I "${RUNNER_TEMP}/publish.py" check "${notes}"
+
   # The only required check: the shared gate action of
   # elixir-cloud-aai/.github fails on failed, cancelled and skipped jobs
   # (except the intended skips: `title` on pushes and for Dependabot, `push`
@@ -604,7 +627,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [title, lint, test, build, audit, e2e, image, push, scan, publish]
+    needs: [title, lint, test, build, audit, e2e, readiness, image, push, scan, publish]
     permissions: {}
     steps:
       - name: Check results of all jobs
