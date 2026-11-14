@@ -3,6 +3,19 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
 
+/**
+ * Get the URL of a page of the app, for redirects: at `APP_ORIGIN`, as the
+ * standalone server of the image sees its listening address (e.g.
+ * `http://0.0.0.0:3000`) as the origin of requests; without the setting, at
+ * the origin of the request
+ * @param path Path of the page, with its query
+ * @param request The request
+ * @returns The URL
+ */
+function appUrl(path: string, request: NextRequest) {
+    return new URL(path, process.env.APP_ORIGIN || request.url);
+}
+
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get("code");
@@ -10,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     if (!code || !state) {
         return NextResponse.redirect(
-            new URL("/auth/error?type=params", request.url),
+            appUrl("/auth/error?type=params", request),
         );
     }
 
@@ -18,9 +31,7 @@ export async function GET(request: NextRequest) {
     const authState = cookieStore.get(`authState-${state}`)?.value;
 
     if (!authState || authState !== state) {
-        return NextResponse.redirect(
-            new URL("/auth/error?type=state", request.url),
-        );
+        return NextResponse.redirect(appUrl("/auth/error?type=state", request));
     }
 
     cookieStore.delete(`authState-${state}`);
@@ -53,7 +64,7 @@ export async function GET(request: NextRequest) {
                 `OIDC callback error: category=invalid_response, url=${process.env.LS_LOGIN_URL}/oidc/token, has_access_token=${typeof access_token === "string"}, has_id_token=${typeof id_token === "string"}`,
             );
             return NextResponse.redirect(
-                new URL("/auth/error?type=internal", request.url),
+                appUrl("/auth/error?type=internal", request),
             );
         }
 
@@ -65,7 +76,7 @@ export async function GET(request: NextRequest) {
         };
 
         const responseRedirect = NextResponse.redirect(
-            new URL("/dashboard", request.url),
+            appUrl("/dashboard", request),
         );
 
         const expiresAt =
@@ -118,7 +129,7 @@ export async function GET(request: NextRequest) {
             );
         }
         return NextResponse.redirect(
-            new URL("/auth/error?type=internal", request.url),
+            appUrl("/auth/error?type=internal", request),
         );
     }
 }

@@ -46,7 +46,9 @@ PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
   `openid profile email offline_access`.
 - `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API.
 - `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000`
-  for local development or your production URL).
+  for local development or your production URL), as users' browsers reach
+  it. The login sends users back to it, and the logout accepts requests
+  only from it.
 
 Make sure the OIDC client has the redirect URI of `OIDC_REDIRECT_URI`
 registered, e.g. for local development:

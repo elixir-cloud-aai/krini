@@ -35,8 +35,13 @@ afterEach(() => {
  * Run the callback with a pending login of state `s1`
  * @param query Query of the callback URL
  * @param reply Result of the token request: data, or an error to throw
+ * @param origin Origin of the request URL that the server sees
  */
-async function callback(query: string, reply: unknown = tokens) {
+async function callback(
+    query: string,
+    reply: unknown = tokens,
+    origin = appOrigin,
+) {
     setUp({ "authState-s1": "s1", logout_marker: "1" });
     const post = vi.spyOn(await http(), "post");
     if (reply instanceof Error) post.mockRejectedValue(reply);
@@ -44,7 +49,7 @@ async function callback(query: string, reply: unknown = tokens) {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { GET } = await import("./route");
     const response = await GET(
-        new NextRequest(`${appOrigin}/auth/api/callback${query}`),
+        new NextRequest(`${origin}/auth/api/callback${query}`),
     );
     return { response, post, error };
 }
@@ -89,6 +94,36 @@ describe("GET /auth/api/callback", () => {
         const expiry = cookieOf(response, "token_expires_at");
         expect(expiry?.value).toBe(String(now + 55 * 60 * 1000));
         expect(expiry?.attributes).not.toContain("httponly");
+    });
+
+    // the standalone server of the image sees its listening address
+    // (`0.0.0.0`) as the origin of requests, not the one of the browser
+    it.each([
+        ["after a login", "?code=c1&state=s1", "/dashboard"],
+        ["on errors", "?code=c1", "/auth/error?type=params"],
+    ])("redirects to APP_ORIGIN %s", async (_, query, path) => {
+        const { response } = await callback(
+            query,
+            tokens,
+            "http://0.0.0.0:3000",
+        );
+        expect(locationOf(response)).toBe(`${appOrigin}${path}`);
+    });
+
+    it("redirects to the request's origin without APP_ORIGIN", async () => {
+        setUp({ "authState-s1": "s1" });
+        vi.stubEnv("APP_ORIGIN", undefined);
+        vi.spyOn(await http(), "post").mockResolvedValue({
+            status: 200,
+            data: tokens,
+        });
+        const { GET } = await import("./route");
+        const response = await GET(
+            new NextRequest(
+                "http://localhost:3000/auth/api/callback?code=c&state=s1",
+            ),
+        );
+        expect(locationOf(response)).toBe("http://localhost:3000/dashboard");
     });
 
     it("sends empty client settings that aren't set", async () => {
