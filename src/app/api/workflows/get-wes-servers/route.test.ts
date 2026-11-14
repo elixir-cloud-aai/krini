@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { services, verifications, verificationsOf } from "@/test/registry";
 import {
     http,
     httpError,
@@ -21,13 +22,20 @@ type Reply = unknown | Error | ((url: string) => Promise<unknown>);
  * Mock the registry and the WES services and load the route
  * @param services Services in the registry, or an error to throw
  * @param probes Reply of each WES service by ID (default: its service info)
+ * @param verified Verifications of the registry, or an error to throw
+ *     (default: every service with an ID is verified)
  */
-async function load(services: unknown, probes: Record<string, Reply> = {}) {
+async function load(
+    entries: unknown,
+    probes: Record<string, Reply> = {},
+    verified: unknown = verificationsOf(entries),
+) {
     const get = vi.spyOn(await http(), "get");
     get.mockImplementation(async (url) => {
-        if (url === `${registryUrl}/services`) {
-            if (services instanceof Error) throw services;
-            return { status: 200, data: services };
+        if (url.startsWith(registryUrl)) {
+            const data = url.endsWith("/verifications") ? verified : entries;
+            if (data instanceof Error) throw data;
+            return { status: 200, data };
         }
         const id = new URL(url).hostname.split(".")[0];
         const reply = id in probes ? probes[id] : infoOf(id);
@@ -43,6 +51,7 @@ const now = new Date("2026-11-12T12:00:00Z").getTime();
 
 beforeEach(() => {
     setUp();
+    vi.spyOn(console, "error").mockImplementation(() => {});
     vi.useFakeTimers({ now, toFake: ["Date"] });
 });
 
@@ -83,10 +92,12 @@ describe("GET /api/workflows/get-wes-servers", () => {
         );
 
         // reads of the registry and service info are public: no token
-        expect(get.mock.calls[0]).toEqual([
-            `${registryUrl}/services`,
-            { timeout: 8000, signal: expect.any(AbortSignal) },
-        ]);
+        for (const path of ["services", "verifications"])
+            expect(get).toHaveBeenCalledWith(`${registryUrl}/${path}`, {
+                timeout: 8000,
+                signal: expect.any(AbortSignal),
+                headers: { Accept: "application/json" },
+            });
         const probe = get.mock.calls.find(
             ([url]) => url === `${urlOf("wes")}/service-info`,
         );
@@ -103,7 +114,7 @@ describe("GET /api/workflows/get-wes-servers", () => {
             service("wes", `${urlOf("wes")}/?a=b#c`),
         ]);
         await GET();
-        expect(get.mock.calls[1][0]).toBe(`${urlOf("wes")}/service-info`);
+        expect(get.mock.calls[2][0]).toBe(`${urlOf("wes")}/service-info`);
     });
 
     it.each([
@@ -152,19 +163,19 @@ describe("GET /api/workflows/get-wes-servers", () => {
             { down: httpError(503) },
         );
         await GET();
-        expect(get).toHaveBeenCalledTimes(3);
+        expect(get).toHaveBeenCalledTimes(4);
 
         vi.setSystemTime(now + 59_999);
         const cached = await GET();
         expect(cached.headers.get("x-cache")).toBe("HIT");
         expect(cached.headers.get("x-unreachable-count")).toBe("1");
         expect(await cached.json()).toHaveLength(2);
-        expect(get).toHaveBeenCalledTimes(3);
+        expect(get).toHaveBeenCalledTimes(4);
 
         vi.setSystemTime(now + 60_000);
         const fresh = await GET();
         expect(fresh.headers.get("x-cache")).toBe("MISS");
-        expect(get).toHaveBeenCalledTimes(6);
+        expect(get).toHaveBeenCalledTimes(8);
     });
 
     it("keeps the list of the request that finished first", async () => {
@@ -205,6 +216,38 @@ describe("GET /api/workflows/get-wes-servers", () => {
         const body = await (await GET()).json();
         expect(body).toHaveLength(20);
         expect(most).toBe(8);
+    });
+
+    it("lists and probes only verified services", async () => {
+        const { GET, get } = await load(services, {}, verifications);
+        const response = await GET();
+        const body = await response.json();
+        expect(body.map((val: { id: string }) => val.id)).toEqual([
+            "wes-verified",
+        ]);
+        const probed = get.mock.calls
+            .map(([url]) => url)
+            .filter((url) => !url.startsWith(registryUrl));
+        expect(probed).toEqual([
+            "https://wes.example.org/ga4gh/wes/v1/service-info",
+        ]);
+    });
+
+    it("lists nothing if the registry has no verifications", async () => {
+        const { GET, get } = await load(services, {}, httpError(404));
+        const response = await GET();
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual([]);
+        expect(get).toHaveBeenCalledTimes(2);
+    });
+
+    it("fails if the verifications can't be read", async () => {
+        const { GET } = await load(services, {}, httpError(503));
+        const response = await GET();
+        expect(response.status).toBe(502);
+        expect(await response.json()).toEqual({
+            message: "Failed to fetch Cloud Registry services",
+        });
     });
 
     it("returns an empty list for a registry without WES services", async () => {

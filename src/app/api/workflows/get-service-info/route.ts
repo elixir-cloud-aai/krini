@@ -30,16 +30,9 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        let parsedUrl: URL;
-
-        try {
-            parsedUrl = new URL(server.url);
-        } catch {
-            return NextResponse.json(
-                { error: "Invalid WES service endpoint." },
-                { status: 400 },
-            );
-        }
+        // `fetchVerifiedServices()` keeps only absolute `https` URLs; the
+        // checks below stay as a second line of defence
+        const parsedUrl = new URL(server.url);
 
         const isValidPath = /^\/(?:.*\/)?ga4gh\/wes\/v1\/?$/.test(
             parsedUrl.pathname,

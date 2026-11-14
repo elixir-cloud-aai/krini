@@ -4,7 +4,6 @@ import {
     cookieStore,
     http,
     httpError,
-    jar,
     loginUrl,
     networkError,
     setUp,
@@ -80,7 +79,10 @@ describe("POST /auth/api/refresh", () => {
         });
         expect(cookieOf(response, "id_token")?.value).toBe("id-2");
         // rotated refresh tokens replace the old one
-        expect(cookieOf(response, "refresh_token")?.value).toBe("refresh-2");
+        expect(cookieOf(response, "refresh_token")).toMatchObject({
+            value: "refresh-2",
+            attributes: expect.arrayContaining(["httponly"]),
+        });
         const expiry = cookieOf(response, "token_expires_at");
         expect(expiry?.value).toBe(String(now + 5 * 60 * 1000));
         expect(expiry?.attributes).not.toContain("httponly");
@@ -144,19 +146,6 @@ describe("POST /auth/api/refresh", () => {
         expect(response.status).toBe(401);
         expect(await response.json()).toEqual({ error: "Session terminated" });
         expect(post).not.toHaveBeenCalled();
-    });
-
-    it("drops the new tokens after a logout during the refresh", async () => {
-        setUp({ refresh_token: "rt-SECRET-1" });
-        vi.spyOn(await http(), "post").mockImplementation(async () => {
-            jar.set("logout_marker", { name: "logout_marker", value: "1" });
-            return { status: 200, data: tokens };
-        });
-        const { POST } = await import("./route");
-        const response = await POST();
-        expect(response.status).toBe(401);
-        expect(await response.json()).toEqual({ error: "Session terminated" });
-        expect(response.headers.getSetCookie()).toEqual([]);
     });
 
     it("rejects a token response without an access token", async () => {

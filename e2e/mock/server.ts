@@ -3,7 +3,8 @@
  *
  * - an OpenID Connect provider (`/oidc/authorize`, `/oidc/token`,
  *   `/oidc/userinfo`) that logs in the test user without a form;
- * - a service registry (`/ga4gh/registry/v1/services`);
+ * - a service registry (`/ga4gh/registry/v1/services` and
+ *   `/ga4gh/registry/v1/verifications`);
  * - a WES service over `https` with a self-signed certificate
  *   (`/ga4gh/wes/v1/...`), which the browser calls directly, as with real
  *   services, and which allows the app's origin (CORS);
@@ -77,7 +78,23 @@ const services = [
         type: { group: "org.ga4gh", artifact: "tes", version: "1.1.0" },
         url: `https://127.0.0.1:${httpsPort}/ga4gh/tes/v1`,
     },
+    {
+        id: "unverified-wes",
+        name: "Unverified WES",
+        type: { group: "org.ga4gh", artifact: "wes", version: "1.1.0" },
+        url: wesUrl,
+    },
 ];
+
+/** Verifications of the registry: all entries but `unverified-wes` */
+const verifications = services
+    .filter(({ id }) => id !== "unverified-wes")
+    .map(({ id, url, type }) => ({
+        serviceId: id,
+        url,
+        type,
+        verifiedAt: "2026-11-01T00:00:00Z",
+    }));
 
 const serviceInfo = {
     id: "mock-wes",
@@ -195,6 +212,12 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
 
     if (req.method === "GET" && url.pathname === "/ga4gh/registry/v1/services")
         return send(res, 200, services);
+
+    if (
+        req.method === "GET" &&
+        url.pathname === "/ga4gh/registry/v1/verifications"
+    )
+        return send(res, 200, verifications);
 
     if (req.method === "GET" && url.pathname === "/mock/requests")
         return send(res, 200, requests);

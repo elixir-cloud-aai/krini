@@ -27,22 +27,8 @@ type ProbeResult =
     | { status: "unreachable"; reason: string };
 
 async function probeWesService(service: WESServer): Promise<ProbeResult> {
-    const serviceUrl = service?.url;
-
-    if (typeof serviceUrl !== "string") {
-        return { status: "invalid", reason: "missing url" };
-    }
-
-    let url: URL;
-    try {
-        url = new URL(serviceUrl);
-    } catch {
-        return { status: "invalid", reason: "malformed url" };
-    }
-
-    if (url.protocol !== "https:") {
-        return { status: "invalid", reason: "url is not https" };
-    }
+    // `fetchVerifiedServices()` keeps only absolute `https` URLs
+    const url = new URL(service.url);
 
     try {
         const response = await axiosBase.get(

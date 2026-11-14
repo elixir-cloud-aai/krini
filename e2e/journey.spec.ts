@@ -24,7 +24,8 @@ test.describe("anonymous visitors", () => {
 
         await page.getByRole("link", { name: "Workflows" }).click();
         await page.getByRole("combobox").click();
-        // only the https entry; the http entry and the TES are dropped
+        // only the verified https entry; the http entry, the unverified
+        // entry and the TES are dropped
         await expect(page.getByRole("option")).toHaveCount(1);
         await expect(page.getByRole("option")).toContainText("Mock WES");
     });

@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { services, verifications, verificationsOf } from "@/test/registry";
 import {
     http,
     httpError,
@@ -14,17 +15,29 @@ const service = (id: string, artifact: string) => ({
 });
 
 /**
- * Get the TES list for a registry reply
- * @param reply Result of the registry request: data, or an error to throw
+ * Get the TES list for the replies of the registry
+ * @param reply Services in the registry, or an error to throw
+ * @param verified Verifications of the registry, or an error to throw
+ *     (default: every service with an ID is verified)
  */
-async function tesServers(reply: unknown) {
+async function tesServers(reply: unknown, verified?: unknown) {
     setUp();
     const get = vi.spyOn(await http(), "get");
-    if (reply instanceof Error) get.mockRejectedValue(reply);
-    else get.mockResolvedValue({ status: 200, data: reply });
+    get.mockImplementation(async (url) => {
+        const data =
+            url === `${registryUrl}/verifications`
+                ? (verified ?? verificationsOf(reply))
+                : reply;
+        if (data instanceof Error) throw data;
+        return { status: 200, data };
+    });
     const { GET } = await import("./route");
     return { response: await GET(), get };
 }
+
+beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+});
 
 describe("GET /api/tasks/get-tes-servers", () => {
     it("lists the TES services and gateways of the registry", async () => {
@@ -40,7 +53,21 @@ describe("GET /api/tasks/get-tes-servers", () => {
         expect(response.status).toBe(200);
         expect(await response.json()).toEqual([tes, gateway]);
         // reads of the registry are public: no token
-        expect(get).toHaveBeenCalledWith(`${registryUrl}/services`);
+        for (const path of ["services", "verifications"])
+            expect(get).toHaveBeenCalledWith(`${registryUrl}/${path}`, {
+                timeout: 8000,
+                signal: expect.any(AbortSignal),
+                headers: { Accept: "application/json" },
+            });
+    });
+
+    it("lists only verified https TES services", async () => {
+        const { response } = await tesServers(services, verifications);
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body.map((val: { id: string }) => val.id)).toEqual([
+            "tes-verified",
+        ]);
     });
 
     it("ignores trailing slashes of the registry URL", async () => {
@@ -51,7 +78,10 @@ describe("GET /api/tasks/get-tes-servers", () => {
             .mockResolvedValue({ status: 200, data: [] });
         const { GET } = await import("./route");
         await GET();
-        expect(get).toHaveBeenCalledWith(`${registryUrl}/services`);
+        expect(get).toHaveBeenCalledWith(
+            `${registryUrl}/services`,
+            expect.anything(),
+        );
     });
 
     it("fails without a registry URL", async () => {
@@ -62,30 +92,32 @@ describe("GET /api/tasks/get-tes-servers", () => {
         const response = await GET();
         expect(response.status).toBe(500);
         expect(await response.json()).toEqual({
-            message: "Internal server error",
+            message: "Cloud Registry URL is not configured",
         });
         expect(get).not.toHaveBeenCalled();
+    });
+
+    it("lists nothing if the registry has no verifications", async () => {
+        const { response } = await tesServers(services, httpError(404));
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual([]);
     });
 
     it.each([
         ["no body", ""],
         ["an object", { services: [] }],
+        ["an error status", httpError(503, { msg: "maintenance" })],
+        ["no answer", networkError("ECONNREFUSED")],
     ])("fails on a registry response with %s", async (_, reply) => {
-        const { response } = await tesServers(reply);
-        expect(response.status).toBe(500);
+        const { response } = await tesServers(reply, []);
+        expect(response.status).toBe(502);
+        expect(await response.json()).toEqual({
+            message: "Failed to fetch Cloud Registry services",
+        });
     });
 
-    it("passes on the registry's error status and body", async () => {
-        const { response } = await tesServers(
-            httpError(503, { msg: "maintenance" }),
-        );
-        expect(response.status).toBe(503);
-        expect(await response.json()).toEqual({ msg: "maintenance" });
-    });
-
-    it("fails when the registry doesn't answer", async () => {
-        const { response } = await tesServers(networkError("ECONNREFUSED"));
-        expect(response.status).toBe(500);
-        expect(await response.json()).toBeNull();
+    it("fails if the verifications can't be read", async () => {
+        const { response } = await tesServers(services, httpError(503));
+        expect(response.status).toBe(502);
     });
 });
