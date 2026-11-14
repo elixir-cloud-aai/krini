@@ -3,9 +3,8 @@
 # coverage threshold (reported to Codecov), the type check and the build,
 # an audit of the production dependencies, the Docker image (a smoke test
 # with a read-only root file system) and its scan for known vulnerabilities
-# (Trivy), the end-to-end tests against mock services (`e2e/mock/`), on
-# the build of the checkout and on the image, the
-# documentation (strict MkDocs build), the release readiness, and, on
+# (Trivy), the end-to-end tests against mock services (`e2e/mock/`) on the
+# build of the checkout and, separately, on the image, the documentation (strict MkDocs build), the release readiness, and, on
 # pushes, push the image by digest (with SBOM and provenance attestations),
 # scan exactly that digest, then attest, sign (Sigstore) and tag it with
 # `dev` and `sha-<commit>`
@@ -337,8 +336,10 @@ jobs:
   # missing from the standalone output, or a setting read at build time)
   # fails here. For pull requests the image of `image`, for pushes exactly
   # the digest pushed by `push` (public, so pulling it needs no login).
-  # Playwright runs on the runner, which starts the image with Docker; the
-  # browser comes in the version of `@playwright/test`
+  # Unlike in `e2e`, Playwright runs on the runner, not in its image, as it
+  # starts the app with the runner's Docker (`docker run` in
+  # `playwright.config.ts`); Chromium and its system packages come from
+  # `playwright install`, in the version of `@playwright/test`
   e2e-image:
     name: End-to-end tests (image)
     # For pull requests, `push` is skipped

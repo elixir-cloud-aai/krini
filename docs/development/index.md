@@ -118,6 +118,10 @@ calls real services.
     E2E_IMAGE=krini:local bun run test:e2e --project chromium
     ```
 
+    The container is removed when the tests end. If a run was killed and
+    left it behind, the next run fails at once, as the name is taken:
+    remove it with `docker rm -f krini-e2e`.
+
 ## Documentation
 
 The documentation is built with [MkDocs](https://www.mkdocs.org/) and the

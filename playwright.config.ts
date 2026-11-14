@@ -24,9 +24,20 @@ const mockHttp = mockURL;
 const certDir = "e2e/.certs";
 const image = process.env.E2E_IMAGE;
 
-// a name, tag or digest only, as the image is part of a shell command
+// The image and the certificate directory (where the mock services write
+// it: relative to this file, the web servers' working directory) are part
+// of a shell command: only the characters of image references and of plain
+// paths, without quotes, spaces or `$`
+const certPath = resolve(__dirname, certDir);
 if (image !== undefined && !/^\w[\w.:/@-]*$/.test(image)) {
-    throw new Error(`E2E_IMAGE isn't an image reference: '${image}'`);
+    throw new Error(
+        `E2E_IMAGE has characters of no image reference: '${image}'`,
+    );
+}
+if (image !== undefined && !/^[\w./-]+$/.test(certPath)) {
+    throw new Error(
+        `Run the tests with E2E_IMAGE from a plain path, not '${certPath}'`,
+    );
 }
 
 /** Settings of the app, the same for the build of the checkout and the
@@ -50,11 +61,12 @@ const app = image
     ? {
           // `--env <name>` passes the variable from `env` below; the
           // certificate directory is mounted at `/certs`. On SIGTERM, Docker
-          // stops the container, and `--rm` removes it
+          // stops the container, and `--rm` removes it; a container left by
+          // a killed run keeps the name, so the next run fails at once
           command: [
               "docker run --rm --init --name krini-e2e --network host",
               "--read-only --tmpfs /tmp",
-              `--volume "${resolve(certDir)}:/certs:ro"`,
+              `--volume ${certPath}:/certs:ro`,
               "--env PORT --env NODE_EXTRA_CA_CERTS",
               ...Object.keys(appEnv).map((name) => `--env ${name}`),
               image,

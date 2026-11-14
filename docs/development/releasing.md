@@ -130,11 +130,11 @@ all releases are GitHub pre-releases; stable versions (without `-alphaN`,
     versions, the curated notes and the CI run (`Prepare release`); builds
     and pushes the image by digest (`Push release image`, needs approval);
     scans exactly that digest (`Scan release image`) and runs the smoke test
-    and the end-to-end tests of CI on it (`Smoke test`,
-    `scripts/check-image.sh`, and `End-to-end tests (release image)`);
-    attests, signs and
-    tags it `X.Y.Z` (and `latest` for the highest stable version)
-    (`Release image`, needs approval); and then, without another approval,
+    and the end-to-end tests of CI on it (`Smoke test`, with
+    `scripts/check-image.sh`, and `End-to-end tests (release image)`); only
+    when all three passed, attests, signs and tags it `X.Y.Z` (and `latest`
+    for the highest stable version) (`Release image`, needs approval); and
+    then, without another approval,
     creates the GitHub release (`Publish release`): the curated notes of the
     tagged commit, then GitHub's generated notes under `## Commits` (without
     their `## What's Changed` header, with "New Contributors"), and GitHub's
