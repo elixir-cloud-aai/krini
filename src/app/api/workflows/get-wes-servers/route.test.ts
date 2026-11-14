@@ -4,6 +4,7 @@ import {
     http,
     httpError,
     networkError,
+    registryOptions,
     registryUrl,
     setUp,
 } from "@/test/routes";
@@ -20,7 +21,7 @@ type Reply = unknown | Error | ((url: string) => Promise<unknown>);
 
 /**
  * Mock the registry and the WES services and load the route
- * @param services Services in the registry, or an error to throw
+ * @param entries Entries of the registry, or an error to throw
  * @param probes Reply of each WES service by ID (default: its service info)
  * @param verified Verifications of the registry, or an error to throw
  *     (default: every service with an ID is verified)
@@ -93,11 +94,10 @@ describe("GET /api/workflows/get-wes-servers", () => {
 
         // reads of the registry and service info are public: no token
         for (const path of ["services", "verifications"])
-            expect(get).toHaveBeenCalledWith(`${registryUrl}/${path}`, {
-                timeout: 8000,
-                signal: expect.any(AbortSignal),
-                headers: { Accept: "application/json" },
-            });
+            expect(get).toHaveBeenCalledWith(
+                `${registryUrl}/${path}`,
+                registryOptions,
+            );
         const probe = get.mock.calls.find(
             ([url]) => url === `${urlOf("wes")}/service-info`,
         );
@@ -114,6 +114,7 @@ describe("GET /api/workflows/get-wes-servers", () => {
             service("wes", `${urlOf("wes")}/?a=b#c`),
         ]);
         await GET();
+        // after the 2 registry requests
         expect(get.mock.calls[2][0]).toBe(`${urlOf("wes")}/service-info`);
     });
 
@@ -163,6 +164,7 @@ describe("GET /api/workflows/get-wes-servers", () => {
             { down: httpError(503) },
         );
         await GET();
+        // 2 registry requests (services, verifications) + 2 probes
         expect(get).toHaveBeenCalledTimes(4);
 
         vi.setSystemTime(now + 59_999);

@@ -16,6 +16,7 @@ function entry(id: string, url: string, type: typeof wesType) {
     };
 }
 
+/** Registry entries: verified ones and ones that fail each check */
 export const services = [
     entry("wes-verified", "https://wes.example.org/ga4gh/wes/v1", wesType),
     entry("wes-unverified", "https://other.example.org/ga4gh/wes/v1", wesType),
@@ -38,6 +39,7 @@ function verification(serviceId: string, url: string, type: typeof wesType) {
     return { serviceId, url, type, verifiedAt: "2026-11-10T12:00:00.000Z" };
 }
 
+/** Verifications of the registry, some for entries that changed since */
 export const verifications = [
     verification(
         "wes-verified",

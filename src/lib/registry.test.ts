@@ -6,7 +6,7 @@ import {
     RegistryConfigError,
 } from "@/lib/registry";
 import { services, verifications } from "@/test/registry";
-import { httpError, registryUrl as REGISTRY_URL } from "@/test/routes";
+import { httpError, registryUrl } from "@/test/routes";
 
 const get = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/axios", () => ({ axiosBase: { get } }));
@@ -90,7 +90,7 @@ describe("filterVerifiedServices", () => {
 
 describe("fetchVerifiedServices", () => {
     beforeEach(() => {
-        vi.stubEnv("CLOUD_REGISTRY_URL", `${REGISTRY_URL}/`);
+        vi.stubEnv("CLOUD_REGISTRY_URL", `${registryUrl}/`);
         vi.spyOn(console, "error").mockImplementation(() => {});
     });
 
@@ -109,8 +109,8 @@ describe("fetchVerifiedServices", () => {
 
         expect(ids(result)).toEqual(["wes-verified"]);
         expect(get.mock.calls.map(([url]) => url).sort()).toEqual([
-            `${REGISTRY_URL}/services`,
-            `${REGISTRY_URL}/verifications`,
+            `${registryUrl}/services`,
+            `${registryUrl}/verifications`,
         ]);
         for (const [, options] of get.mock.calls) {
             expect(options?.headers?.Authorization).toBeUndefined();

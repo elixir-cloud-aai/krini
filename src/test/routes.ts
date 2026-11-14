@@ -4,7 +4,7 @@
  * and the settings of a mock deployment
  */
 import { AxiosError, AxiosHeaders } from "axios";
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 
 type Cookie = { name: string; value: string; [option: string]: unknown };
 
@@ -56,6 +56,13 @@ async function http() {
     const { axiosBase } = await import("@/lib/axios");
     return axiosBase;
 }
+
+/** Options of each request to the registry: a timeout and no token */
+const registryOptions = {
+    timeout: 8000,
+    signal: expect.any(AbortSignal),
+    headers: { Accept: "application/json" },
+};
 
 /**
  * Build the error that axios throws for an HTTP error status
@@ -110,6 +117,7 @@ export {
     jar,
     loginUrl,
     networkError,
+    registryOptions,
     registryUrl,
     setUp,
 };

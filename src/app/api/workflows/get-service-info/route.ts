@@ -30,21 +30,16 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // `fetchVerifiedServices()` keeps only absolute `https` URLs; the
-        // checks below stay as a second line of defence
+        // `fetchVerifiedServices()` keeps only absolute `https` URLs without
+        // user info; this route also allows only the default port and a
+        // path that ends in the WES API
         const parsedUrl = new URL(server.url);
 
         const isValidPath = /^\/(?:.*\/)?ga4gh\/wes\/v1\/?$/.test(
             parsedUrl.pathname,
         );
 
-        if (
-            parsedUrl.protocol !== "https:" ||
-            parsedUrl.username ||
-            parsedUrl.password ||
-            parsedUrl.port ||
-            !isValidPath
-        ) {
+        if (parsedUrl.port || !isValidPath) {
             return NextResponse.json(
                 { error: "Invalid WES service endpoint." },
                 { status: 400 },

@@ -6,6 +6,7 @@ import {
     http,
     httpError,
     networkError,
+    registryOptions,
     registryUrl,
     setUp,
 } from "@/test/routes";
@@ -13,11 +14,6 @@ import {
 const wesUrl = "https://wes.example.org/ga4gh/wes/v1";
 const serviceInfo = { id: "wes", name: "WES", workflow_type_versions: {} };
 const wesType = { group: "org.ga4gh", artifact: "wes", version: "1.1.0" };
-const registryOptions = {
-    timeout: 8000,
-    signal: expect.any(AbortSignal),
-    headers: { Accept: "application/json" },
-};
 
 beforeEach(() => {
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -26,7 +22,7 @@ beforeEach(() => {
 /**
  * Get the service info of a WES service from the registry
  * @param id Registry ID of the service (undefined: no `id` parameter)
- * @param services Services in the registry, or an error to throw
+ * @param entries Entries of the registry, or an error to throw
  * @param info Service info of the WES service, or an error to throw
  * @param verified Verifications of the registry, or an error to throw
  *     (default: every service with an ID is verified)

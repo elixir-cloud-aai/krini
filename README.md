@@ -39,7 +39,7 @@ bun run dev
 
 Great, now you are good to go!
 
-- Run the unit and integration tests (Vitest; they use fixtures and mocks, no real services):
+- Run the unit tests (Vitest; they use fixtures and mocks, no real services):
 
 ```
 bun run test
@@ -122,7 +122,7 @@ CI runs both test levels on pull requests and pushes to `dev`, `master` and `sta
   bun run test:coverage   # with the coverage report and the 100% threshold
   ```
 
-- **End-to-end tests** ([Playwright](https://playwright.dev/)): the main user journey in Chromium and Firefox, in `e2e/`. They browse anonymously, log in, reject a forged login callback, submit a workflow with the user's token and log out. They also check the privacy notice and that visitors get no cookies and members only the session's. TES tasks aren't covered yet. The mock services in `e2e/mock/server.ts` play the login provider, the registry and a WES service. The WES service runs over `https` with a self-signed certificate, which `openssl` creates at start, so the tests need `bun` and `openssl`. Playwright starts the mock services, builds the app and starts it. The ports are in `e2e/settings.ts`.
+- **End-to-end tests** ([Playwright](https://playwright.dev/)): the main user journey in Chromium and Firefox, in `e2e/`. They browse anonymously, log in, reject a forged login callback, submit a workflow with the user's token and log out. They also check the privacy notice and that visitors get no cookies and members only the session's. TES tasks aren't covered yet. The mock services in `e2e/mock/server.ts` play the login provider, the registry (with verifications and an unverified entry) and a WES service. The WES service runs over `https` with a self-signed certificate, which `openssl` creates at start, so the tests need `bun` and `openssl`. Playwright starts the mock services, builds the app and starts it. The ports are in `e2e/settings.ts`.
 
   ```sh
   bunx playwright install chromium firefox   # once

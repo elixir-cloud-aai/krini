@@ -4,6 +4,7 @@ import {
     http,
     httpError,
     networkError,
+    registryOptions,
     registryUrl,
     setUp,
 } from "@/test/routes";
@@ -16,18 +17,18 @@ const service = (id: string, artifact: string) => ({
 
 /**
  * Get the TES list for the replies of the registry
- * @param reply Services in the registry, or an error to throw
+ * @param entries Entries of the registry, or an error to throw
  * @param verified Verifications of the registry, or an error to throw
  *     (default: every service with an ID is verified)
  */
-async function tesServers(reply: unknown, verified?: unknown) {
+async function tesServers(entries: unknown, verified?: unknown) {
     setUp();
     const get = vi.spyOn(await http(), "get");
     get.mockImplementation(async (url) => {
         const data =
             url === `${registryUrl}/verifications`
-                ? (verified ?? verificationsOf(reply))
-                : reply;
+                ? (verified ?? verificationsOf(entries))
+                : entries;
         if (data instanceof Error) throw data;
         return { status: 200, data };
     });
@@ -54,11 +55,10 @@ describe("GET /api/tasks/get-tes-servers", () => {
         expect(await response.json()).toEqual([tes, gateway]);
         // reads of the registry are public: no token
         for (const path of ["services", "verifications"])
-            expect(get).toHaveBeenCalledWith(`${registryUrl}/${path}`, {
-                timeout: 8000,
-                signal: expect.any(AbortSignal),
-                headers: { Accept: "application/json" },
-            });
+            expect(get).toHaveBeenCalledWith(
+                `${registryUrl}/${path}`,
+                registryOptions,
+            );
     });
 
     it("lists only verified https TES services", async () => {
@@ -109,6 +109,7 @@ describe("GET /api/tasks/get-tes-servers", () => {
         ["an error status", httpError(503, { msg: "maintenance" })],
         ["no answer", networkError("ECONNREFUSED")],
     ])("fails on a registry response with %s", async (_, reply) => {
+        // any registry failure is a 502, without the registry's status
         const { response } = await tesServers(reply, []);
         expect(response.status).toBe(502);
         expect(await response.json()).toEqual({
