@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Smoke test of a Krini image, run by the `image` job of
+# `.github/workflows/ci.yml` and the `smoke` job of
+# `.github/workflows/release.yml`: the container runs as a non-root user
+# with a read-only root file system and a writable `/tmp`, serves the login
+# page without settings, redirects the start page and writes optimized
+# images to `/tmp/next-cache` (see "Container Image" in
+# `docs/deployment.md`). The optimized image is
+# `public/ls-login-grey-wide.jpg` (shown on the login page): change it here
+# if it is renamed. Needs Docker and curl, and port 3000 on 127.0.0.1.
+#
+# Usage: scripts/check-image.sh <image>
+set -euo pipefail
+
+if [[ $# -ne 1 || -z "$1" ]]; then
+  echo "Usage: $0 <image>" >&2
+  exit 2
+fi
+image="$1"
+
+trap 'docker rm -f app >/dev/null 2>&1 || true' EXIT
+docker run -d --name app -p 127.0.0.1:3000:3000 \
+  --read-only --tmpfs /tmp "${image}"
+if [[ "$(docker exec app id -u)" == 0 ]]; then
+  echo "::error::The container runs as root"
+  exit 1
+fi
+for _ in $(seq 30); do
+  # the start page redirects to the dashboard; the login page is served
+  # without settings (200, not a redirect, which `curl -f` would also
+  # accept); an optimized image is written to `.next/cache` (a link to
+  # `/tmp`)
+  login="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/auth/login || true)"
+  if [[ "${login}" =~ ^[1-5] && "${login}" != 200 ]]; then
+    docker logs app
+    echo "::error::The login page returned ${login}, expected 200"
+    exit 1
+  fi
+  if [[ "${login}" == 200 ]]; then
+    status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ || true)"
+    if [[ "${status}" != 307 ]]; then
+      echo "::error::The start page returned ${status}, expected a redirect (307)"
+      exit 1
+    fi
+    if ! curl -fs -o /dev/null "http://127.0.0.1:3000/_next/image?url=%2Fls-login-grey-wide.jpg&w=640&q=75"; then
+      docker logs app
+      echo "::error::The image optimizer failed"
+      exit 1
+    fi
+    if ! docker exec app sh -c 'ls /tmp/next-cache/images | grep -q .'; then
+      docker logs app
+      echo "::error::The image optimizer didn't write to /tmp/next-cache"
+      exit 1
+    fi
+    exit 0
+  fi
+  sleep 2
+done
+docker logs app
+echo "::error::The container didn't serve the login page"
+exit 1
