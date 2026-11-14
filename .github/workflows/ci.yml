@@ -4,11 +4,11 @@
 # an audit of the production dependencies, the Docker image (a smoke test
 # with a read-only root file system) and its scan for known vulnerabilities
 # (Trivy), the end-to-end tests against mock services (`e2e/mock/`) on the
-# build of the checkout and, separately, on the image, the documentation (strict MkDocs build), the release readiness, and, on
-# pushes, push the image by digest (with SBOM and provenance attestations),
-# scan exactly that digest, then attest, sign (Sigstore) and tag it with
-# `dev` and `sha-<commit>`
-# (never `latest`, which is for releases). The gate `passed` ("CI passed")
+# build of the checkout and, separately, on the image, the documentation
+# (strict MkDocs build), the release readiness, and, on pushes, push the
+# image by digest (with SBOM and provenance attestations), scan exactly
+# that digest, then attest, sign (Sigstore) and tag it with `dev` and
+# `sha-<commit>` (never `latest`, which is for releases). The gate `passed` ("CI passed")
 # is the only required check. No `paths:` filters, so that the gate always
 # reports; skip jobs with `if:` instead (and allow the skip in the gate).
 # Runs also when a pull request is edited, so that the title check follows
