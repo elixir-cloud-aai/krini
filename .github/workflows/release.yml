@@ -127,6 +127,11 @@ jobs:
             echo "::error::Versions don't match the tag: package.json '${package}', CITATION.cff '${citation}', tag '${VERSION}'"
             exit 1
           fi
+          # as the `readiness` job of `ci.yml` requires
+          if [[ -z "$(yq -r '.date-released // ""' CITATION.cff)" ]]; then
+            echo "::error::No date-released in CITATION.cff"
+            exit 1
+          fi
       # The GitHub release (`publish`) starts with the curated notes of
       # the tagged commit, so they must exist and be in the
       # organization's format before anything is published; also checks

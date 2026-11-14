@@ -556,10 +556,11 @@ jobs:
   # curated release notes only after the tag is pushed, and tags can't be
   # moved: check them here, so that a release-prep pull request fails
   # instead. The versions in `package.json` and `CITATION.cff` must always
-  # agree. A release is in preparation when `CITATION.cff` has a
-  # `date-released` (which the release-prep pull request sets) and its
-  # version isn't tagged yet (or is tagged on this commit): then its notes
-  # (`docs/releases/<version>.md`) must exist, without TODOs, in the
+  # agree. A release is in preparation when the version isn't tagged on an
+  # earlier commit and `CITATION.cff` has a `date-released`, the notes
+  # (`docs/releases/<version>.md`) exist, or other versions are tagged
+  # (i.e. the version was bumped after a release): then `date-released`
+  # must be set and the notes must exist, without TODOs, in the
   # organization's format (checker of the shared action that `release.yml`
   # pins: keep the commit in sync with it and with `docs/releasing.md`)
   readiness:
@@ -586,10 +587,6 @@ jobs:
             echo "::error file=CITATION.cff::Version '${version}' isn't the version of package.json ('${package}')"
             exit 1
           fi
-          if [[ -z "$(yq -r '.date-released // ""' CITATION.cff)" ]]; then
-            echo "No date-released in CITATION.cff: no release in preparation"
-            exit 0
-          fi
           # The commit of the (annotated) tag, if any: later commits are
           # skipped, but not the tagged commit itself
           tagged="$(git ls-remote origin "refs/tags/v${version}^{}" | cut -f1)"
@@ -597,7 +594,18 @@ jobs:
             echo "v${version} is tagged: no release in preparation"
             exit 0
           fi
+          released="$(yq -r '.date-released // ""' CITATION.cff)"
           notes="docs/releases/${version}.md"
+          others="$(git ls-remote --tags origin 'refs/tags/v*' \
+            | awk -v tag="refs/tags/v${version}" '$2 != tag && $2 != tag "^{}"')"
+          if [[ -z "${released}" && ! -f "${notes}" && -z "${others}" ]]; then
+            echo "No date-released, notes or earlier release: no release in preparation"
+            exit 0
+          fi
+          if [[ -z "${released}" ]]; then
+            echo "::error file=CITATION.cff::Set date-released for the release of ${version}"
+            exit 1
+          fi
           if [[ ! -f "${notes}" ]]; then
             echo "::error file=CITATION.cff::No release notes ${notes} for version ${version}"
             exit 1

@@ -19,9 +19,10 @@ all releases are GitHub pre-releases; stable versions (without `-alphaN`,
    pre-release (e.g., `X.Y.Z-rc1`), needs its own such change. CI's
    `Release readiness` job checks it, on every pull request and push: the
    versions in `package.json` and `CITATION.cff` must always agree, and
-   once `CITATION.cff` has a `date-released` and its version isn't tagged
-   yet, the notes must exist, without TODOs, in the organization's format.
-   Merge it.
+   unless the version is tagged on an earlier commit, a `date-released`,
+   release notes or a version bump after an earlier release start the
+   release preparation: then `date-released` must be set and the notes
+   must exist, without TODOs, in the organization's format. Merge it.
 
    The release workflow publishes the notes as the start of the GitHub
    release, so they follow the organization's format: an intro paragraph
@@ -71,6 +72,7 @@ all releases are GitHub pre-releases; stable versions (without `-alphaN`,
        # The files of the commit, not of the working tree
        [[ "$(git show "${sha}:package.json" | jq -r .version)" == "${version}" ]] || { echo "Wrong version in package.json"; exit 1; }
        [[ "$(git show "${sha}:CITATION.cff" | yq -r .version)" == "${version}" ]] || { echo "Wrong version in CITATION.cff"; exit 1; }
+       [[ -n "$(git show "${sha}:CITATION.cff" | yq -r '.date-released // ""')" ]] || { echo "No date-released in CITATION.cff"; exit 1; }
        # The notes of the commit, with the checker of the action that
        # `release.yml` pins (as the `readiness` job of `ci.yml` does)
        notes="$(mktemp -d)" && git show "${sha}:docs/releases/${version}.md" > "${notes}/notes.md" &&
