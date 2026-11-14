@@ -106,16 +106,18 @@ all releases are GitHub pre-releases; stable versions (without `-alphaN`,
     ) && echo "All checks passed"
     ```
 
-    Only if all checks passed, move `main` to the commit, and tag it with a
-    signed, annotated tag `vX.Y.Z` (or `vX.Y.Z-alphaN`, `vX.Y.Z-betaN` or
-    `vX.Y.Z-rcN` for a pre-release). Each command runs only if the one
-    before it succeeded: a tag on a commit that isn't on `main` would use up
-    the version.
+    Only if all checks passed, tag the commit with a signed, annotated tag
+    `vX.Y.Z` (or `vX.Y.Z-alphaN`, `vX.Y.Z-betaN` or `vX.Y.Z-rcN` for a
+    pre-release), and push it together with `main`, moved to the commit, in
+    one atomic push: either both refs are updated or neither (e.g. if `main`
+    can't be fast-forwarded or a ruleset rejects the tag), so that neither
+    a tag on a commit that isn't on `main` (which would use up the version)
+    nor an untagged `main` can result. If the push fails, delete the local
+    tag (`git tag -d "v${version}"`) before you try again.
 
     ```bash
-    git push origin "${sha}:main" &&  # fails unless it is a fast-forward
-        git tag -s "v${version}" "${sha}" -m "v${version}" &&
-        git push origin "v${version}"
+    git tag -s "v${version}" "${sha}" -m "v${version}" &&
+        git push --atomic origin "${sha}:refs/heads/main" "refs/tags/v${version}"
     ```
 
     No workflow of this repository deploys `main`, but a hosting project may

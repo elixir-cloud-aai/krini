@@ -15,14 +15,15 @@
 
 A virtual research environment for running and managing life science
 analyses, brought to you by [ELIXIR On-Cloud](https://elixir-on.cloud/).
-Users log in with an OpenID Connect provider, such as LS Login, find compute
-services in a [Cloud Registry](https://cloud-registry.readthedocs.io/en/latest/),
-run tasks on [GA4GH Task Execution Service
+Users log in with LS Login, find compute services in a [Cloud
+Registry](https://cloud-registry.readthedocs.io/en/latest/), run tasks on
+[GA4GH Task Execution Service
 (TES)](https://github.com/ga4gh/task-execution-schemas) and workflows on
 [GA4GH Workflow Execution Service
 (WES)](https://github.com/ga4gh/workflow-execution-service-schemas) instances,
-and follow their runs. Krini is generic: deploy it with its container image
-for your own registry, login provider and services.
+and follow their runs. Deploy Krini with its container image for your own
+registry and services; other OpenID Connect providers than LS Login are
+planned ([#43](https://github.com/elixir-cloud-aai/krini/issues/43)).
 
 **Read the [documentation][docs]**: the [user guide][docs-user-guide], the
 [operator guide][docs-operator-guide] for the deployment, configuration and

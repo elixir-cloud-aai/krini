@@ -15,11 +15,12 @@ shows what a WES service supports (e.g. workflow languages and versions).
 
 ## Logging in
 
-Use **Login** to log in with the login provider of the deployment, such as
-LS Login. Krini then sends your access token to the services you use, so
-that they know who you are; services that require login accept it only if
-they trust the deployment's client (see the
+Use **Login** to log in with LS Login. Krini then sends your access token
+to the WES services you use, so that they know who you are; services that
+require login accept it only if they trust the deployment's client (see the
 [Operator guide](../operator-guide/deployment.md#service-configuration)).
+Requests to TES services don't carry your token yet
+([krini#44](https://github.com/elixir-cloud-aai/krini/issues/44)).
 Your name in the sidebar opens a menu with your e-mail address and
 **Logout**.
 

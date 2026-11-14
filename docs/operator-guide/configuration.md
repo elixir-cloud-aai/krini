@@ -9,9 +9,10 @@ for local development with `.env.local`.
 
 ## Settings
 
-An example with all settings, as in `.env.example`. In a file for
-`docker run --env-file`, leave out the quotes, which Docker keeps as part of
-the value (see [Deployment](deployment.md#environment-variables)):
+An example with all settings of `.env.example`, in a format that both
+`.env.local` and `docker run --env-file` accept. Don't quote values: Docker
+keeps quotes as part of the value (see
+[Deployment](deployment.md#environment-variables)):
 
 ```env
 # LS Login / OpenID Connect
@@ -28,7 +29,7 @@ CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev
 APP_ORIGIN=http://localhost:3000
 
 # Privacy notice (optional)
-PRIVACY_CONTROLLER="Example Institute, Example Street 1, Example City"
+PRIVACY_CONTROLLER=Example Institute, Example Street 1, Example City
 PRIVACY_CONTACT=privacy@example.org
 PRIVACY_NOTICE_URL=https://example.org/privacy
 PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy

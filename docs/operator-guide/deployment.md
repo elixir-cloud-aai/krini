@@ -142,8 +142,11 @@ To verify such images, use the fork's repository in the
 
 ## Service configuration
 
-For Krini to authenticate with TES and WES services, the login provider
-and the services need the following configuration.
+For Krini to authenticate with WES services, the login provider and the
+services need the following configuration. Krini doesn't send tokens to
+TES services yet
+([krini#44](https://github.com/elixir-cloud-aai/krini/issues/44)); the same
+requirements will apply to them then.
 
 ### Scopes
 
