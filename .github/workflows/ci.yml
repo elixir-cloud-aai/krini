@@ -1,26 +1,28 @@
-# Everything that must pass on pull requests and pushes to `staging` and
-# `dev`: the pull request title, lint and formatting (Biome), the type
-# check, the build, an audit of the production dependencies, the Docker
-# image (a smoke test with a read-only root file system) and its scan for
-# known vulnerabilities (Trivy), and, on pushes, push the image by digest
-# (with SBOM and provenance attestations), scan exactly that digest, then
-# attest, sign (Sigstore) and tag it with the branch name (`staging` or
-# `dev`) and `sha-<commit>` (never `latest`, which is for releases). The
-# gate `passed` ("CI passed") is the only required check. No `paths:`
-# filters, so that the gate always reports; skip jobs with `if:` instead (and
-# allow the skip in the gate). Runs also when a pull request is edited, so
-# that the title check follows the title; all jobs run then, as a run that
-# skipped the checks would report "CI passed" for the commit. Bun
-# comes in the version of `packageManager` in `package.json`
-# (`bun-version-file`). Adapted from the CI workflows of cloud-registry and
-# cloud-registry-ui
+# Everything that must pass on pull requests into and pushes to `dev`: the
+# pull request title, lint and formatting (Biome), unit tests with the
+# coverage threshold (reported to Codecov), the type check and the build,
+# an audit of the production dependencies, the Docker image (a smoke test
+# with a read-only root file system) and its scan for known vulnerabilities
+# (Trivy), the end-to-end tests against mock services (`e2e/mock/`), and,
+# on pushes, push the image by
+# digest (with SBOM and provenance attestations), scan exactly that digest,
+# then attest, sign (Sigstore) and tag it with `dev` and `sha-<commit>`
+# (never `latest`, which is for releases). The gate `passed` ("CI passed")
+# is the only required check. No `paths:` filters, so that the gate always
+# reports; skip jobs with `if:` instead (and allow the skip in the gate).
+# Runs also when a pull request is edited, so that the title check follows
+# the title; all jobs run then, as a run that skipped the checks would
+# report "CI passed" for the commit. Bun comes in the version of
+# `packageManager` in `package.json` (`bun-version-file`). Adapted from the
+# CI workflows of cloud-registry (image publishing) and cloud-registry-ui
+# (checks and tests)
 name: CI
 on:
   push:
-    branches: [staging, dev]
+    branches: [dev]
   pull_request:
     types: [opened, synchronize, reopened, edited]
-    branches: [staging, dev]
+    branches: [dev]
 
 permissions:
   contents: read
@@ -106,8 +108,7 @@ jobs:
               exit 1
             fi
           done <<< "${images}"
-        
-              # only the top-level `.env.example` may be committed; settings come in
+      # only the top-level `.env.example` may be committed; settings come in
       # at runtime
       - name: Check that no env files are committed
         run: |
@@ -139,7 +140,6 @@ jobs:
           RUN ! find /context -name '.env*' ! -path /context/.env.example | grep .
           RUN test -f /context/.env.example
           EOF
-          
       - name: Set up Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -149,12 +149,13 @@ jobs:
       - name: Lint
         run: bun run lint
 
-  # The route types that Next.js generates (e.g. `LayoutProps`) are needed
-  # before `tsc` can check the sources
-  typecheck:
-    name: Type check
+  # Vitest runs on Node.js, not on Bun's runtime. The code in `src/lib/`,
+  # `src/app/api/` and `src/app/auth/api/` must stay fully covered (threshold
+  # in `vitest.config.mts`)
+  test:
+    name: Test
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -164,13 +165,30 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Generate route types
-        run: bunx next typegen
-      - name: Check types
-        run: bunx tsc --noEmit
+      # writes `coverage/lcov.info` (`vitest.config.mts`)
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
+      # Upload errors fail the workflow only on pushes to this repository,
+      # because pull requests from forks and Dependabot, and forks
+      # themselves, get no access to the Codecov token (organization secret
+      # `CODECOV_TOKEN`)
+      - name: Submit Report to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          disable_search: true
+          fail_ci_if_error: ${{ github.event_name == 'push' && github.repository_owner == 'elixir-cloud-aai' }}
+          verbose: true
 
+  # The type check needs the route types that Next.js generates (e.g.
+  # `LayoutProps`)
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -186,6 +204,10 @@ jobs:
           bun-version-file: package.json
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Generate route types
+        run: bunx next typegen
+      - name: Check types
+        run: bunx tsc --noEmit
       # without settings: they are read when the server starts
       - name: Build the app
         run: bun run build
@@ -301,19 +323,64 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  # The mock services of `e2e/mock/server.ts` (login provider, registry, WES
+  # service); Playwright starts them, builds the app and starts it
+  # (`playwright.config.ts`). The tests run in Playwright's image, which has
+  # the browsers and their system packages, with Bun of the runner for the
+  # mock services and the app; keep the image's version in line with
+  # `@playwright/test` (which Dependabot leaves alone). One job per browser
+  # (the tests of a job share the mock services)
+  e2e:
+    name: End-to-end tests (${{ matrix.browser.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - { name: Chromium, project: chromium }
+          - { name: Firefox, project: firefox }
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Run end-to-end tests
+        run: >-
+          docker run --rm --network host
+          --user "$(id -u):$(id -g)" --env HOME=/tmp --env CI
+          --env PATH=/opt/bun:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          --volume "$(readlink -f "$(command -v bun)"):/opt/bun/bun:ro"
+          --volume "${PWD}:/app" --workdir /app
+          mcr.microsoft.com/playwright:v1.56.1-noble
+          npx playwright test
+          --project "${{ matrix.browser.project }}"
+      - name: Upload the test report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-${{ matrix.browser.project }}
+          path: playwright-report/
+          retention-days: 7
+
   # On pushes, builds the image once and pushes it by digest only (untagged,
   # with SBOM and provenance attestations, `mode=max`), for `image` to check,
-  # `scan` to scan and `publish` to sign and tag. Runs alongside the checks, so that the
-  # scan starts early; digests of runs that fail (or fail the scan) are never
-  # signed or tagged, but stay on Docker Hub, untagged (pullable by digest
-  # only)
+  # `scan` to scan and `publish` to sign and tag. Runs alongside the
+  # checks, so that the scan starts early; digests of runs that fail (or
+  # fail the scan) are never signed or tagged, but stay on Docker Hub,
+  # untagged (pullable by digest only)
   push:
     name: Push image
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ github.event_name == 'push' }}
-    # Docker Hub secrets; the environment only allows the branches `staging`
-    # and `dev`
+    # Docker Hub secrets; the environment only allows the branch `dev`
     environment: dev-images
     permissions:
       contents: read
@@ -325,7 +392,7 @@ jobs:
         with:
           persist-credentials: false
       # `<version of package.json>-<branch>+<commit>`, e.g.
-      # `0.1.0-staging+1a2b3c4`
+      # `0.1.0-dev+1a2b3c4`
       - name: Derive version
         id: version
         env:
@@ -431,9 +498,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ github.event_name == 'push' }}
-    needs: [lint, typecheck, build, audit, image, push, scan]
-    # Docker Hub secrets; the environment only allows the branches `staging`
-    # and `dev`
+    needs: [lint, test, build, audit, e2e, image, push, scan]
+    # Docker Hub secrets; the environment only allows the branch `dev`
     environment: dev-images
     permissions:
       contents: read
@@ -496,9 +562,8 @@ jobs:
         run: cosign sign --yes "${IMAGE_NAME}@${DIGEST}"
       # Tags `<branch>` and `sha-<commit>` (never `latest`, which is for
       # releases) point to the scanned and signed digest: a single source is
-      # copied as is. A commit pushed to both branches gets two images (their
-      # version label and provenance differ); `sha-<commit>` stays on the
-      # first one published and is never moved
+      # copied as is. `sha-<commit>` is never moved: if it exists already
+      # (e.g. from a rerun), it stays on the image published first
       - name: Tag image
         if: steps.head.outputs.current == 'true'
         env:
@@ -539,7 +604,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [title, lint, typecheck, build, audit, image, push, scan, publish]
+    needs: [title, lint, test, build, audit, e2e, image, push, scan, publish]
     permissions: {}
     steps:
       - name: Check results of all jobs

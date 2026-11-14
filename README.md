@@ -134,9 +134,9 @@ For detailed deployment and service configuration requirements, see the [Deploym
 
 ### Tests
 
-CI runs both test levels on pull requests and pushes to `dev`, `master` and `staging`. Neither calls real services.
+CI runs both test levels on pull requests into and pushes to `dev`, the default branch. Neither calls real services.
 
-- **Unit tests** ([Vitest](https://vitest.dev/)): the route handlers and helpers, in `src/**/*.test.ts`. The code in `src/lib/`, `src/app/api/` and `src/app/auth/api/` must stay fully covered: CI fails if new code there has no tests. Components and hooks have no unit tests yet.
+- **Unit tests** ([Vitest](https://vitest.dev/)): the route handlers and helpers, in `src/**/*.test.ts`. The code in `src/lib/`, `src/app/api/` and `src/app/auth/api/` must stay fully covered: CI fails if new code there has no tests, and uploads the coverage report to [Codecov](https://app.codecov.io/gh/elixir-cloud-aai/krini), where `codecov.yml` requires full coverage of that code and of each pull request's changes. Components and hooks have no unit tests yet.
 
   ```sh
   bun run test            # run once
@@ -150,7 +150,7 @@ CI runs both test levels on pull requests and pushes to `dev`, `master` and `sta
   bun run test:e2e
   ```
 
-  On Linux distributions that Playwright doesn't support yet, run the tests in the Playwright image, as CI does (see the `e2e` job in `.github/workflows/checks.yml`).
+  On Linux distributions that Playwright doesn't support yet, run the tests in the Playwright image, as CI does (see the `e2e` job in `.github/workflows/ci.yml`).
 
 
 ## Citation

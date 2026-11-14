@@ -4,18 +4,30 @@ This guide covers configuration requirements for deploying Krini in production e
 
 ## Container Image
 
+### Branches and Tags
+
+`dev` is the default branch: all pull requests go into it, and CI runs on
+pull requests into it and on pushes to it. `main` is frozen; releases
+will be made from `v*` tags (there is no release workflow yet, see
+[#62](https://github.com/elixir-cloud-aai/krini/issues/62)). `dev` was
+formerly called `staging` (the branch
+`dev-legacy` holds the older code, and `main` was called `master`).
+
 CI publishes the Docker image of the `Dockerfile` to
-`docker.io/elixircloud/krini` for pushes to `staging` and `dev`:
+`docker.io/elixircloud/krini` for pushes to `dev`:
 
 | Tag | Points to |
 | --- | --- |
-| `staging` | The newest commit that passed CI while it was the head of `staging` |
 | `dev` | The newest commit that passed CI while it was the head of `dev` |
-| `sha-<commit>` | That commit (full commit SHA); for a commit on both branches, the image published first |
+| `sha-<commit>` | That commit (full commit SHA) |
+
+Images built before the rename carry the tag `staging`, which is no
+longer updated: deployments that pull `krini:staging` must switch to
+`krini:dev`.
 
 The label `org.opencontainers.image.version` of each image is
 `<version in package.json>-<branch>+<short commit SHA>`, e.g.
-`0.1.0-staging+1a2b3c4`.
+`0.1.0-dev+1a2b3c4`.
 
 Only a commit that is still the head of its branch when its checks have
 passed is tagged: when commits are pushed in quick succession, the earlier
@@ -24,12 +36,13 @@ run of its newest commit passes. CI never sets `latest`: that tag is
 reserved for releases. Deployments pull these images and update themselves
 (e.g. with their own CD); the repository doesn't deploy anywhere itself.
 
-Before CI tags an image, the commit passes lint, type check, build and a
-dependency audit, and exactly the pushed digest passes a smoke test
-(non-root, read-only root file system) and a scan for known
-vulnerabilities (Trivy, failing on fixable critical and high findings).
-CI then attests its build provenance and signs it with Sigstore keyless
-signing. The image also carries an SBOM and BuildKit provenance.
+Before CI tags an image, the commit passes lint, unit tests, type check,
+build, a dependency audit and the end-to-end tests, and exactly the
+pushed digest passes a smoke test (non-root, read-only root file system)
+and a scan for known vulnerabilities (Trivy, failing on fixable critical
+and high findings). CI then attests its build provenance and signs it
+with Sigstore keyless signing. The image also carries an SBOM and
+BuildKit provenance.
 
 ### Running the Image
 
@@ -41,7 +54,7 @@ so that one image serves any deployment. For example:
 docker run --rm -p 3000:3000 \
     --read-only --tmpfs /tmp \
     --env-file krini.env \
-    docker.io/elixircloud/krini:staging
+    docker.io/elixircloud/krini:dev
 ```
 
 - The server listens on port `3000` (`PORT`) on all IPv4 interfaces; set
@@ -63,15 +76,17 @@ it, e.g. with [cosign](https://docs.sigstore.dev/cosign/) and the
 [GitHub CLI](https://cli.github.com/):
 
 ```bash
-image=docker.io/elixircloud/krini:staging
+image=docker.io/elixircloud/krini:dev
 cosign verify "${image}" \
-    --certificate-identity-regexp '^https://github\.com/elixir-cloud-aai/krini/\.github/workflows/ci\.yml@refs/heads/staging$' \
+    --certificate-identity-regexp '^https://github\.com/elixir-cloud-aai/krini/\.github/workflows/ci\.yml@refs/heads/dev$' \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 gh attestation verify "oci://${image}" --repo elixir-cloud-aai/krini
 ```
 
-For the tag `dev`, use `refs/heads/dev$` in the regular expression; for a
-`sha-<commit>` tag, `refs/heads/(staging|dev)$`.
+This also verifies `sha-<commit>` tags of images built since the rename;
+for images built before it (the tag `staging` and their `sha-<commit>`
+tags), use `refs/heads/staging$` instead, or `refs/heads/(staging|dev)$`
+for any `sha-<commit>` tag.
 
 ### Building the Image
 
@@ -94,8 +109,8 @@ repository needs:
 - the variable `DOCKERHUB_ORG`, the Docker Hub namespace (by default
   `elixircloud`), with a public repository `krini` in it, as the scan and
   the smoke test pull the pushed digest without login;
-- the environment `dev-images`, limited to the branches `staging` and
-  `dev`, with the secrets `DOCKERHUB_LOGIN` and `DOCKERHUB_TOKEN` (a token
+- the environment `dev-images`, limited to the branch `dev`, with the
+  secrets `DOCKERHUB_LOGIN` and `DOCKERHUB_TOKEN` (a token
   that can push to that repository). The name is kept from when only `dev`
   published images.
 
