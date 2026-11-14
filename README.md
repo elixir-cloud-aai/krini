@@ -177,6 +177,12 @@ request features or report bugs. For anything else, write to
 The project adopts the [semantic versioning](https://semver.org/) scheme for
 versioning.
 
+Releases are made from signed `vX.Y.Z` tags by the release workflow, which
+publishes the image `elixircloud/krini:X.Y.Z` (by default; forks set
+`DOCKERHUB_ORG`) and the GitHub release with the curated notes of
+`docs/releases/<version>.md` (pre-releases until 1.0.0). See
+[Releasing](./docs/releasing.md).
+
 ## License
 
 Krini is released under the [Apache License 2.0](LICENSE); third-party
