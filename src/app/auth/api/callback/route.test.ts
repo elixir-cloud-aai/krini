@@ -36,13 +36,16 @@ afterEach(() => {
  * @param query Query of the callback URL
  * @param reply Result of the token request: data, or an error to throw
  * @param origin Origin of the request URL that the server sees
+ * @param setting `APP_ORIGIN` (null: not set)
  */
 async function callback(
     query: string,
     reply: unknown = tokens,
     origin = appOrigin,
+    setting: string | null = appOrigin,
 ) {
     setUp({ "authState-s1": "s1", logout_marker: "1" });
+    vi.stubEnv("APP_ORIGIN", setting ?? undefined);
     const post = vi.spyOn(await http(), "post");
     if (reply instanceof Error) post.mockRejectedValue(reply);
     else post.mockResolvedValue({ status: 200, data: reply });
@@ -53,6 +56,10 @@ async function callback(
     );
     return { response, post, error };
 }
+
+/** Origin of requests as the standalone server of the image sees them: its
+ * listening address, not the origin of the browser */
+const listening = "http://0.0.0.0:3000";
 
 const locationOf = (response: Response) =>
     response.headers.get("location") as string;
@@ -96,34 +103,46 @@ describe("GET /auth/api/callback", () => {
         expect(expiry?.attributes).not.toContain("httponly");
     });
 
-    // the standalone server of the image sees its listening address
-    // (`0.0.0.0`) as the origin of requests, not the one of the browser
     it.each([
-        ["after a login", "?code=c1&state=s1", "/dashboard"],
-        ["on errors", "?code=c1", "/auth/error?type=params"],
-    ])("redirects to APP_ORIGIN %s", async (_, query, path) => {
-        const { response } = await callback(
-            query,
+        ["after a login", "?code=c1&state=s1", tokens, "/dashboard"],
+        ["without parameters", "?code=c1", tokens, "/auth/error?type=params"],
+        [
+            "for another state",
+            "?code=c1&state=s2",
             tokens,
-            "http://0.0.0.0:3000",
-        );
+            "/auth/error?type=state",
+        ],
+        [
+            "for an invalid token response",
+            "?code=c1&state=s1",
+            {},
+            "/auth/error?type=internal",
+        ],
+        [
+            "when the provider fails",
+            "?code=c1&state=s1",
+            httpError(500),
+            "/auth/error?type=internal",
+        ],
+    ])("redirects to APP_ORIGIN %s", async (_, query, reply, path) => {
+        const { response } = await callback(query, reply, listening);
         expect(locationOf(response)).toBe(`${appOrigin}${path}`);
     });
 
-    it("redirects to the request's origin without APP_ORIGIN", async () => {
-        setUp({ "authState-s1": "s1" });
-        vi.stubEnv("APP_ORIGIN", undefined);
-        vi.spyOn(await http(), "post").mockResolvedValue({
-            status: 200,
-            data: tokens,
-        });
-        const { GET } = await import("./route");
-        const response = await GET(
-            new NextRequest(
-                "http://localhost:3000/auth/api/callback?code=c&state=s1",
-            ),
+    it.each([
+        ["without APP_ORIGIN", null],
+        ["with an APP_ORIGIN that isn't a URL", "app.example.org"],
+    ])("redirects to the request's origin %s", async (_, setting) => {
+        const { response, error } = await callback(
+            "?code=c1&state=s1",
+            tokens,
+            listening,
+            setting,
         );
-        expect(locationOf(response)).toBe("http://localhost:3000/dashboard");
+        expect(locationOf(response)).toBe(`${listening}/dashboard`);
+        expect(error.mock.calls.length).toBe(setting ? 1 : 0);
+        if (setting)
+            expect(error.mock.calls[0][0]).toMatch(/APP_ORIGIN isn't a URL/);
     });
 
     it("sends empty client settings that aren't set", async () => {

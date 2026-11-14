@@ -6,14 +6,24 @@ import { axiosBase } from "@/lib/axios";
 /**
  * Get the URL of a page of the app, for redirects: at `APP_ORIGIN`, as the
  * standalone server of the image sees its listening address (e.g.
- * `http://0.0.0.0:3000`) as the origin of requests; without the setting, at
- * the origin of the request
+ * `http://0.0.0.0:3000`) as the origin of requests; without the setting, or
+ * if it isn't a URL, at the origin of the request
  * @param path Path of the page, with its query
  * @param request The request
  * @returns The URL
  */
 function appUrl(path: string, request: NextRequest) {
-    return new URL(path, process.env.APP_ORIGIN || request.url);
+    const appOrigin = process.env.APP_ORIGIN;
+    if (appOrigin) {
+        try {
+            return new URL(path, new URL(appOrigin).origin);
+        } catch {
+            console.error(
+                "OIDC callback error: APP_ORIGIN isn't a URL; redirecting to the origin of the request",
+            );
+        }
+    }
+    return new URL(path, request.url);
 }
 
 export async function GET(request: NextRequest) {
