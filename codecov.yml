@@ -1,0 +1,12 @@
+# Codecov settings (https://docs.codecov.com/docs/codecov-yaml): the covered
+# code (`coverage.include` in `vitest.config.mts`) and the changes of each
+# pull request must be covered completely, as the coverage thresholds in
+# `vitest.config.mts` require
+coverage:
+  status:
+    project:
+      default:
+        target: 100%
+    patch:
+      default:
+        target: 100%
