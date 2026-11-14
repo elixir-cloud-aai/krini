@@ -1,15 +1,44 @@
-# <img src="https://github.com/elixir-cloud-aai/krini/blob/master/public/logo.png?raw=true" align="left" height="38" alt=""> <span >Krini</span>
+<!-- markdownlint-disable MD033 MD041 -- logo first; <picture> for dark mode -->
+<a href="https://elixir-on.cloud/">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo_elixir_on_cloud_night.png">
+    <img src="docs/images/logo_elixir_on_cloud.png" alt="ELIXIR On-Cloud">
+  </picture>
+</a>
+<!-- markdownlint-enable MD033 MD041 -->
 
-**The Krini is a virtual research environment allowing users to run, manage, share and publish life science analyses.**
+# Krini
 
-Check out the application in the [production](https://krini.rahtiapp.fi/). The rest of this doc will mainly contain details about how to run and contribute to the Krini site locally.
+[![License][badge-license]][badge-url-license]
+[![Build_status][badge-build-status]][badge-url-build-status]
+
+A virtual research environment for running and managing life science
+analyses, brought to you by [ELIXIR On-Cloud](https://elixir-on.cloud/).
+Users log in with an OpenID Connect provider, such as LS Login, find compute
+services in a [Cloud Registry](https://cloud-registry.readthedocs.io/en/latest/),
+run tasks on [GA4GH Task Execution Service
+(TES)](https://github.com/ga4gh/task-execution-schemas) and workflows on
+[GA4GH Workflow Execution Service
+(WES)](https://github.com/ga4gh/workflow-execution-service-schemas) instances,
+and follow their runs. The rest of this README describes how to run Krini
+locally and how to contribute; see the [Deployment Guide](docs/deployment.md)
+for deployments.
+
+## Known deployments
+
+| Deployment | Operated by | Notes |
+| --- | --- | --- |
+| <https://krini.rahtiapp.fi/> | [ELIXIR On-Cloud](https://elixir-on.cloud/) | Hosted on CSC Rahti |
+
+Running Krini yourself? Open a pull request that adds your deployment to the
+table in [`README.md`](README.md).
 
 ## Getting Started
 
 ### Prerequisites
 
 - Git
-- [Bun](https://bun.com/): Recent LTS version avaliable
+- [Bun](https://bun.com/): a recent version
 
 ### Installation
 
@@ -124,28 +153,35 @@ CI runs both test levels on pull requests and pushes to `dev`, `master` and `sta
   On Linux distributions that Playwright doesn't support yet, run the tests in the Playwright image, as CI does (see the `e2e` job in `.github/workflows/checks.yml`).
 
 
+## Citation
+
+If you use Krini, please cite it with the metadata in
+[`CITATION.cff`](CITATION.cff): on GitHub, "Cite this repository" in the
+sidebar of the repository formats it as APA or BibTeX.
+
 ## Contributing
 
-This project is a community effort and lives off your contributions, be it in
-the form of bug reports, feature requests, discussions, or fixes, and other code
-changes. Please refer to our organization's [contribution
-guidelines](https://github.com/elixir-cloud-aai/elixir-cloud-aai/blob/dev/CONTRIBUTING.md) if you are interested in contributing.
-Please mind the [code of conduct](https://github.com/elixir-cloud-aai/elixir-cloud-aai/blob/dev/CODE_OF_CONDUCT.md) for all interactions with
-the community.
+Contributions are welcome! See the organisation's [contributing
+guide][contributing], mind our [code of conduct][code-of-conduct], and see
+[Getting Started](#getting-started) for the setup and the checks of this
+repository. For anything else, write to
+[cloud-service@elixir-europe.org](mailto:cloud-service@elixir-europe.org), or
+use the [issue tracker](https://github.com/elixir-cloud-aai/krini/issues) to
+request features or report bugs.
 
 ## Versioning
 
-The project adopts the [semantic versioning](https://semver.org/) scheme for versioning.
+The project adopts the [semantic versioning](https://semver.org/) scheme for
+versioning.
 
 ## License
 
-This project is covered by the MIT License also
-[shipped with this repository](https://github.com/elixir-cloud-aai/krini/blob/master/LICENSE).
+Krini is released under the [Apache License 2.0](LICENSE); third-party
+material that it contains or builds on is listed in [`NOTICE`](NOTICE).
 
-## Contact
-
-The project is a collaborative effort under the umbrella of [ELIXIR Cloud &
-AAI](https://github.com/elixir-cloud-aai/). Follow the link to get in touch with us via chat or email.
-Please mention the name of this service for any inquiry, proposal, question,
-etc. Alternatively, you can also make use of the [issue
-tracker](https://github.com/elixir-cloud-aai/krini/issues) to request features or report bugs.
+[badge-build-status]: <https://github.com/elixir-cloud-aai/krini/actions/workflows/ci.yml/badge.svg>
+[badge-license]: <https://img.shields.io/badge/license-Apache%202.0-blue.svg>
+[badge-url-build-status]: <https://github.com/elixir-cloud-aai/krini/actions/workflows/ci.yml>
+[badge-url-license]: <https://www.apache.org/licenses/LICENSE-2.0>
+[code-of-conduct]: <https://github.com/elixir-cloud-aai/.github/blob/main/CODE_OF_CONDUCT.md>
+[contributing]: <https://github.com/elixir-cloud-aai/.github/blob/main/CONTRIBUTING.md>
