@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it using the metadata from this file.
+  Authors are listed by the number of lines they committed, then by the
+  number of their commits (see "Citation metadata" in the contributing guide
+  of elixir-cloud-aai).
+title: Krini
+abstract: >-
+  Krini is a virtual research environment for running and managing life
+  science analyses: users who log in with an OpenID Connect provider, such as
+  LS Login, find compute services in a Cloud Registry, run tasks on GA4GH
+  Task Execution Service (TES) and workflows on GA4GH Workflow Execution
+  Service (WES) instances, and follow their runs.
+type: software
+authors:
+  - given-names: Chitransh
+    alias: AnonymousXC
+  - given-names: Anurag
+    family-names: Gupta
+  - given-names: Alexander
+    family-names: Kanitz
+    orcid: "https://orcid.org/0000-0002-3468-0652"
+    affiliation: >-
+      Biozentrum, University of Basel, Basel, Switzerland; SIB Swiss Institute
+      of Bioinformatics, Lausanne, Switzerland
+  - given-names: Raghupathi
+    family-names: Dhara
+  - given-names: Tanya
+    family-names: Kumari
+  - given-names: Javed
+    family-names: Habib
+repository-code: "https://github.com/elixir-cloud-aai/krini"
+url: "https://krini.rahtiapp.fi/"
+keywords:
+  - GA4GH
+  - TES
+  - WES
+  - virtual research environment
+  - web front end
+license: Apache-2.0
+version: "0.1.0"
