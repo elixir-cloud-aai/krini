@@ -7,8 +7,10 @@ This guide covers configuration requirements for deploying Krini in production e
 ### Branches and Tags
 
 `dev` is the default branch: all pull requests go into it, and CI runs on
-pull requests into it and on pushes to it. `main` is frozen; releases are
-made from `v*` tags. `dev` was formerly called `staging` (the branch
+pull requests into it and on pushes to it. `main` is frozen; releases
+will be made from `v*` tags (there is no release workflow yet, see
+[#62](https://github.com/elixir-cloud-aai/krini/issues/62)). `dev` was
+formerly called `staging` (the branch
 `dev-legacy` holds the older code, and `main` was called `master`).
 
 CI publishes the Docker image of the `Dockerfile` to
@@ -81,8 +83,10 @@ cosign verify "${image}" \
 gh attestation verify "oci://${image}" --repo elixir-cloud-aai/krini
 ```
 
-This also verifies `sha-<commit>` tags; for images tagged `staging`
-(built before the rename), use `refs/heads/staging$` instead.
+This also verifies `sha-<commit>` tags of images built since the rename;
+for images built before it (the tag `staging` and their `sha-<commit>`
+tags), use `refs/heads/staging$` instead, or `refs/heads/(staging|dev)$`
+for any `sha-<commit>` tag.
 
 ### Building the Image
 
