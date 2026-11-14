@@ -8,11 +8,10 @@ that its operator has configured.
 
 ## Browsing without login
 
-Opening Krini takes you to the dashboard. Without login, the **Workflows**
-page lists the WES services of the registry (those served over `https`),
-and the service info page shows what a WES service supports (e.g. workflow
-languages and versions). The TES services of the **Tasks** page are listed
-after login.
+Opening Krini takes you to the dashboard. Without login, the **Tasks** and
+**Workflows** pages list the TES and WES services of the registry (WES
+services only if they are served over `https`), and the service info page
+shows what a WES service supports (e.g. workflow languages and versions).
 
 ## Logging in
 

@@ -29,6 +29,19 @@ updates:
       node-dependencies:
         patterns: ["*"]
         exclude-patterns: ["@elixir-cloud/*"]
+  # Packages that build the docs (`docs/requirements.txt`)
+  - package-ecosystem: pip
+    directory: /docs
+    schedule:
+      interval: monthly
+    target-branch: dev
+    labels: ["type: dependencies"]
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      docs-dependencies:
+        patterns: ["*"]
   # Actions in the workflows, including the pins of the shared actions of
   # `elixir-cloud-aai/.github` (to the commits of its releases,
   # `@<commit> # vX.Y.Z`)

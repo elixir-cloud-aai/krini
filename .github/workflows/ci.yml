@@ -5,9 +5,9 @@
 # with a read-only root file system) and its scan for known vulnerabilities
 # (Trivy), the end-to-end tests against mock services (`e2e/mock/`), the
 # documentation (strict MkDocs build), the release readiness, and, on
-# pushes, push the image by
-# digest (with SBOM and provenance attestations), scan exactly that digest,
-# then attest, sign (Sigstore) and tag it with `dev` and `sha-<commit>`
+# pushes, push the image by digest (with SBOM and provenance attestations),
+# scan exactly that digest, then attest, sign (Sigstore) and tag it with
+# `dev` and `sha-<commit>`
 # (never `latest`, which is for releases). The gate `passed` ("CI passed")
 # is the only required check. No `paths:` filters, so that the gate always
 # reports; skip jobs with `if:` instead (and allow the skip in the gate).
@@ -233,9 +233,10 @@ jobs:
         run: bun audit --prod --audit-level=high
 
   # Checks that the image serves the app as a non-root user with a
-  # read-only root file system and a writable `/tmp` (see "Container Image"
-  # in `docs/operator-guide/deployment.md`): for pull requests an image built as
-  # `docker build` builds it, without settings, which is handed to `scan`;
+  # read-only root file system and a writable `/tmp` (see "Container image"
+  # in `docs/operator-guide/deployment.md`): for pull requests an image
+  # built as `docker build` builds it, without settings, which is handed to
+  # `scan`;
   # for pushes exactly the digest pushed by `push` (public, so pulling it
   # needs no login), in a job without credentials, so that the published
   # image is the checked one
@@ -451,7 +452,7 @@ jobs:
   # attestation, also pushed to the registry), signs it with Sigstore keyless
   # signing (`cosign`, via the workflow's OIDC token) and only then tags
   # exactly that digest, so that the published image is the scanned one; see
-  # "Container Image" in `docs/operator-guide/deployment.md`
+  # "Container image" in `docs/operator-guide/deployment.md`
   publish:
     name: Publish image
     runs-on: ubuntu-latest

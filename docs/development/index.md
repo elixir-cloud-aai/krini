@@ -110,8 +110,8 @@ The documentation is built with [MkDocs](https://www.mkdocs.org/) and the
 `docs/` and `mkdocs.yml`, and published on
 [Read the Docs](https://krini.readthedocs.io/) (`.readthedocs.yaml`). CI's
 `docs` job builds it in strict mode, which fails on warnings such as broken
-links or pages missing from `nav`. To build and preview it locally (Python
-3.13, as on Read the Docs):
+links or pages missing from `nav`. To build and preview it locally (with
+the Python version of `.readthedocs.yaml`):
 
 ```bash
 python3 -m venv .venv-docs

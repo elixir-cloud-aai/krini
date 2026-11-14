@@ -7,9 +7,10 @@
 # vulnerabilities in a job of its own, without the release credentials and
 # signing identity (`scan`), and smoke-test it as CI does (`smoke`); and
 # only then attest its build provenance, sign it (Sigstore keyless signing)
-# and tag it (`release-image`; see "Verifying Images" in
-# `docs/operator-guide/deployment.md`). Last, create the GitHub release with the curated
-# notes followed by GitHub's generated notes (`publish`, shared action
+# and tag it (`release-image`; see "Verifying images" in
+# `docs/operator-guide/deployment.md`). Last, create the GitHub release
+# with the curated notes followed by GitHub's generated notes (`publish`,
+# shared action
 # `elixir-cloud-aai/.github/actions/publish-release`).
 # `push` and `release-image` each need approval in the `release` environment
 # (required reviewer, Docker Hub secrets `DOCKERHUB_LOGIN` and
@@ -26,8 +27,9 @@
 # are passed when it starts, so one image serves any deployment. Until
 # 1.0.0, all releases are GitHub pre-releases (but stable ones still update
 # the `latest` image). Release commits are on `dev`, and `main` is moved
-# forward to them before they are tagged. See `docs/development/releasing.md` for the
-# steps and the repository settings it needs. Adapted from the release
+# forward to them before they are tagged. See
+# `docs/development/releasing.md` for the steps and the repository settings
+# it needs. Adapted from the release
 # workflow of cloud-registry-ui.
 
 name: Release

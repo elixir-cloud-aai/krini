@@ -9,7 +9,9 @@ for local development with `.env.local`.
 
 ## Settings
 
-An example with all settings, as in `.env.example`:
+An example with all settings, as in `.env.example`. In a file for
+`docker run --env-file`, leave out the quotes, which Docker keeps as part of
+the value (see [Deployment](deployment.md#environment-variables)):
 
 ```env
 # LS Login / OpenID Connect

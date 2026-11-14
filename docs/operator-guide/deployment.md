@@ -1,10 +1,11 @@
 # Deployment
 
-This guide covers configuration requirements for deploying Krini in production environments.
+How to run the container image of Krini, pass it its settings, and prepare
+the login provider and the TES and WES services for it.
 
-## Container Image
+## Container image
 
-### Branches and Tags
+### Branches and tags
 
 `dev` is the default branch: all pull requests go into it, and CI runs on
 pull requests into it and on pushes to it. `main` only moves forward to
@@ -53,7 +54,7 @@ BuildKit provenance. The release workflow builds release images afresh from
 the tagged commit, which must have passed CI on `dev`, and checks, scans,
 attests and signs them in the same way before it tags them.
 
-### Running the Image
+### Running the image
 
 The image has no settings of its own: pass all environment variables of
 [Configuration](configuration.md) when the container starts,
@@ -78,7 +79,7 @@ docker run --rm -p 3000:3000 \
   interface, define your own health check (Kubernetes ignores the image's
   health check and uses its own probes).
 
-### Verifying Images
+### Verifying images
 
 Check the signature and the build provenance of an image before deploying
 it, e.g. with [cosign](https://docs.sigstore.dev/cosign/) and the
@@ -106,7 +107,7 @@ cosign verify "${image}" \
 gh attestation verify "oci://${image}" --repo elixir-cloud-aai/krini
 ```
 
-### Building the Image
+### Building the image
 
 To build the image yourself:
 
@@ -119,7 +120,7 @@ of the build context). The Bun version of both stages of the `Dockerfile`
 must match `packageManager` in `package.json`, pinned by digest; CI checks
 this.
 
-### Publishing from a Fork
+### Publishing from a fork
 
 To publish images from a fork or for another organization, the
 repository needs:
@@ -139,27 +140,37 @@ To verify such images, use the fork's repository in the
 `--certificate-identity-regexp` of `cosign verify` and in the `--repo` of
 `gh attestation verify`.
 
-## Service Configuration
+## Service configuration
 
-For Krini to authenticate with TES and WES services, the following service-side configuration is required:
+For Krini to authenticate with TES and WES services, the login provider
+and the services need the following configuration.
 
-### OIDC Client Allowlisting
+### Scopes
 
-- TES services must allowlist the `OIDC_CLIENT_ID` in their authorization configuration
-- WES services must allowlist the `OIDC_CLIENT_ID` in their authorization configuration
-- Only allowlisted clients can use their access tokens to authenticate with these services
+Ensure your OIDC provider is configured to support the following scopes:
 
-### RFC 9068 Token Type
+- `openid`: Required for OpenID Connect authentication
+- `profile`: Access to user profile information
+- `email`: Access to user email
+- `offline_access`: Required for refresh token support
 
-- The OIDC provider must issue access tokens as JWT (JSON Web Tokens) per [RFC 9068](https://datatracker.ietf.org/doc/html/rfc9068)
-- TES and WES services expect JWT access tokens for authentication
-- Ensure your OIDC provider is configured to return JWT access tokens (not opaque tokens)
+### Token type
 
-## CORS Configuration
+The OIDC provider must issue access tokens as JWT (JSON Web Tokens) per
+[RFC 9068](https://datatracker.ietf.org/doc/html/rfc9068), not opaque
+tokens: TES and WES services expect JWT access tokens for authentication.
+
+### Client allowlisting
+
+TES and WES services must allowlist Krini's `OIDC_CLIENT_ID` in their
+authorization configuration: only allowlisted clients can use their access
+tokens to authenticate with these services.
+
+## CORS configuration
 
 Krini makes direct requests to WES (Workflow Execution Service) and TES (Task Execution Service) endpoints from the browser. You must configure CORS on your WES and TES services to allow requests from Krini's origin.
 
-### Required CORS Headers
+### Required CORS headers
 
 Your WES and TES services must return the following CORS headers for requests from Krini:
 
@@ -170,7 +181,7 @@ Access-Control-Allow-Headers: Authorization, Content-Type
 Access-Control-Allow-Credentials: true
 ```
 
-### Configuration Example
+### Configuration example
 
 For Nginx reverse proxy configurations:
 
@@ -200,7 +211,7 @@ app.use(cors({
 }));
 ```
 
-### Multiple Origins
+### Multiple origins
 
 If you need to support multiple Krini deployments (e.g., staging and production), configure your CORS to allow specific origins:
 
@@ -222,37 +233,19 @@ app.use(cors({
 }));
 ```
 
-## OIDC Provider Configuration
+## Environment variables
 
-### Scopes
-
-Ensure your OIDC provider is configured to support the following scopes:
-
-- `openid`: Required for OpenID Connect authentication
-- `profile`: Access to user profile information
-- `email`: Access to user email
-- `offline_access`: Required for refresh token support
-
-### Token Type
-
-The OIDC provider must issue JWT (JSON Web Token) access tokens per [RFC 9068](https://datatracker.ietf.org/doc/html/rfc9068). TES and WES services expect JWT tokens for authentication.
-
-### Client Allowlisting
-
-Configure your TES and WES services to allowlist Krini's `OIDC_CLIENT_ID` in their authorization configuration. Only allowlisted clients can use their access tokens to authenticate with these services.
-
-## Environment Variables
-
-For a complete list of required environment variables, see [Configuration](configuration.md).
-
-Krini reads the settings listed in [Configuration](configuration.md) on the server, at runtime. The Docker image contains no env files (`.dockerignore` excludes them) and its build takes no settings, so one image works for every deployment. Pass the settings to the container when it starts, as environment variables, for example:
+The Docker image contains no env files (`.dockerignore` excludes them) and
+its build takes no settings. Pass the settings of
+[Configuration](configuration.md) to the container when it starts, as
+environment variables, for example:
 
 - Docker: `docker run --env-file krini.env ...`, with `krini.env` kept outside the repository and the build context. Docker reads plain `KEY=value` lines and doesn't strip quotes, so write `PRIVACY_CONTROLLER=Example Institute, Example City`, not `PRIVACY_CONTROLLER="..."`.
 - Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `OIDC_CLIENT_SECRET`, referenced with `envFrom` or `env[].valueFrom` in the deployment.
 
 Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_*` variables, so no setting is built into the JavaScript that the browser loads; never put a secret into one. Some settings are public by design and do reach the browser: the login redirect carries `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` and `OIDC_SCOPE`, and the privacy notice shows the `PRIVACY_*` values. `OIDC_CLIENT_SECRET` is only sent from Krini's server to LS Login.
 
-### Production Considerations
+### Production considerations
 
 - Cookies get the `Secure` flag in production builds (`next build`, as in the Docker image); `NODE_ENV` is fixed when the app is built, so setting it at runtime changes nothing
 - Use HTTPS for all production deployments
@@ -263,7 +256,7 @@ Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_
 - The notice's text is the same for every deployment. It describes what Krini itself does. Put anything specific to your deployment (purposes, legal basis, retention, rights) into your own notice and link it with `PRIVACY_NOTICE_URL`.
 - Krini sets no cookies for visitors, unless they start a login or change the sidebar. Its cookies are listed in the notice, with their lifetimes. All except the sidebar setting are strictly necessary. Krini has no analytics, so it needs no consent banner. Krini's server reads the registry and checks the registered WES services, without user data. Browsers contact the selected TES and WES services directly, and the code editor of the workflow form loads a helper script from cdn.jsdelivr.net (from the Cloud Components); the notice says so. If you add anything that sets other cookies or tracks users, update the notice and add consent.
 
-## Security Recommendations
+## Security recommendations
 
 1. **HTTPS Only**: Always deploy Krini behind HTTPS in production
 2. **Secure Cookies**: Production builds set the `Secure` flag on cookies automatically

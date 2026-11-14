@@ -41,8 +41,10 @@ table in [`README.md`](README.md).
 ## Quick start
 
 Write the settings to a file outside the repository, e.g.
-`~/krini/settings.env` (see [Configuration][docs-configuration]), and start
-the image; it reads all settings when the container starts:
+`~/krini/settings.env` (see [Configuration][docs-configuration]; plain
+`KEY=value` lines without quotes, as Docker doesn't strip them), and start
+the image of a [release][releases]; it reads all settings when the
+container starts:
 
 ```bash
 docker run --rm -p 3000:3000 --read-only --tmpfs /tmp \
@@ -91,3 +93,4 @@ material that it contains or builds on is listed in [`NOTICE`](NOTICE).
 [docs-development]: <https://krini.readthedocs.io/en/latest/development/>
 [docs-operator-guide]: <https://krini.readthedocs.io/en/latest/operator-guide/>
 [docs-user-guide]: <https://krini.readthedocs.io/en/latest/user-guide/>
+[releases]: <https://github.com/elixir-cloud-aai/krini/releases>

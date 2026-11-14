@@ -14,8 +14,8 @@ RUN bun install --frozen-lockfile
 
 # No settings: all are read when the server starts (see
 # `docs/operator-guide/configuration.md`), so one image serves any
-# deployment. Builds the
-# standalone server (`.dockerignore` lets in no `.env*` files or keys)
+# deployment. Builds the standalone server (`.dockerignore` lets in no
+# `.env*` files or keys)
 COPY . .
 RUN NEXT_OUTPUT=standalone bun run build
 
