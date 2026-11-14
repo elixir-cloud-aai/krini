@@ -89,4 +89,18 @@ describe("getAccessToken", () => {
 
         await expect(getAccessToken()).resolves.toBe("");
     });
+
+    it.each([
+        ["no token in the response", async () => Response.json({})],
+        [
+            "a failed request",
+            async () => {
+                throw new TypeError("Failed to fetch");
+            },
+        ],
+    ])("returns an empty token on %s", async (_label, reply) => {
+        vi.stubGlobal("fetch", vi.fn(reply));
+
+        await expect(getAccessToken()).resolves.toBe("");
+    });
 });

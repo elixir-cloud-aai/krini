@@ -1,6 +1,7 @@
-/** Registry entries and verifications for tests; no real services. */
-
-import { AxiosError } from "axios";
+/**
+ * @description registry entries and verifications for tests of the
+ * verified service lists; no real services
+ */
 
 const wesType = { group: "org.ga4gh", artifact: "wes", version: "1.1.0" };
 const tesType = { group: "org.ga4gh", artifact: "tes", version: "1.1.0" };
@@ -63,15 +64,15 @@ export const verifications = [
     ),
 ];
 
-export const REGISTRY_URL = "https://registry.example.org/ga4gh/registry/v1";
-
-/** An axios error for an HTTP response with the given status. */
-export function httpError(status: number) {
-    return new AxiosError(
-        `Request failed with status code ${status}`,
-        "ERR_BAD_RESPONSE",
-        undefined,
-        undefined,
-        { status } as never,
-    );
+/**
+ * Build the verifications that an admin of the registry would add to verify
+ * every entry with an ID, as it is now
+ * @param entries Entries of the registry (anything but a list: none)
+ * @returns A verification per entry, with its ID, URL and type
+ */
+export function verificationsOf(entries: unknown) {
+    if (!Array.isArray(entries)) return [];
+    return entries
+        .filter((val) => typeof val?.id === "string")
+        .map(({ id, url, type }) => ({ serviceId: id, url, type }));
 }

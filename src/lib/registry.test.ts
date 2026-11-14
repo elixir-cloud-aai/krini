@@ -5,12 +5,8 @@ import {
     isAllowedServiceUrl,
     RegistryConfigError,
 } from "@/lib/registry";
-import {
-    httpError,
-    REGISTRY_URL,
-    services,
-    verifications,
-} from "../fixtures/registry";
+import { services, verifications } from "@/test/registry";
+import { httpError, registryUrl as REGISTRY_URL } from "@/test/routes";
 
 const get = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/axios", () => ({ axiosBase: { get } }));
@@ -62,6 +58,27 @@ describe("filterVerifiedServices", () => {
     it("returns nothing without verifications", () => {
         expect(filterVerifiedServices(services, [], ["wes"])).toEqual([]);
         expect(filterVerifiedServices(services, null, ["wes"])).toEqual([]);
+    });
+
+    it("drops verified entries without a type", () => {
+        const url = "https://wes.example.org/ga4gh/wes/v1";
+        expect(
+            filterVerifiedServices(
+                [{ id: "wes", url }],
+                [{ serviceId: "wes", url }],
+                ["wes"],
+            ),
+        ).toEqual([]);
+    });
+
+    it("skips malformed verifications", () => {
+        const result = filterVerifiedServices<{ id: string }>(
+            services,
+            [null, { url: "https://wes.example.org" }, ...verifications],
+            ["wes"],
+        );
+
+        expect(ids(result)).toEqual(["wes-verified"]);
     });
 
     it("returns nothing for a malformed service list", () => {

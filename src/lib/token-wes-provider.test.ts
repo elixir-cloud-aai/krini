@@ -52,6 +52,23 @@ describe("TokenWesProvider", () => {
         expect(renew).not.toHaveBeenCalled();
     });
 
+    it("sends no Authorization header without a token", async () => {
+        const fetchMock = vi.fn(
+            async (_input: RequestInfo | URL, _init?: RequestInit) =>
+                respond(200),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+        const provider = new TokenWesProvider(BASE_URL, {
+            getToken: async () => "",
+            renew: async () => true,
+        });
+
+        await provider.listRuns();
+
+        const [, init] = fetchMock.mock.calls[0];
+        expect(new Headers(init?.headers).has("Authorization")).toBe(false);
+    });
+
     it("renews once and retries once after a 401", async () => {
         const { provider, fetchMock, renew, onUnauthorized, authorization } =
             setup([401, 200]);
