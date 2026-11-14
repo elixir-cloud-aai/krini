@@ -308,11 +308,11 @@ jobs:
   # Runs the end-to-end tests of CI's `e2e-image` job (Chromium, mock
   # services of `e2e/mock/`) on exactly the pushed digest (public, so
   # pulling it needs no login), in a job without credentials, so that the
-  # released image is the tested one
+  # released image is the tested one. On Ubuntu 24.04, as `e2e-image`
   e2e:
     name: End-to-end tests (release image)
     needs: [prepare, push]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
