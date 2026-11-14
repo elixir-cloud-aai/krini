@@ -243,7 +243,8 @@ environment variables, for example:
 - Docker: `docker run --env-file krini.env ...`, with `krini.env` kept outside the repository and the build context. Docker reads plain `KEY=value` lines and doesn't strip quotes, so write `PRIVACY_CONTROLLER=Example Institute, Example City`, not `PRIVACY_CONTROLLER="..."`.
 - Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `OIDC_CLIENT_SECRET`, referenced with `envFrom` or `env[].valueFrom` in the deployment.
 
-Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_*` variables, so no setting is built into the JavaScript that the browser loads; never put a secret into one. Some settings are public by design and do reach the browser: the login redirect carries `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` and `OIDC_SCOPE`, and the privacy notice shows the `PRIVACY_*` values. `OIDC_CLIENT_SECRET` is only sent from Krini's server to LS Login.
+Changing a setting needs a restart, not a new image; which settings reach
+the browser is described in [Configuration](configuration.md#settings).
 
 ### Production considerations
 
@@ -252,15 +253,15 @@ Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_
 - Configure `APP_ORIGIN` to your production domain
 - Store `OIDC_CLIENT_SECRET` securely (e.g., using a secrets manager)
 - Rotate credentials regularly
-- Set the `PRIVACY_*` variables (see [Privacy notice](configuration.md#privacy-notice)), so that the privacy notice at `/privacy` names who is responsible and how to reach them. Without them, the page says that the operator hasn't named anyone. They are read at runtime, so changing them needs a restart, not a new image. Values that aren't valid (e.g. a URL that isn't `https`) are ignored, with a warning in the server log.
+- Set the `PRIVACY_*` variables (see [Privacy notice](configuration.md#privacy-notice)), so that the privacy notice at `/privacy` names who is responsible and how to reach them.
 - The notice's text is the same for every deployment. It describes what Krini itself does. Put anything specific to your deployment (purposes, legal basis, retention, rights) into your own notice and link it with `PRIVACY_NOTICE_URL`.
 - Krini sets no cookies for visitors, unless they start a login or change the sidebar. Its cookies are listed in the notice, with their lifetimes. All except the sidebar setting are strictly necessary. Krini has no analytics, so it needs no consent banner. Krini's server reads the registry and checks the registered WES services, without user data. Browsers contact the selected TES and WES services directly, and the code editor of the workflow form loads a helper script from cdn.jsdelivr.net (from the Cloud Components); the notice says so. If you add anything that sets other cookies or tracks users, update the notice and add consent.
 
 ## Security recommendations
 
-1. **HTTPS Only**: Always deploy Krini behind HTTPS in production
-2. **Secure Cookies**: Production builds set the `Secure` flag on cookies automatically
-3. **Secret Management**: Never commit `.env.local` or other env files (only `.env.example` belongs in the repository), never copy them into an image, and never expose secrets in client-side code
-4. **Origin Validation**: The logout endpoint validates requests against `APP_ORIGIN` to prevent CSRF
-5. **Token Refresh**: The `offline_access` scope enables silent token renewal, improving user experience
-6. **CORS Restrictions**: Configure CORS to only allow trusted origins
+1. **HTTPS only**: Always deploy Krini behind HTTPS in production
+2. **Secure cookies**: Production builds set the `Secure` flag on cookies automatically
+3. **Secret management**: Never commit `.env.local` or other env files (only `.env.example` belongs in the repository), never copy them into an image, and never expose secrets in client-side code
+4. **Origin validation**: The logout endpoint validates requests against `APP_ORIGIN` to prevent CSRF
+5. **Token refresh**: The `offline_access` scope enables silent token renewal, improving user experience
+6. **CORS restrictions**: Configure CORS to only allow trusted origins

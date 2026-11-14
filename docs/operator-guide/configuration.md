@@ -55,8 +55,12 @@ http://localhost:3000/auth/api/callback
 ```
 
 Never expose `OIDC_CLIENT_SECRET` to client-side code: Krini uses no
-`NEXT_PUBLIC_*` variables, and only its server sends the secret to the login
-provider.
+`NEXT_PUBLIC_*` variables, so no setting is built into the JavaScript that
+the browser loads; never put a secret into one. Some settings are public by
+design and do reach the browser: the login redirect carries
+`OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` and `OIDC_SCOPE`, and the privacy
+notice shows the `PRIVACY_*` values. `OIDC_CLIENT_SECRET` is only sent from
+Krini's server to the login provider.
 
 ## Privacy notice
 
@@ -64,8 +68,9 @@ Krini serves a privacy notice at `/privacy`, linked from the login page and
 the sidebar and reachable without login. It describes what Krini processes,
 lists its cookies, and says what happens at the login provider and the
 services. The text is the same for every deployment. Each deployment adds
-who is responsible and can link its own full notice. All four settings are
-optional and read at runtime. Invalid values are ignored, with a warning in
+who is responsible and can link its own full notice; without these
+settings, the page says that the operator hasn't named anyone. All four
+settings are optional and read at runtime. Invalid values are ignored, with a warning in
 the server log.
 
 - `PRIVACY_CONTROLLER`: Name and address of the operator who is responsible
