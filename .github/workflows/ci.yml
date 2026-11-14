@@ -3,10 +3,11 @@
 # coverage threshold (reported to Codecov), the type check and the build,
 # an audit of the production dependencies, the Docker image (a smoke test
 # with a read-only root file system) and its scan for known vulnerabilities
-# (Trivy), the end-to-end tests against mock services (`e2e/mock/`), and,
-# on pushes, push the image by
-# digest (with SBOM and provenance attestations), scan exactly that digest,
-# then attest, sign (Sigstore) and tag it with `dev` and `sha-<commit>`
+# (Trivy), the end-to-end tests against mock services (`e2e/mock/`), the
+# documentation (strict MkDocs build), the release readiness, and, on
+# pushes, push the image by digest (with SBOM and provenance attestations),
+# scan exactly that digest, then attest, sign (Sigstore) and tag it with
+# `dev` and `sha-<commit>`
 # (never `latest`, which is for releases). The gate `passed` ("CI passed")
 # is the only required check. No `paths:` filters, so that the gate always
 # reports; skip jobs with `if:` instead (and allow the skip in the gate).
@@ -232,9 +233,10 @@ jobs:
         run: bun audit --prod --audit-level=high
 
   # Checks that the image serves the app as a non-root user with a
-  # read-only root file system and a writable `/tmp` (see "Container Image"
-  # in `docs/deployment.md`): for pull requests an image built as
-  # `docker build` builds it, without settings, which is handed to `scan`;
+  # read-only root file system and a writable `/tmp` (see "Container image"
+  # in `docs/operator-guide/deployment.md`): for pull requests an image
+  # built as `docker build` builds it, without settings, which is handed to
+  # `scan`;
   # for pushes exactly the digest pushed by `push` (public, so pulling it
   # needs no login), in a job without credentials, so that the published
   # image is the checked one
@@ -450,13 +452,13 @@ jobs:
   # attestation, also pushed to the registry), signs it with Sigstore keyless
   # signing (`cosign`, via the workflow's OIDC token) and only then tags
   # exactly that digest, so that the published image is the scanned one; see
-  # "Container Image" in `docs/deployment.md`
+  # "Container image" in `docs/operator-guide/deployment.md`
   publish:
     name: Publish image
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ github.event_name == 'push' }}
-    needs: [lint, test, build, audit, e2e, readiness, image, push, scan]
+    needs: [lint, test, build, audit, e2e, docs, readiness, image, push, scan]
     # Docker Hub secrets; the environment only allows the branch `dev`
     environment: dev-images
     permissions:
@@ -552,6 +554,30 @@ jobs:
             fi
           done
 
+  # The documentation (MkDocs, `mkdocs.yml`), built as Read the Docs builds
+  # it (`.readthedocs.yaml`), failing on warnings, e.g. of broken links and
+  # anchors or of pages missing from `nav`
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Python version of Read the Docs (`.readthedocs.yaml`)
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: docs/requirements.txt
+      - name: Install dependencies
+        run: pip install -r docs/requirements.txt
+      - name: Build documentation
+        run: mkdocs build --strict
+
   # The release workflow (`release.yml`) checks the versions and the
   # curated release notes only after the tag is pushed, and tags can't be
   # moved: check them here, so that a release-prep pull request fails
@@ -562,7 +588,9 @@ jobs:
   # (i.e. the version was bumped after a release): then `date-released`
   # must be set and the notes must exist, without TODOs, in the
   # organization's format (checker of the shared action that `release.yml`
-  # pins: keep the commit in sync with it and with `docs/releasing.md`)
+  # pins: keep the commit in sync with it and with
+  # `docs/development/releasing.md`). That the notes are in `nav` of
+  # `mkdocs.yml` is checked by `docs`
   readiness:
     name: Release readiness
     runs-on: ubuntu-latest
@@ -627,7 +655,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [title, lint, test, build, audit, e2e, readiness, image, push, scan, publish]
+    needs: [title, lint, test, build, audit, e2e, docs, readiness, image, push, scan, publish]
     permissions: {}
     steps:
       - name: Check results of all jobs

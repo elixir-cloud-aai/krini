@@ -7,9 +7,10 @@
 # vulnerabilities in a job of its own, without the release credentials and
 # signing identity (`scan`), and smoke-test it as CI does (`smoke`); and
 # only then attest its build provenance, sign it (Sigstore keyless signing)
-# and tag it (`release-image`; see "Verifying Images" in
-# `docs/deployment.md`). Last, create the GitHub release with the curated
-# notes followed by GitHub's generated notes (`publish`, shared action
+# and tag it (`release-image`; see "Verifying images" in
+# `docs/operator-guide/deployment.md`). Last, create the GitHub release
+# with the curated notes followed by GitHub's generated notes (`publish`,
+# shared action
 # `elixir-cloud-aai/.github/actions/publish-release`).
 # `push` and `release-image` each need approval in the `release` environment
 # (required reviewer, Docker Hub secrets `DOCKERHUB_LOGIN` and
@@ -26,8 +27,9 @@
 # are passed when it starts, so one image serves any deployment. Until
 # 1.0.0, all releases are GitHub pre-releases (but stable ones still update
 # the `latest` image). Release commits are on `dev`, and `main` is moved
-# forward to them before they are tagged. See `docs/releasing.md` for the
-# steps and the repository settings it needs. Adapted from the release
+# forward to them before they are tagged. See
+# `docs/development/releasing.md` for the steps and the repository settings
+# it needs. Adapted from the release
 # workflow of cloud-registry-ui.
 
 name: Release
@@ -72,7 +74,7 @@ jobs:
           # Full history and all tags, to check that the release commit
           # is on `main`
           fetch-depth: 0
-      # `docs/releasing.md` runs the checks of this job that
+      # `docs/development/releasing.md` runs the checks of this job that
       # need no tag before tagging: keep them in sync.
       # Guards against accidental releases, e.g., of unmerged commits;
       # the `release` environment's protection rules (required reviewer)
@@ -137,7 +139,7 @@ jobs:
       # organization's format before anything is published; also checks
       # that the tag points to the release commit and that no published
       # release of it exists. Keep the pin in sync with the checker of the
-      # `readiness` job of `ci.yml` and with `docs/releasing.md`
+      # `readiness` job of `ci.yml` and with `docs/development/releasing.md`
       - name: Check release notes
         uses: elixir-cloud-aai/.github/actions/publish-release@31f22fccc1f3c597ed7c1d1f75b2f85522155348 # v1.1.0
         with:

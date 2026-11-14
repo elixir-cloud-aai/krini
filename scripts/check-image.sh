@@ -4,8 +4,8 @@
 # `.github/workflows/release.yml`: the container runs as a non-root user
 # with a read-only root file system and a writable `/tmp`, serves the login
 # page without settings, redirects the start page and writes optimized
-# images to `/tmp/next-cache` (see "Container Image" in
-# `docs/deployment.md`). The optimized image is
+# images to `/tmp/next-cache` (see "Container image" in
+# `docs/operator-guide/deployment.md`). The optimized image is
 # `public/ls-login-grey-wide.jpg` (shown on the login page): change it here
 # if it is renamed. Needs Docker and curl, and port 3000 on 127.0.0.1.
 #

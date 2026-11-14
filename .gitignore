@@ -43,3 +43,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# documentation build (MkDocs) and its virtual environment
+/site/
+/.venv-docs/
