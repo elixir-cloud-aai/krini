@@ -552,6 +552,61 @@ jobs:
             fi
           done
 
+  # The release workflow (`release.yml`) checks the versions and the
+  # curated release notes only after the tag is pushed, and tags can't be
+  # moved: check them here, so that a release-prep pull request fails
+  # instead. A release is in preparation when `CITATION.cff` has a version
+  # that isn't tagged yet (or is tagged on this commit): then
+  # `package.json` must have the same version, and its notes
+  # (`docs/releases/<version>.md`) must exist, without TODOs, in the
+  # organization's format (checker of the shared action that `release.yml`
+  # pins: keep the commit in sync)
+  readiness:
+    name: Release readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check versions and release notes
+        env:
+          SHA: ${{ github.sha }}
+          CHECKER: https://raw.githubusercontent.com/elixir-cloud-aai/.github/31f22fccc1f3c597ed7c1d1f75b2f85522155348/actions/publish-release/publish.py
+        run: |
+          version=""
+          if [[ -f CITATION.cff ]]; then
+            version="$(yq -r '.version // ""' CITATION.cff)"
+          fi
+          if [[ -z "${version}" ]]; then
+            echo "No version in CITATION.cff: no release in preparation"
+            exit 0
+          fi
+          # The commit of the (annotated) tag, if any: later commits are
+          # skipped, but not the tagged commit itself
+          tagged="$(git ls-remote origin "refs/tags/v${version}^{}" | cut -f1)"
+          if [[ -n "${tagged}" && "${tagged}" != "${SHA}" ]]; then
+            echo "v${version} is tagged: no release in preparation"
+            exit 0
+          fi
+          package="$(jq -r .version package.json)"
+          if [[ "${package}" != "${version}" ]]; then
+            echo "::error file=package.json::Version ${package} isn't the version of CITATION.cff (${version})"
+            exit 1
+          fi
+          notes="docs/releases/${version}.md"
+          if [[ ! -f "${notes}" ]]; then
+            echo "::error file=CITATION.cff::No release notes ${notes} for version ${version}"
+            exit 1
+          fi
+          if grep -n "TODO" "${notes}"; then
+            echo "::error file=${notes}::Finish the release notes before tagging v${version}"
+            exit 1
+          fi
+          curl -fsSL "${CHECKER}" -o "${RUNNER_TEMP}/publish.py"
+          python3 -I "${RUNNER_TEMP}/publish.py" check "${notes}"
+
   # The only required check: the shared gate action of
   # elixir-cloud-aai/.github fails on failed, cancelled and skipped jobs
   # (except the intended skips: `title` on pushes and for Dependabot, `push`
@@ -562,7 +617,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [title, lint, test, build, audit, e2e, image, push, scan, publish]
+    needs: [title, lint, test, build, audit, e2e, readiness, image, push, scan, publish]
     permissions: {}
     steps:
       - name: Check results of all jobs
