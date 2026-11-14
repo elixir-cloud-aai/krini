@@ -2,6 +2,107 @@
 
 This guide covers configuration requirements for deploying Krini in production environments.
 
+## Container Image
+
+CI publishes the Docker image of the `Dockerfile` to
+`docker.io/elixircloud/krini` for pushes to `staging` and `dev`:
+
+| Tag | Points to |
+| --- | --- |
+| `staging` | The newest commit that passed CI while it was the head of `staging` |
+| `dev` | The newest commit that passed CI while it was the head of `dev` |
+| `sha-<commit>` | That commit (full commit SHA); for a commit on both branches, the image published first |
+
+The label `org.opencontainers.image.version` of each image is
+`<version in package.json>-<branch>+<short commit SHA>`, e.g.
+`0.1.0-staging+1a2b3c4`.
+
+Only a commit that is still the head of its branch when its checks have
+passed is tagged: when commits are pushed in quick succession, the earlier
+ones get no tags, and the branch tag can lag behind the branch until the
+run of its newest commit passes. CI never sets `latest`: that tag is
+reserved for releases. Deployments pull these images and update themselves
+(e.g. with their own CD); the repository doesn't deploy anywhere itself.
+
+Before CI tags an image, the commit passes lint, type check, build and a
+dependency audit, and exactly the pushed digest passes a smoke test
+(non-root, read-only root file system) and a scan for known
+vulnerabilities (Trivy, failing on fixable critical and high findings).
+CI then attests its build provenance and signs it with Sigstore keyless
+signing. The image also carries an SBOM and BuildKit provenance.
+
+### Running the Image
+
+The image has no settings of its own: pass all environment variables of
+the [README](../README.md#environment-variables) when the container starts,
+so that one image serves any deployment. For example:
+
+```bash
+docker run --rm -p 3000:3000 \
+    --read-only --tmpfs /tmp \
+    --env-file krini.env \
+    docker.io/elixircloud/krini:staging
+```
+
+- The server listens on port `3000` (`PORT`) on all IPv4 interfaces; set
+  `LISTEN_HOSTNAME` (e.g. `::` for IPv6) to change the interface.
+- It runs as the non-root user `bun` (UID 1000) and can't change its own
+  code.
+- It works with a read-only root file system: only `/tmp` must be
+  writable (e.g. an `emptyDir` volume in Kubernetes). Next.js caches, such
+  as optimized images, go to `/tmp/next-cache`.
+- The image has a health check that requests the start page on
+  `127.0.0.1`; with a `LISTEN_HOSTNAME` that doesn't include the loopback
+  interface, define your own health check (Kubernetes ignores the image's
+  health check and uses its own probes).
+
+### Verifying Images
+
+Check the signature and the build provenance of an image before deploying
+it, e.g. with [cosign](https://docs.sigstore.dev/cosign/) and the
+[GitHub CLI](https://cli.github.com/):
+
+```bash
+image=docker.io/elixircloud/krini:staging
+cosign verify "${image}" \
+    --certificate-identity-regexp '^https://github\.com/elixir-cloud-aai/krini/\.github/workflows/ci\.yml@refs/heads/staging$' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify "oci://${image}" --repo elixir-cloud-aai/krini
+```
+
+For the tag `dev`, use `refs/heads/dev$` in the regular expression; for a
+`sha-<commit>` tag, `refs/heads/(staging|dev)$`.
+
+### Building the Image
+
+To build the image yourself:
+
+```bash
+docker build -t krini .
+```
+
+The build uses no settings or `.env*` files (`.dockerignore` keeps them out
+of the build context). The Bun version of both stages of the `Dockerfile`
+must match `packageManager` in `package.json`, pinned by digest; CI checks
+this.
+
+### Publishing from a Fork
+
+To publish images from a fork or for another organization, the
+repository needs:
+
+- the variable `DOCKERHUB_ORG`, the Docker Hub namespace (by default
+  `elixircloud`), with a public repository `krini` in it, as the scan and
+  the smoke test pull the pushed digest without login;
+- the environment `dev-images`, limited to the branches `staging` and
+  `dev`, with the secrets `DOCKERHUB_LOGIN` and `DOCKERHUB_TOKEN` (a token
+  that can push to that repository). The name is kept from when only `dev`
+  published images.
+
+To verify such images, use the fork's repository in the
+`--certificate-identity-regexp` of `cosign verify` and in the `--repo` of
+`gh attestation verify`.
+
 ## Service Configuration
 
 For Krini to authenticate with TES and WES services, the following service-side configuration is required:
@@ -108,9 +209,16 @@ Configure your TES and WES services to allowlist Krini's `OIDC_CLIENT_ID` in the
 
 For a complete list of required environment variables, see the main [README.md](../README.md#environment-variables).
 
+Krini reads the settings listed in the README on the server, at runtime. The Docker image contains no env files (`.dockerignore` excludes them) and its build takes no settings, so one image works for every deployment. Pass the settings to the container when it starts, as environment variables, for example:
+
+- Docker: `docker run --env-file krini.env ...`, with `krini.env` kept outside the repository and the build context. Docker reads plain `KEY=value` lines and doesn't strip quotes, so write `PRIVACY_CONTROLLER=Example Institute, Example City`, not `PRIVACY_CONTROLLER="..."`.
+- Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `OIDC_CLIENT_SECRET`, referenced with `envFrom` or `env[].valueFrom` in the deployment.
+
+Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_*` variables, so no setting is built into the JavaScript that the browser loads; never put a secret into one. Some settings are public by design and do reach the browser: the login redirect carries `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` and `OIDC_SCOPE`, and the privacy notice shows the `PRIVACY_*` values. `OIDC_CLIENT_SECRET` is only sent from Krini's server to LS Login.
+
 ### Production Considerations
 
-- Set `NODE_ENV=production` to enable secure cookies
+- Cookies get the `Secure` flag in production builds (`next build`, as in the Docker image); `NODE_ENV` is fixed when the app is built, so setting it at runtime changes nothing
 - Use HTTPS for all production deployments
 - Configure `APP_ORIGIN` to your production domain
 - Store `OIDC_CLIENT_SECRET` securely (e.g., using a secrets manager)
@@ -122,8 +230,8 @@ For a complete list of required environment variables, see the main [README.md](
 ## Security Recommendations
 
 1. **HTTPS Only**: Always deploy Krini behind HTTPS in production
-2. **Secure Cookies**: Production deployments use `Secure` flag on cookies automatically when `NODE_ENV=production`
-3. **Secret Management**: Never commit `.env.local` or expose secrets in client-side code
+2. **Secure Cookies**: Production builds set the `Secure` flag on cookies automatically
+3. **Secret Management**: Never commit `.env.local` or other env files (only `.env.example` belongs in the repository), never copy them into an image, and never expose secrets in client-side code
 4. **Origin Validation**: The logout endpoint validates requests against `APP_ORIGIN` to prevent CSRF
 5. **Token Refresh**: The `offline_access` scope enables silent token renewal, improving user experience. If a WES service rejects a request with `401`, Krini renews the session once and retries the request once. If the session can't be renewed, it asks the user to log in again; if the service rejects the renewed token too, it says that the service doesn't accept the login (e.g. because it doesn't allowlist Krini's client)
 6. **CORS Restrictions**: Configure CORS to only allow trusted origins

@@ -1,0 +1,15 @@
+# Vulnerabilities accepted in the Docker image (`Dockerfile`), which the scans
+# (shared action `elixir-cloud-aai/.github/actions/scan-image`) ignore: each
+# with the reason (`statement`) and an expiry date (`expired_at`), after which
+# Trivy reports it again, so that the decision is reviewed. Limit entries to
+# the affected package versions (`purls`), so that other packages with the
+# same vulnerability are still reported. Example:
+#
+#   vulnerabilities:
+#     - id: CVE-2026-12345
+#       purls: ["pkg:npm/example@1.2.3"]
+#       statement: Only used at build time, not by the app
+#       expired_at: 2027-01-31
+#
+# See https://trivy.dev/latest/docs/configuration/filtering/#trivyignoreyaml
+vulnerabilities: []

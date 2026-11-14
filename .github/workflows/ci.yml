@@ -1,0 +1,549 @@
+# Everything that must pass on pull requests and pushes to `staging` and
+# `dev`: the pull request title, lint and formatting (Biome), the type
+# check, the build, an audit of the production dependencies, the Docker
+# image (a smoke test with a read-only root file system) and its scan for
+# known vulnerabilities (Trivy), and, on pushes, push the image by digest
+# (with SBOM and provenance attestations), scan exactly that digest, then
+# attest, sign (Sigstore) and tag it with the branch name (`staging` or
+# `dev`) and `sha-<commit>` (never `latest`, which is for releases). The
+# gate `passed` ("CI passed") is the only required check. No `paths:`
+# filters, so that the gate always reports; skip jobs with `if:` instead (and
+# allow the skip in the gate). Runs also when a pull request is edited, so
+# that the title check follows the title; all jobs run then, as a run that
+# skipped the checks would report "CI passed" for the commit. Bun
+# comes in the version of `packageManager` in `package.json`
+# (`bun-version-file`). Adapted from the CI workflows of cloud-registry and
+# cloud-registry-ui
+name: CI
+on:
+  push:
+    branches: [staging, dev]
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    branches: [staging, dev]
+
+permissions:
+  contents: read
+
+# Fully qualified (`docker.io/`), as the attestation needs it. The Docker Hub
+# organization is the repository variable `DOCKERHUB_ORG` (by default
+# `elixircloud`), so that forks can publish to their own organization
+env:
+  IMAGE_NAME: docker.io/${{ vars.DOCKERHUB_ORG || 'elixircloud' }}/krini
+  NEXT_TELEMETRY_DISABLED: "1"
+
+# Only a new head commit of a pull request cancels its runs in progress
+# (action `synchronize`, first attempt); runs for other actions and reruns
+# wait, so that a run on the same commit never leaves a cancelled, failed
+# `CI passed` (see "Cancelled runs" in `actions/gate/README.md` of
+# `elixir-cloud-aai/.github`). Runs for pushes get their own group, so that
+# none is dropped. Runs for edits that leave the title unchanged (e.g. of
+# the description, also by bots) share a group of their own, so that they
+# don't wait for the run for the pull request's commit
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{
+      github.event_name == 'push' && github.sha ||
+      github.event.action == 'edited' && !github.event.changes.title &&
+        format('{0}-edited', github.ref) ||
+      github.ref }}
+  cancel-in-progress: >-
+    ${{ github.event_name == 'pull_request'
+    && github.event.action == 'synchronize'
+    && github.run_attempt == 1 }}
+
+jobs:
+  # Pull request titles become the commit messages on the base branch
+  # (squash merges): Conventional Commits, at most 50 characters (shared
+  # action of elixir-cloud-aai/.github, pinned to the commit of a release).
+  # Skipped on pushes and for Dependabot, whose titles can't be configured to
+  # pass, unless someone else edits the title
+  title:
+    name: PR title
+    if: >-
+      github.event_name == 'pull_request' && (
+        github.event.pull_request.user.login != 'dependabot[bot]' ||
+        github.event.changes.title &&
+        github.event.sender.login != 'dependabot[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Check PR title
+        uses: elixir-cloud-aai/.github/actions/pr-title@743e82d290a53768454999e413756a924e383259 # v1.0.0
+
+  # Biome's lint, formatting and import order (`bun run lint`, see
+  # `biome.json`), and the Bun images of the `Dockerfile`, which must be of
+  # the version of `packageManager` in `package.json`, pinned by digest
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the Bun version of the Dockerfile
+        run: |
+          version="$(jq -r '.packageManager // ""' package.json)"
+          if [[ "${version}" != bun@* ]]; then
+            echo "::error file=package.json::packageManager must be bun@<version>"
+            exit 1
+          fi
+          version="${version#bun@}"
+          # the image of each stage (the first word after `FROM` and its
+          # flags, such as `--platform`): every stage must use the Bun
+          # image, from Docker Hub
+          images="$(awk 'toupper($1) == "FROM" { for (i = 2; i <= NF; i++) if ($i !~ /^--/) { print $i; break } }' Dockerfile)"
+          if [[ -z "${images}" ]]; then
+            echo "::error file=Dockerfile::The Dockerfile has no stages"
+            exit 1
+          fi
+          while read -r image; do
+            if [[ ! "${image}" =~ ^(docker\.io/)?oven/bun:"${version}"@sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error file=Dockerfile::${image} isn't oven/bun:${version} (packageManager in package.json), pinned by digest"
+              exit 1
+            fi
+          done <<< "${images}"
+        
+              # only the top-level `.env.example` may be committed; settings come in
+      # at runtime
+      - name: Check that no env files are committed
+        run: |
+          tracked="$(git ls-files | grep -E '(^|/)\.env(\..*)?$' | grep -vx '\.env\.example' || true)"
+          if [ -n "$tracked" ]; then
+            echo "::error::Env files must not be committed: ${tracked}"
+            exit 1
+          fi
+
+      # `.dockerignore` must keep local env files out of the build context,
+      # which the Dockerfile copies with `COPY . .`
+      - name: Check that env files stay out of the build context
+        run: |
+          # in a copy of the checkout, so that no local env file is touched
+          context="$(mktemp -d)"
+          git archive HEAD | tar -x -C "${context}"
+          mkdir -p "${context}/env-check"
+          for dir in "${context}" "${context}/env-check"; do
+            for name in .env .env.local .env.development .env.development.local \
+                .env.production .env.production.local .env.test .env.test.local; do
+              touch "${dir}/${name}"
+            done
+          done
+          # only the top-level example may enter the build context
+          touch "${context}/env-check/.env.example"
+          docker build --progress=plain --file - "${context}" <<'EOF'
+          FROM busybox:1.37
+          COPY . /context
+          RUN ! find /context -name '.env*' ! -path /context/.env.example | grep .
+          RUN test -f /context/.env.example
+          EOF
+          
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Lint
+        run: bun run lint
+
+  # The route types that Next.js generates (e.g. `LayoutProps`) are needed
+  # before `tsc` can check the sources
+  typecheck:
+    name: Type check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Generate route types
+        run: bunx next typegen
+      - name: Check types
+        run: bunx tsc --noEmit
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # without settings: they are read when the server starts
+      - name: Build the app
+        run: bun run build
+
+  # Fails on high and critical advisories in the production dependencies of
+  # `bun.lock`, which Next.js bundles where image scanners can't see them.
+  # Needs no installed packages
+  audit:
+    name: Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Audit production dependencies
+        run: bun audit --prod --audit-level=high
+
+  # Checks that the image serves the app as a non-root user with a
+  # read-only root file system and a writable `/tmp` (see "Container Image"
+  # in `docs/deployment.md`): for pull requests an image built as
+  # `docker build` builds it, without settings, which is handed to `scan`;
+  # for pushes exactly the digest pushed by `push` (public, so pulling it
+  # needs no login), in a job without credentials, so that the published
+  # image is the checked one
+  image:
+    name: Build image
+    # For pull requests, `push` is skipped
+    needs: push
+    if: ${{ !cancelled() && (github.event_name == 'pull_request' || needs.push.result == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Named as the pushed image, so that code scanning matches the findings
+      # of both
+      - name: Build the Docker image
+        if: ${{ github.event_name != 'push' }}
+        run: docker build -t "${IMAGE_NAME}:scan" .
+      - name: Pull the pushed image
+        if: ${{ github.event_name == 'push' }}
+        env:
+          DIGEST: ${{ needs.push.outputs.digest }}
+        run: |
+          if [[ ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Invalid image digest '${DIGEST}'"
+            exit 1
+          fi
+          docker pull "${IMAGE_NAME}@${DIGEST}"
+          docker tag "${IMAGE_NAME}@${DIGEST}" "${IMAGE_NAME}:scan"
+      # The optimized image is `public/ls-login-grey-wide.jpg` (shown on the
+      # login page): change it here if it is renamed
+      - name: Check that the image serves the app
+        run: |
+          trap 'docker rm -f app >/dev/null 2>&1 || true' EXIT
+          docker run -d --name app -p 127.0.0.1:3000:3000 \
+            --read-only --tmpfs /tmp "${IMAGE_NAME}:scan"
+          if [[ "$(docker exec app id -u)" == 0 ]]; then
+            echo "::error::The container runs as root"
+            exit 1
+          fi
+          for _ in $(seq 30); do
+            # the start page redirects to the dashboard; the login page is
+            # served without settings; an optimized image is written to
+            # `.next/cache` (a link to `/tmp`)
+            # (200, not a redirect, which `curl -f` would also accept)
+            login="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/auth/login || true)"
+            if [[ "${login}" =~ ^[1-5] && "${login}" != 200 ]]; then
+              docker logs app
+              echo "::error::The login page returned ${login}, expected 200"
+              exit 1
+            fi
+            if [[ "${login}" == 200 ]]; then
+              status="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/)"
+              if [[ "${status}" != 307 ]]; then
+                echo "::error::The start page returned ${status}, expected a redirect (307)"
+                exit 1
+              fi
+              if ! curl -fs -o /dev/null "http://127.0.0.1:3000/_next/image?url=%2Fls-login-grey-wide.jpg&w=640&q=75"; then
+                docker logs app
+                echo "::error::The image optimizer failed"
+                exit 1
+              fi
+              if ! docker exec app sh -c 'ls /tmp/next-cache/images | grep -q .'; then
+                docker logs app
+                echo "::error::The image optimizer didn't write to /tmp/next-cache"
+                exit 1
+              fi
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs app
+          echo "::error::The container didn't serve the login page"
+          exit 1
+      - name: Save the image
+        if: ${{ github.event_name != 'push' }}
+        run: docker save "${IMAGE_NAME}:scan" -o "${RUNNER_TEMP}/image.tar"
+      - name: Upload the image
+        if: ${{ github.event_name != 'push' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: image
+          path: ${{ runner.temp }}/image.tar
+          retention-days: 7
+          if-no-files-found: error
+
+  # On pushes, builds the image once and pushes it by digest only (untagged,
+  # with SBOM and provenance attestations, `mode=max`), for `image` to check,
+  # `scan` to scan and `publish` to sign and tag. Runs alongside the checks, so that the
+  # scan starts early; digests of runs that fail (or fail the scan) are never
+  # signed or tagged, but stay on Docker Hub, untagged (pullable by digest
+  # only)
+  push:
+    name: Push image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ github.event_name == 'push' }}
+    # Docker Hub secrets; the environment only allows the branches `staging`
+    # and `dev`
+    environment: dev-images
+    permissions:
+      contents: read
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # `<version of package.json>-<branch>+<commit>`, e.g.
+      # `0.1.0-staging+1a2b3c4`
+      - name: Derive version
+        id: version
+        env:
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          version="$(jq -r .version package.json)-${BRANCH}+${SHA::7}"
+          echo "Version: ${version}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # OCI labels with the version, commit and source; the tags are set by
+      # `publish`, after the scan
+      - name: Generate image labels
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          flavor: latest=false
+          tags: type=raw,value=${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          username: ${{ secrets.DOCKERHUB_LOGIN }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push image by digest
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          sbom: true
+          provenance: mode=max
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ steps.version.outputs.version }}
+
+  # Scans the image with Trivy (shared action
+  # `elixir-cloud-aai/.github/actions/scan-image`): for pull requests the
+  # image of `image`, for pushes exactly the digest pushed by `push`
+  # (`<image>@<digest>`; public, so pulling it needs no login), in a job
+  # without credentials or signing permissions. The findings that have a fix
+  # are uploaded to code scanning (not for pull requests from forks, whose
+  # token cannot write them), and the job fails on critical and high
+  # vulnerabilities that have a fix. Accepted findings are listed, with a
+  # reason and an expiry date, in `.trivyignore.yaml`
+  scan:
+    name: Scan image
+    # For pull requests, `push` is skipped
+    needs: [image, push]
+    if: >-
+      ${{ !cancelled() && needs.image.result == 'success' && (
+        github.event_name == 'pull_request' || needs.push.result == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write # upload SARIF to code scanning
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the image
+        if: ${{ github.event_name != 'push' }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image
+          path: ${{ runner.temp }}
+      - name: Load the image
+        if: ${{ github.event_name != 'push' }}
+        run: docker load -i "${RUNNER_TEMP}/image.tar"
+      - name: Determine image
+        id: image
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DIGEST: ${{ needs.push.outputs.digest }}
+        run: |
+          if [[ "${EVENT_NAME}" != "push" ]]; then
+            echo "image=${IMAGE_NAME}:scan" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Invalid image digest '${DIGEST}'"
+            exit 1
+          fi
+          echo "image=${IMAGE_NAME}@${DIGEST}" >> "$GITHUB_OUTPUT"
+      - name: Scan image
+        uses: elixir-cloud-aai/.github/actions/scan-image@743e82d290a53768454999e413756a924e383259 # v1.0.0
+        with:
+          image: ${{ steps.image.outputs.image }}
+          category: image
+          upload: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+  # Attests the build provenance of the scanned digest (GitHub artifact
+  # attestation, also pushed to the registry), signs it with Sigstore keyless
+  # signing (`cosign`, via the workflow's OIDC token) and only then tags
+  # exactly that digest, so that the published image is the scanned one; see
+  # "Container Image" in `docs/deployment.md`
+  publish:
+    name: Publish image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ github.event_name == 'push' }}
+    needs: [lint, typecheck, build, audit, image, push, scan]
+    # Docker Hub secrets; the environment only allows the branches `staging`
+    # and `dev`
+    environment: dev-images
+    permissions:
+      contents: read
+      id-token: write # Sigstore signing certificates
+      attestations: write # GitHub artifact attestations
+    # Publish one image at a time, and only for the newest commit on the
+    # branch, so that an older run cannot overwrite the branch tag with older
+    # code
+    concurrency:
+      group: ${{ github.workflow }}-publish-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      DIGEST: ${{ needs.push.outputs.digest }}
+    steps:
+      - name: Check that commit is still the branch head
+        id: head
+        env:
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          head=$(git ls-remote "https://github.com/${REPOSITORY}.git" "${REF}" | cut -f1)
+          [ -n "${head}" ] || { echo "::error::Could not look up ${REF}"; exit 1; }
+          if [ "${head}" = "${SHA}" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Skipping publish: ${REF} has moved on to ${head}"
+          fi
+      - name: Check image digest
+        if: steps.head.outputs.current == 'true'
+        run: |
+          if [[ ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Invalid image digest '${DIGEST}'"
+            exit 1
+          fi
+      - name: Set up Docker Buildx
+        if: steps.head.outputs.current == 'true'
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Log in to Docker Hub
+        if: steps.head.outputs.current == 'true'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          username: ${{ secrets.DOCKERHUB_LOGIN }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Attest build provenance
+        if: steps.head.outputs.current == 'true'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ env.DIGEST }}
+          push-to-registry: true
+          # No artifact metadata storage record (needs another permission)
+          create-storage-record: false
+      - name: Install cosign
+        if: steps.head.outputs.current == 'true'
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+      # The signature covers the digest, and so every tag of it
+      - name: Sign image
+        if: steps.head.outputs.current == 'true'
+        run: cosign sign --yes "${IMAGE_NAME}@${DIGEST}"
+      # Tags `<branch>` and `sha-<commit>` (never `latest`, which is for
+      # releases) point to the scanned and signed digest: a single source is
+      # copied as is. A commit pushed to both branches gets two images (their
+      # version label and provenance differ); `sha-<commit>` stays on the
+      # first one published and is never moved
+      - name: Tag image
+        if: steps.head.outputs.current == 'true'
+        env:
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          # `sha-<commit>` first, so that a failure leaves the branch tag
+          # where it was. Only "not found" adds it; other errors (e.g. rate
+          # limits) fail the step, so that a short registry error can't move
+          # it
+          tags=()
+          if err="$(docker buildx imagetools inspect "${IMAGE_NAME}:sha-${SHA}" 2>&1 >/dev/null)"; then
+            echo "::notice::${IMAGE_NAME}:sha-${SHA} exists already; not moving it"
+          elif grep -qiE 'not found|manifest unknown' <<< "${err}"; then
+            tags+=("${IMAGE_NAME}:sha-${SHA}")
+          else
+            echo "::error::Could not look up ${IMAGE_NAME}:sha-${SHA}: ${err}"
+            exit 1
+          fi
+          tags+=("${IMAGE_NAME}:${BRANCH}")
+          for tag in "${tags[@]}"; do
+            docker buildx imagetools create --tag "${tag}" "${IMAGE_NAME}@${DIGEST}"
+            actual="$(docker buildx imagetools inspect "${tag}" \
+              --format '{{ json .Manifest }}' | jq -r .digest)"
+            if [[ "${actual}" != "${DIGEST}" ]]; then
+              echo "::error::${tag} points to ${actual}, expected ${DIGEST}"
+              exit 1
+            fi
+          done
+
+  # The only required check: the shared gate action of
+  # elixir-cloud-aai/.github fails on failed, cancelled and skipped jobs
+  # (except the intended skips: `title` on pushes and for Dependabot, `push`
+  # and `publish` on pull requests) and on missing results. Add every new
+  # job to `needs`
+  passed:
+    name: CI passed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    needs: [title, lint, typecheck, build, audit, image, push, scan, publish]
+    permissions: {}
+    steps:
+      - name: Check results of all jobs
+        uses: elixir-cloud-aai/.github/actions/gate@743e82d290a53768454999e413756a924e383259 # v1.0.0
+        with:
+          needs: ${{ toJSON(needs) }}
+          allow-skipped: ${{ github.event_name == 'pull_request' && 'title push publish' || 'title' }}

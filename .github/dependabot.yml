@@ -1,0 +1,57 @@
+version: 2
+# Every entry targets `staging` (`target-branch`); commit messages start with
+# `build(deps)` (Conventional Commits), and pull requests have the
+# organization's label `type: dependencies` (not Dependabot's own labels).
+# Security updates always target the default branch. Dependabot reads this
+# file only from the default branch (currently `dev`), so it takes effect
+# once it is there or `staging` becomes the default branch
+updates:
+  # Dependencies in `package.json` and the lock (`bun.lock`), updated
+  # together
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: monthly
+    target-branch: staging
+    labels: ["type: dependencies"]
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      # Cloud Components (prereleases), whose updates may break the forms:
+      # in pull requests of their own
+      elixir-cloud:
+        patterns: ["@elixir-cloud/*"]
+      node-dependencies:
+        patterns: ["*"]
+        exclude-patterns: ["@elixir-cloud/*"]
+  # Actions in the workflows, including the pins of the shared actions of
+  # `elixir-cloud-aai/.github` (to the commits of its releases,
+  # `@<commit> # vX.Y.Z`)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    target-branch: staging
+    labels: ["type: dependencies"]
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      github-actions:
+        patterns: ["*"]
+  # Images in the `Dockerfile` (Bun, pinned by digest); pull requests that
+  # bump its version must also bump `packageManager` in `package.json`,
+  # which CI's `lint` job checks
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    target-branch: staging
+    labels: ["type: dependencies"]
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      docker:
+        patterns: ["*"]

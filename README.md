@@ -35,7 +35,7 @@ bun run dev
 ```
 
 - This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
-  > **_NOTE:_** Login works only on the host and port of `OIDC_REDIRECT_URI` and `APP_ORIGIN` (see [Environment Variables](#environment-variables)). If you run Krini elsewhere, e.g. on another port, set both to that address and register the redirect URI with your OIDC client.
+  > **_NOTE:_** Login works only on the host and port of `OIDC_REDIRECT_URI` and `APP_ORIGIN` (see [Environment Variables](#environment-variables)). If you run Krini elsewhere, e.g. on another port, set both to that address in your `.env.local` file and register the redirect URI with your OIDC client.
 
 Great, now you are good to go!
 
@@ -48,7 +48,7 @@ bun run test
 
 ### Environment Variables
 
-Create a `.env.local` file in the project root:
+For local development, copy `.env.example` to `.env.local` in the project root and fill in your values:
 
 ```env
 # LS Login / OpenID Connect
@@ -107,7 +107,9 @@ http://localhost:3000/auth/api/callback
 
 Do not commit `.env.local` or expose `OIDC_CLIENT_SECRET` to client-side code.
 
-For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/DEPLOYMENT.md).
+`.env.example` is the only env file in the repository; Git and the Docker build ignore all others, and CI fails if another one is committed or isn't excluded from the Docker build context. In production, pass the settings to the container when it starts, see the [Deployment Guide](./docs/deployment.md#environment-variables).
+
+For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/deployment.md).
 
 ### Tests
 
