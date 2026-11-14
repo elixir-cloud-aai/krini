@@ -164,10 +164,13 @@ sidebar of the repository formats it as APA or BibTeX.
 Contributions are welcome! See the organisation's [contributing
 guide][contributing], mind our [code of conduct][code-of-conduct], and see
 [Getting Started](#getting-started) for the setup and the checks of this
-repository. For anything else, write to
-[cloud-service@elixir-europe.org](mailto:cloud-service@elixir-europe.org), or
-use the [issue tracker](https://github.com/elixir-cloud-aai/krini/issues) to
-request features or report bugs.
+repository.
+
+## Contact
+
+Use the [issue tracker](https://github.com/elixir-cloud-aai/krini/issues) to
+request features or report bugs. For anything else, write to
+[cloud-service@elixir-europe.org](mailto:cloud-service@elixir-europe.org).
 
 ## Versioning
 
