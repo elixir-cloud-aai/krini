@@ -58,11 +58,18 @@ export default defineConfig({
                 NEXT_TELEMETRY_DISABLED: "1",
                 // the app checks the mock WES service's certificate
                 NODE_EXTRA_CA_CERTS: `${certDir}/cert.pem`,
-                LS_LOGIN_URL: mockHttp,
-                OIDC_CLIENT_ID: client.id,
-                OIDC_CLIENT_SECRET: client.secret,
-                OIDC_REDIRECT_URI: `${baseURL}/auth/api/callback`,
-                OIDC_SCOPE: "openid profile email",
+                LOGIN_PROVIDERS: JSON.stringify([
+                    {
+                        id: "mock",
+                        name: "Mock IdP",
+                        issuer: mockHttp,
+                        clientId: client.id,
+                        clientSecret: client.secret,
+                        scopes: ["openid", "profile", "email"],
+                        groupsClaim: "groups",
+                        computeGroups: ["compute"],
+                    },
+                ]),
                 CLOUD_REGISTRY_URL: `${mockHttp}/ga4gh/registry/v1`,
                 APP_ORIGIN: baseURL,
                 PRIVACY_CONTROLLER: privacy.controller,

@@ -109,8 +109,8 @@ For Krini to authenticate with TES and WES services, the following service-side 
 
 ### OIDC Client Allowlisting
 
-- TES services must allowlist the `OIDC_CLIENT_ID` in their authorization configuration
-- WES services must allowlist the `OIDC_CLIENT_ID` in their authorization configuration
+- TES services must allowlist the `clientId` of each `LOGIN_PROVIDERS` entry in their authorization configuration
+- WES services must allowlist the `clientId` of each `LOGIN_PROVIDERS` entry in their authorization configuration
 - Only allowlisted clients can use their access tokens to authenticate with these services
 
 ### RFC 9068 Token Type
@@ -188,22 +188,27 @@ app.use(cors({
 
 ## OIDC Provider Configuration
 
+Krini works with any OpenID Connect providers, configured in the `LOGIN_PROVIDERS` environment variable as a JSON array — one entry per provider. Each entry supports `id`, `name`, `logo`, `issuer`, `clientId`, `clientSecret`, `scopes`, `groupsClaim`, `groupsFromUserinfo`, `computeGroups`, `adminGroups` and `groupSubgroupSeparator` (see `.env.example` for a complete example). Krini discovers the authorization, token, userinfo, JWKS and end-session endpoints from each `<issuer>/.well-known/openid-configuration`. There is no provider-specific configuration in the code; the login page offers one button per configured provider.
+
+### Flow
+
+Krini uses the Authorization Code flow with a confidential client (client secret stays on the server). PKCE (S256), `state` and `nonce` are used on every login, and the ID token is validated (issuer, audience, signature via JWKS, expiry, nonce) before a session starts. All session tokens live in `httpOnly` cookies whose lifetime follows the provider's `expires_in`.
+
 ### Scopes
 
-Ensure your OIDC provider is configured to support the following scopes:
+Configure the scopes each provider requests via the `scopes` array of its `LOGIN_PROVIDERS` entry (default `["openid", "profile", "email", "offline_access"]`). `offline_access` is required for refresh token support. Add the scope that releases group entitlements if your provider gates them behind one.
 
-- `openid`: Required for OpenID Connect authentication
-- `profile`: Access to user profile information
-- `email`: Access to user email
-- `offline_access`: Required for refresh token support
+### Access tiers
+
+Krini derives a display tier — `user`, `compute` or `admin` — from the `groupsClaim` of each provider (read from userinfo or the ID token, per `groupsFromUserinfo`), matched against the provider's `computeGroups` and `adminGroups` (exact match, plus subgroup prefixes when `groupSubgroupSeparator` is set). Users in the compute or admin groups see run actions; other logged-in users see a "Request compute access" entry point (`COMPUTE_ACCESS_REQUEST_URL`). Tiers only control what the UI shows — the services themselves enforce access, so list Krini's `clientId` in the `audience` (or client allowlist) of every service that accepts its tokens (registry for writes, gateway, WES services).
 
 ### Token Type
 
-The OIDC provider must issue JWT (JSON Web Token) access tokens per [RFC 9068](https://datatracker.ietf.org/doc/html/rfc9068). TES and WES services expect JWT tokens for authentication.
+The OIDC provider must be able to return a signed ID token (JWT) so Krini can validate it. TES and WES services expect JWT access tokens per [RFC 9068](https://datatracker.ietf.org/doc/html/rfc9068) for authentication.
 
 ### Client Allowlisting
 
-Configure your TES and WES services to allowlist Krini's `OIDC_CLIENT_ID` in their authorization configuration. Only allowlisted clients can use their access tokens to authenticate with these services.
+Configure your TES and WES services to allowlist the `clientId` of each `LOGIN_PROVIDERS` entry in their authorization configuration. Only allowlisted clients can use their access tokens to authenticate with these services.
 
 ## Environment Variables
 
@@ -212,16 +217,16 @@ For a complete list of required environment variables, see the main [README.md](
 Krini reads the settings listed in the README on the server, at runtime. The Docker image contains no env files (`.dockerignore` excludes them) and its build takes no settings, so one image works for every deployment. Pass the settings to the container when it starts, as environment variables, for example:
 
 - Docker: `docker run --env-file krini.env ...`, with `krini.env` kept outside the repository and the build context. Docker reads plain `KEY=value` lines and doesn't strip quotes, so write `PRIVACY_CONTROLLER=Example Institute, Example City`, not `PRIVACY_CONTROLLER="..."`.
-- Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `OIDC_CLIENT_SECRET`, referenced with `envFrom` or `env[].valueFrom` in the deployment.
+- Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `LOGIN_PROVIDERS` (it contains each provider's `clientSecret`), referenced with `envFrom` or `env[].valueFrom` in the deployment.
 
-Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_*` variables, so no setting is built into the JavaScript that the browser loads; never put a secret into one. Some settings are public by design and do reach the browser: the login redirect carries `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` and `OIDC_SCOPE`, and the privacy notice shows the `PRIVACY_*` values. `OIDC_CLIENT_SECRET` is only sent from Krini's server to LS Login.
+Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_*` variables, so no setting is built into the JavaScript that the browser loads; never put a secret into one.
 
 ### Production Considerations
 
 - Cookies get the `Secure` flag in production builds (`next build`, as in the Docker image); `NODE_ENV` is fixed when the app is built, so setting it at runtime changes nothing
 - Use HTTPS for all production deployments
 - Configure `APP_ORIGIN` to your production domain
-- Store `OIDC_CLIENT_SECRET` securely (e.g., using a secrets manager)
+- Store `LOGIN_PROVIDERS` securely (e.g., using a secrets manager) — it contains the providers' `clientSecret` values
 - Rotate credentials regularly
 - Set the `PRIVACY_*` variables (see the [README](../README.md#configuration)), so that the privacy notice at `/privacy` names who is responsible and how to reach them. Without them, the page says that the operator hasn't named anyone. They are read at runtime, so changing them needs a restart, not a new image. Values that aren't valid (e.g. a URL that isn't `https`) are ignored, with a warning in the server log.
 - The notice's text is the same for every deployment. It describes what Krini itself does. Put anything specific to your deployment (purposes, legal basis, retention, rights) into your own notice and link it with `PRIVACY_NOTICE_URL`.
@@ -233,5 +238,5 @@ Changing a setting needs a restart, not a new image. Krini uses no `NEXT_PUBLIC_
 2. **Secure Cookies**: Production builds set the `Secure` flag on cookies automatically
 3. **Secret Management**: Never commit `.env.local` or other env files (only `.env.example` belongs in the repository), never copy them into an image, and never expose secrets in client-side code
 4. **Origin Validation**: The logout endpoint validates requests against `APP_ORIGIN` to prevent CSRF
-5. **Token Refresh**: The `offline_access` scope enables silent token renewal, improving user experience
+5. **Token Refresh**: the `offline_access` scope (when included in a provider's `scopes`) enables silent token renewal, improving user experience
 6. **CORS Restrictions**: Configure CORS to only allow trusted origins

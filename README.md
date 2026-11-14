@@ -45,12 +45,36 @@ Great, now you are good to go!
 For local development, copy `.env.example` to `.env.local` in the project root and fill in your values:
 
 ```env
-# LS Login / OpenID Connect
-LS_LOGIN_URL=https://login.elixir-europe.org
-OIDC_CLIENT_ID=your-client-id
-OIDC_CLIENT_SECRET=your-client-secret
-OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
-OIDC_SCOPE=openid profile email offline_access
+# Login providers (JSON array; endpoints come from OIDC discovery)
+LOGIN_PROVIDERS=[
+  {
+    "id": "ls-login",
+    "name": "LS Login",
+    "logo": "/ls-login-grey-wide.jpg",
+    "issuer": "https://login.aai-lifescience-ri.eu/oidc/",
+    "clientId": "your-client-id",
+    "clientSecret": "your-client-secret",
+    "scopes": [
+      "openid",
+      "profile",
+      "email",
+      "eduperson_entitlement"
+    ],
+    "groupsClaim": "eduperson_entitlement",
+    "computeGroups": [
+      "<compute group>"
+    ],
+    "adminGroups": [
+      "<admin group>"
+    ]
+  }
+]
+
+# Optional override of the callback URL (default: <APP_ORIGIN>/auth/api/callback)
+OIDC_REDIRECT_URI=
+
+# Where users without compute access can request it (shown in the UI)
+COMPUTE_ACCESS_REQUEST_URL=
 
 # Cloud Registry
 CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev
@@ -67,11 +91,9 @@ PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
 
 #### Configuration
 
-- `LS_LOGIN_URL`: Base URL of the LS Login identity provider.
-- `OIDC_CLIENT_ID`: Client ID registered with LS Login.
-- `OIDC_CLIENT_SECRET`: Client secret associated with the OIDC client. Keep this private.
-- `OIDC_REDIRECT_URI`: Callback URL registered with your LS Login client. It must match the redirect URI configured with the identity provider.
-- `OIDC_SCOPE`: OAuth 2.0 scopes to request from the identity provider. Must include `offline_access` for refresh token support. Default: `openid profile email offline_access`.
+- `LOGIN_PROVIDERS`: JSON array of login provider configurations; Krini offers a login button per entry. Each entry needs `id` (unique, used in URLs and the session cookie), `issuer` (endpoints are discovered from `<issuer>/.well-known/openid-configuration`), `clientId` and `clientSecret` (server-side only). Optional fields: `name` and `logo` (login button), `scopes` (default `["openid","profile","email","offline_access"]` — include the scope that releases group entitlements), `groupsClaim` (claim carrying group values, e.g. `eduperson_entitlement`), `groupsFromUserinfo` (default `true`; `false` reads groups from the ID token), `computeGroups` and `adminGroups` (comma... array of group values for the tiers), `groupSubgroupSeparator` (a claim value also matches a configured group when it starts with `<group><separator>`, e.g. `:` matches `compute:wg1`).
+- `OIDC_REDIRECT_URI`: Optional callback URL override. Default: `<APP_ORIGIN>/auth/api/callback`. It must match the redirect URI registered with each provider's client.
+- `COMPUTE_ACCESS_REQUEST_URL`: Optional URL shown to logged-in users without compute access ("Request compute access").
 - `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API.
 - `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000` for local development or your production URL).
 - Privacy notice at `/privacy`, linked from the login page and the sidebar and reachable without login. It describes what Krini processes, lists its cookies, and says what happens at the login provider and the services. The text is the same for every deployment. Each deployment adds who is responsible and can link its own full notice. All four settings are optional and read at runtime. Invalid values are ignored, with a warning in the server log.

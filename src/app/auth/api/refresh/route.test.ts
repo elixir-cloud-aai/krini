@@ -1,25 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { issuer, mockOidcProvider, signIdToken } from "@/test/oidc";
 import {
     cookieOf,
     cookieStore,
     http,
     httpError,
     jar,
-    loginUrl,
     networkError,
     setUp,
 } from "@/test/routes";
 
 vi.mock("next/headers", () => ({ cookies: async () => cookieStore }));
 
-const tokens = {
+const now = new Date("2026-11-12T12:00:00Z").getTime();
+
+const tokens = () => ({
     access_token: "access-2",
-    id_token: "id-2",
+    id_token: signIdToken({
+        iss: issuer,
+        aud: "client",
+        exp: Math.floor(now / 1000) + 3600,
+        sub: "u1",
+    }),
     refresh_token: "refresh-2",
     expires_in: 600,
-};
-
-const now = new Date("2026-11-12T12:00:00Z").getTime();
+});
 
 beforeEach(() => {
     vi.useFakeTimers({ now, toFake: ["Date"] });
@@ -38,9 +43,10 @@ async function refresh(
     cookies: Record<string, string | undefined> = {
         refresh_token: "rt-SECRET-1",
     },
-    reply: unknown = tokens,
+    reply: unknown = tokens(),
 ) {
     setUp(cookies);
+    mockOidcProvider();
     const post = vi.spyOn(await http(), "post");
     if (reply instanceof Error) post.mockRejectedValue(reply);
     else post.mockResolvedValue({ status: 200, data: reply });
@@ -64,7 +70,7 @@ describe("POST /auth/api/refresh", () => {
         expect(await response.json()).toEqual({ success: true });
 
         const [endpoint, body, options] = post.mock.calls[0];
-        expect(endpoint).toBe(`${loginUrl}/oidc/token`);
+        expect(endpoint).toBe(`${issuer}/token`);
         expect(Object.fromEntries(body as URLSearchParams)).toEqual({
             grant_type: "refresh_token",
             refresh_token: "rt-SECRET-1",
@@ -78,7 +84,7 @@ describe("POST /auth/api/refresh", () => {
             value: "access-2",
             attributes: expect.arrayContaining(["httponly", "max-age=600"]),
         });
-        expect(cookieOf(response, "id_token")?.value).toBe("id-2");
+        expect(cookieOf(response, "id_token")).toBeDefined();
         // rotated refresh tokens replace the old one
         expect(cookieOf(response, "refresh_token")?.value).toBe("refresh-2");
         const expiry = cookieOf(response, "token_expires_at");
@@ -86,21 +92,14 @@ describe("POST /auth/api/refresh", () => {
         expect(expiry?.attributes).not.toContain("httponly");
     });
 
-    it("sends empty client settings that aren't set", async () => {
-        setUp({ refresh_token: "rt-SECRET-1" });
-        vi.stubEnv("OIDC_CLIENT_ID", undefined);
-        vi.stubEnv("OIDC_CLIENT_SECRET", undefined);
-        const post = vi
-            .spyOn(await http(), "post")
-            .mockResolvedValue({ status: 200, data: tokens });
-        const { POST } = await import("./route");
-        await POST();
-        expect(
-            Object.fromEntries(post.mock.calls[0][1] as URLSearchParams),
-        ).toMatchObject({
-            client_id: "",
-            client_secret: "",
+    it("honours refresh_expires_in for the refresh cookie", async () => {
+        const { response } = await refresh(undefined, {
+            ...tokens(),
+            refresh_expires_in: 7200,
         });
+        expect(cookieOf(response, "refresh_token")?.attributes).toContain(
+            "max-age=7200",
+        );
     });
 
     it("sets secure cookies in production", async () => {
@@ -114,6 +113,7 @@ describe("POST /auth/api/refresh", () => {
     it("keeps the ID and refresh tokens if the provider sends no new ones", async () => {
         const { response } = await refresh(undefined, {
             access_token: "access-2",
+            expires_in: 3600,
         });
         expect(response.status).toBe(200);
         expect(cookieOf(response, "access_token")).toMatchObject({
@@ -148,9 +148,10 @@ describe("POST /auth/api/refresh", () => {
 
     it("drops the new tokens after a logout during the refresh", async () => {
         setUp({ refresh_token: "rt-SECRET-1" });
+        mockOidcProvider();
         vi.spyOn(await http(), "post").mockImplementation(async () => {
             jar.set("logout_marker", { name: "logout_marker", value: "1" });
-            return { status: 200, data: tokens };
+            return { status: 200, data: tokens() };
         });
         const { POST } = await import("./route");
         const response = await POST();
@@ -159,13 +160,87 @@ describe("POST /auth/api/refresh", () => {
         expect(response.headers.getSetCookie()).toEqual([]);
     });
 
+    it("resolves the session provider from the provider cookie and ID token", async () => {
+        const { response } = await refresh({
+            refresh_token: "rt-SECRET-1",
+            oidc_provider: "test",
+            id_token: "h.e30.c2ln",
+        });
+        expect(response.status).toBe(200);
+    });
+
+    it("fails when no login providers are configured", async () => {
+        setUp({ refresh_token: "rt-SECRET-1" });
+        mockOidcProvider();
+        vi.stubEnv("LOGIN_PROVIDERS", "[]");
+        const { POST } = await import("./route");
+        const response = await POST();
+        expect(response.status).toBe(401);
+        expect(await response.json()).toEqual({
+            error: "Unknown login provider",
+        });
+    });
+
+    it("fails when the provider cannot be discovered", async () => {
+        setUp({ refresh_token: "rt-SECRET-1" });
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response("err", { status: 500 })),
+        );
+        const { POST } = await import("./route");
+        const response = await POST();
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({
+            error: "Could not discover the OIDC provider configuration",
+        });
+    });
+
     it("rejects a token response without an access token", async () => {
-        const { response, error } = await refresh(undefined, { id_token: "x" });
+        const { response, error } = await refresh(undefined, {
+            id_token: "x",
+        });
         expect(response.status).toBe(500);
         expect(await response.json()).toEqual({
             error: "Invalid token response",
         });
         expect(error.mock.calls[0][0]).toMatch(/category=invalid_response/);
+    });
+
+    it("rejects an ID token that fails validation", async () => {
+        const { response, error } = await refresh(undefined, {
+            access_token: "access-2",
+            id_token: "not-a-jwt",
+        });
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({
+            error: "Invalid token response",
+        });
+        expect(error.mock.calls[0][0]).toMatch(
+            /category=id_token_validation_failed/,
+        );
+    });
+
+    it.each([
+        ["not a number", "600"],
+        ["not positive", 0],
+    ])("assumes an hour when expires_in is %s", async (_, expires_in) => {
+        const { response } = await refresh(undefined, {
+            access_token: "access-2",
+            expires_in,
+        });
+        expect(cookieOf(response, "access_token")?.attributes).toContain(
+            "max-age=3600",
+        );
+    });
+
+    it("logs the provider's error field on failure", async () => {
+        const { error } = await refresh(
+            undefined,
+            httpError(400, { error: "invalid_grant" }),
+        );
+        expect(error.mock.calls[0][0]).toContain(
+            "provider_error=invalid_grant",
+        );
     });
 
     it("ends the session when the provider rejects the refresh token", async () => {

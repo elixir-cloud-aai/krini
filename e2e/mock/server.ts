@@ -1,8 +1,11 @@
 /**
  * @description mock services for the end-to-end tests, in one process:
  *
- * - an OpenID Connect provider (`/oidc/authorize`, `/oidc/token`,
- *   `/oidc/userinfo`) that logs in the test user without a form;
+ * - an OpenID Connect provider (`/.well-known/openid-configuration`,
+ *   `/oidc/authorize`, `/oidc/token`, `/oidc/userinfo`, `/oidc/jwks`,
+ *   `/oidc/logout`) that logs in the test user without a form; the app
+ *   uses PKCE and validates the signed ID token against the JWKS, so the
+ *   provider signs real RS256 JWTs;
  * - a service registry (`/ga4gh/registry/v1/services`);
  * - a WES service over `https` with a self-signed certificate
  *   (`/ga4gh/wes/v1/...`), which the browser calls directly, as with real
@@ -15,7 +18,7 @@
  * the app trusts it through `NODE_EXTRA_CA_CERTS`. Run with `bun`.
  */
 import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, generateKeyPairSync, randomUUID, sign } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
 import {
     createServer,
@@ -40,11 +43,38 @@ const certDir = process.env.MOCK_CERT_DIR ?? "e2e/.certs";
 const clientId = client.id;
 const clientSecret = client.secret;
 
-/** The test user, whose claims the user info returns */
+const issuer = `http://127.0.0.1:${httpPort}`;
+
+/** Signing key of the mock provider's ID tokens */
+const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+});
+
+function b64url(input: Buffer | string) {
+    return Buffer.from(input).toString("base64url");
+}
+
+/** A signed ID token (RS256) with the claims the app validates */
+function idToken(claims: Record<string, unknown>) {
+    const header = b64url(
+        JSON.stringify({ alg: "RS256", kid: "mock", typ: "JWT" }),
+    );
+    const payload = b64url(JSON.stringify(claims));
+    const signature = sign(
+        "RSA-SHA256",
+        Buffer.from(`${header}.${payload}`),
+        privateKey,
+    );
+    return `${header}.${payload}.${b64url(signature)}`;
+}
+
+/** The test user, whose claims the user info returns; the `groups` claim
+ * puts the user in the compute tier of the app */
 const user = {
     sub: "alice@lifescience-ri.eu",
     name: "Alice Example",
     email: "alice@example.org",
+    groups: ["compute"],
 };
 
 const wesUrl = `https://127.0.0.1:${httpsPort}/ga4gh/wes/v1`;
@@ -95,9 +125,12 @@ const serviceInfo = {
     tags: {},
 };
 
-/** Codes of logins that the app hasn't exchanged yet, with their
- * redirect URIs, which the token request must repeat */
-const codes = new Map<string, string>();
+/** Logins that the app hasn't exchanged yet: code → redirect URI, nonce
+ * and PKCE challenge, which the token request must match */
+const codes = new Map<
+    string,
+    { redirect: string; nonce: string | null; challenge: string | null }
+>();
 /** Access tokens that the provider issued */
 const accessTokens = new Set<string>();
 /** Runs that the WES service accepted */
@@ -124,12 +157,18 @@ async function bodyOf(req: IncomingMessage) {
     return Buffer.concat(chunks).toString();
 }
 
-function issueTokens() {
+function issueTokens(nonce?: string | null) {
     const access = `access-${randomUUID()}`;
     accessTokens.add(access);
     return {
         access_token: access,
-        id_token: `id-${randomUUID()}`,
+        id_token: idToken({
+            iss: issuer,
+            aud: clientId,
+            exp: Math.floor(Date.now() / 1000) + 3600,
+            sub: user.sub,
+            ...(nonce ? { nonce } : {}),
+        }),
         refresh_token: `refresh-${randomUUID()}`,
         token_type: "Bearer",
         expires_in: 3600,
@@ -144,6 +183,31 @@ function bearerOf(req: IncomingMessage) {
 async function handleHttp(req: IncomingMessage, res: ServerResponse) {
     const url = new URL(req.url ?? "/", `http://127.0.0.1:${httpPort}`);
 
+    if (
+        req.method === "GET" &&
+        url.pathname === "/.well-known/openid-configuration"
+    )
+        return send(res, 200, {
+            issuer,
+            authorization_endpoint: `${issuer}/oidc/authorize`,
+            token_endpoint: `${issuer}/oidc/token`,
+            userinfo_endpoint: `${issuer}/oidc/userinfo`,
+            jwks_uri: `${issuer}/oidc/jwks`,
+            end_session_endpoint: `${issuer}/oidc/logout`,
+        });
+
+    if (req.method === "GET" && url.pathname === "/oidc/jwks")
+        return send(res, 200, {
+            keys: [
+                {
+                    ...publicKey.export({ format: "jwk" }),
+                    kid: "mock",
+                    alg: "RS256",
+                    use: "sig",
+                },
+            ],
+        });
+
     if (req.method === "GET" && url.pathname === "/oidc/authorize") {
         const redirect = url.searchParams.get("redirect_uri");
         // only the app's callback, as registered at a real provider
@@ -155,8 +219,12 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
         )
             return send(res, 400, { error: "invalid_request" });
         const code = randomUUID();
-        codes.set(code, redirect);
-        const target = new URL(redirect);
+        codes.set(code, {
+            redirect: redirect as string,
+            nonce: url.searchParams.get("nonce"),
+            challenge: url.searchParams.get("code_challenge"),
+        });
+        const target = new URL(redirect as string);
         target.searchParams.set("code", code);
         target.searchParams.set("state", url.searchParams.get("state") ?? "");
         return send(res, 302, undefined, { Location: target.toString() });
@@ -172,14 +240,31 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
         const grant = form.get("grant_type");
         if (grant === "authorization_code") {
             const code = form.get("code") ?? "";
-            const redirect = codes.get(code);
+            const login = codes.get(code);
             codes.delete(code);
-            if (!redirect || form.get("redirect_uri") !== redirect)
+            if (!login || form.get("redirect_uri") !== login.redirect)
                 return send(res, 400, { error: "invalid_grant" });
-            return send(res, 200, issueTokens());
+            // PKCE: the verifier's S256 challenge must match the authorize
+            // request's code_challenge
+            if (login.challenge) {
+                const verifier = form.get("code_verifier") ?? "";
+                const challenge = createHash("sha256")
+                    .update(verifier)
+                    .digest("base64url");
+                if (challenge !== login.challenge)
+                    return send(res, 400, { error: "invalid_grant" });
+            }
+            return send(res, 200, issueTokens(login.nonce));
         }
         if (grant === "refresh_token") return send(res, 200, issueTokens());
         return send(res, 400, { error: "unsupported_grant_type" });
+    }
+
+    if (req.method === "GET" && url.pathname === "/oidc/logout") {
+        const target = url.searchParams.get("post_logout_redirect_uri");
+        if (target?.startsWith(appOrigin))
+            return send(res, 302, undefined, { Location: target });
+        return send(res, 400, { error: "invalid_request" });
     }
 
     if (req.method === "GET" && url.pathname === "/oidc/userinfo") {

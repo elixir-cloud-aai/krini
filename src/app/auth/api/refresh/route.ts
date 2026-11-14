@@ -2,6 +2,30 @@ import axios from "axios";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
+import {
+    decodeJwtPayload,
+    getEndpoints,
+    getSessionProvider,
+    validateIdToken,
+} from "@/lib/oidc";
+import { applySessionCookies } from "@/lib/session-cookies";
+
+/** Logs only the HTTP status and the provider's `error` field — never codes, secrets or tokens. */
+function logTokenError(context: string, err: unknown, tokenEndpoint: string) {
+    if (axios.isAxiosError(err)) {
+        const providerError =
+            typeof err.response?.data?.error === "string"
+                ? err.response.data.error
+                : undefined;
+        console.error(
+            `${context}: category=${err.response ? `upstream_${err.response.status}` : err.code ? `network_${err.code}` : "unknown"}, endpoint=${tokenEndpoint}, provider_error=${providerError ?? "none"}`,
+        );
+    } else {
+        console.error(
+            `${context}: category=unexpected, endpoint=${tokenEndpoint}`,
+        );
+    }
+}
 
 export async function POST() {
     const cookieStore = await cookies();
@@ -22,15 +46,34 @@ export async function POST() {
         );
     }
 
+    const idToken = cookieStore.get("id_token")?.value;
+    const provider = getSessionProvider(
+        cookieStore.get("oidc_provider")?.value,
+        idToken ? decodeJwtPayload(idToken) : null,
+    );
+    if (!provider) {
+        return NextResponse.json(
+            { error: "Unknown login provider" },
+            { status: 401 },
+        );
+    }
+
+    const endpoints = await getEndpoints(provider);
+    if (!endpoints) {
+        return NextResponse.json(
+            { error: "Could not discover the OIDC provider configuration" },
+            { status: 500 },
+        );
+    }
+
     try {
-        const baseUrl = `${process.env.LS_LOGIN_URL}/oidc/token`;
         const response = await axiosBase.post(
-            baseUrl,
+            endpoints.tokenEndpoint,
             new URLSearchParams({
                 grant_type: "refresh_token",
                 refresh_token: refreshToken,
-                client_id: process.env.OIDC_CLIENT_ID ?? "",
-                client_secret: process.env.OIDC_CLIENT_SECRET ?? "",
+                client_id: provider.clientId,
+                client_secret: provider.clientSecret,
             }),
             {
                 headers: {
@@ -40,16 +83,11 @@ export async function POST() {
             },
         );
 
-        const {
-            access_token,
-            id_token,
-            refresh_token: new_refresh_token,
-            expires_in,
-        } = response.data;
+        const { access_token, id_token } = response.data;
 
         if (typeof access_token !== "string") {
             console.error(
-                `OIDC refresh error: category=invalid_response, url=${process.env.LS_LOGIN_URL}/oidc/token, has_access_token=${typeof access_token === "string"}, has_id_token=${typeof id_token === "string"}`,
+                `OIDC refresh error: category=invalid_response, endpoint=${endpoints.tokenEndpoint}`,
             );
             return NextResponse.json(
                 { error: "Invalid token response" },
@@ -57,75 +95,40 @@ export async function POST() {
             );
         }
 
-        const cookieOptions = {
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax" as const,
-            path: "/",
-            httpOnly: true,
-        };
+        // A refreshed ID token carries no nonce; signature, issuer,
+        // audience and expiry are still verified.
+        if (typeof id_token === "string") {
+            const payload = await validateIdToken(
+                id_token,
+                endpoints,
+                provider,
+                null,
+            );
+            if (!payload) {
+                console.error(
+                    `OIDC refresh error: category=id_token_validation_failed, endpoint=${endpoints.tokenEndpoint}`,
+                );
+                return NextResponse.json(
+                    { error: "Invalid token response" },
+                    { status: 500 },
+                );
+            }
+        }
 
         const cookieStoreAfter = await cookies();
-        const logoutMarkerAfter = cookieStoreAfter.get("logout_marker")?.value;
-
-        if (logoutMarkerAfter) {
+        if (cookieStoreAfter.get("logout_marker")?.value) {
             return NextResponse.json(
                 { error: "Session terminated" },
                 { status: 401 },
             );
         }
 
-        const expiresAt =
-            Date.now() +
-            (typeof expires_in === "number" && expires_in > 0
-                ? expires_in * 1000
-                : 60 * 60 * 1000) -
-            5 * 60 * 1000;
-
         const jsonResponse = NextResponse.json({ success: true });
-
-        jsonResponse.cookies.set("access_token", access_token, {
-            ...cookieOptions,
-            maxAge:
-                typeof expires_in === "number" && expires_in > 0
-                    ? Math.floor(expires_in)
-                    : 60 * 60,
-        });
-
-        if (typeof id_token === "string")
-            jsonResponse.cookies.set("id_token", id_token, {
-                ...cookieOptions,
-                maxAge: 60 * 60,
-            });
-
-        if (typeof new_refresh_token === "string") {
-            jsonResponse.cookies.set("refresh_token", new_refresh_token, {
-                ...cookieOptions,
-                maxAge: 30 * 24 * 60 * 60,
-            });
-        }
-
-        jsonResponse.cookies.set("token_expires_at", String(expiresAt), {
-            ...cookieOptions,
-            httpOnly: false,
-            maxAge: 30 * 24 * 60 * 60,
-        });
+        applySessionCookies(jsonResponse, response.data, provider.id);
 
         return jsonResponse;
     } catch (err) {
-        if (axios.isAxiosError(err)) {
-            const errorCategory = err.code
-                ? `network_${err.code}`
-                : err.response
-                  ? `upstream_${err.response.status}`
-                  : "unknown";
-            console.error(
-                `OIDC refresh error: category=${errorCategory}, url=${process.env.LS_LOGIN_URL}/oidc/token, has_response=${!!err.response}`,
-            );
-        } else {
-            console.error(
-                `OIDC refresh error: category=unexpected, url=${process.env.LS_LOGIN_URL}/oidc/token`,
-            );
-        }
+        logTokenError("OIDC refresh error", err, endpoints.tokenEndpoint);
 
         const shouldClearCookies =
             axios.isAxiosError(err) && err.response?.status === 401;
@@ -141,6 +144,7 @@ export async function POST() {
             response.cookies.delete("id_token");
             response.cookies.delete("refresh_token");
             response.cookies.delete("token_expires_at");
+            response.cookies.delete("oidc_provider");
         }
 
         return response;
