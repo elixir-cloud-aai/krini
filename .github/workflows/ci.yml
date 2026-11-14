@@ -3,7 +3,8 @@
 # coverage threshold (reported to Codecov), the type check and the build,
 # an audit of the production dependencies, the Docker image (a smoke test
 # with a read-only root file system) and its scan for known vulnerabilities
-# (Trivy), the end-to-end tests against mock services (`e2e/mock/`), the
+# (Trivy), the end-to-end tests against mock services (`e2e/mock/`), on
+# the build of the checkout and on the image, the
 # documentation (strict MkDocs build), the release readiness, and, on
 # pushes, push the image by digest (with SBOM and provenance attestations),
 # scan exactly that digest, then attest, sign (Sigstore) and tag it with
@@ -236,7 +237,7 @@ jobs:
   # read-only root file system and a writable `/tmp` (see "Container image"
   # in `docs/operator-guide/deployment.md`): for pull requests an image
   # built as `docker build` builds it, without settings, which is handed to
-  # `scan`;
+  # `scan` and `e2e-image`;
   # for pushes exactly the digest pushed by `push` (public, so pulling it
   # needs no login), in a job without credentials, so that the published
   # image is the checked one
@@ -326,6 +327,69 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report-${{ matrix.browser.project }}
+          path: playwright-report/
+          retention-days: 7
+
+  # The journey of `e2e` in Chromium against the image instead of the build
+  # of the checkout (`E2E_IMAGE`, see `playwright.config.ts`): started as it
+  # is deployed (non-root, read-only root file system, writable `/tmp`, all
+  # settings at start), so that a difference between the two (e.g. a file
+  # missing from the standalone output, or a setting read at build time)
+  # fails here. For pull requests the image of `image`, for pushes exactly
+  # the digest pushed by `push` (public, so pulling it needs no login).
+  # Playwright runs on the runner, which starts the image with Docker; the
+  # browser comes in the version of `@playwright/test`
+  e2e-image:
+    name: End-to-end tests (image)
+    # For pull requests, `push` is skipped
+    needs: [image, push]
+    if: >-
+      ${{ !cancelled() && needs.image.result == 'success' && (
+        github.event_name == 'pull_request' || needs.push.result == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the image
+        if: ${{ github.event_name != 'push' }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image
+          path: ${{ runner.temp }}
+      - name: Load the image
+        if: ${{ github.event_name != 'push' }}
+        run: docker load -i "${RUNNER_TEMP}/image.tar"
+      - name: Pull the pushed image
+        if: ${{ github.event_name == 'push' }}
+        env:
+          DIGEST: ${{ needs.push.outputs.digest }}
+        run: |
+          if [[ ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Invalid image digest '${DIGEST}'"
+            exit 1
+          fi
+          docker pull "${IMAGE_NAME}@${DIGEST}"
+          docker tag "${IMAGE_NAME}@${DIGEST}" "${IMAGE_NAME}:scan"
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run end-to-end tests on the image
+        run: npx playwright test --project chromium
+        env:
+          E2E_IMAGE: ${{ env.IMAGE_NAME }}:scan
+      - name: Upload the test report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-image
           path: playwright-report/
           retention-days: 7
 
@@ -458,7 +522,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ github.event_name == 'push' }}
-    needs: [lint, test, build, audit, e2e, docs, readiness, image, push, scan]
+    needs: [lint, test, build, audit, e2e, e2e-image, docs, readiness, image, push, scan]
     # Docker Hub secrets; the environment only allows the branch `dev`
     environment: dev-images
     permissions:
@@ -655,7 +719,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [title, lint, test, build, audit, e2e, docs, readiness, image, push, scan, publish]
+    needs: [title, lint, test, build, audit, e2e, e2e-image, docs, readiness, image, push, scan, publish]
     permissions: {}
     steps:
       - name: Check results of all jobs
