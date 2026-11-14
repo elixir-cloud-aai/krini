@@ -131,7 +131,8 @@ jobs:
       # the tagged commit, so they must exist and be in the
       # organization's format before anything is published; also checks
       # that the tag points to the release commit and that no published
-      # release of it exists
+      # release of it exists. Keep the pin in sync with the checker of the
+      # `readiness` job of `ci.yml` and with `docs/releasing.md`
       - name: Check release notes
         uses: elixir-cloud-aai/.github/actions/publish-release@31f22fccc1f3c597ed7c1d1f75b2f85522155348 # v1.1.0
         with:

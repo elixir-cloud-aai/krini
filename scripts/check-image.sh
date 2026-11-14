@@ -18,10 +18,10 @@ if [[ $# -ne 1 || -z "$1" ]]; then
 fi
 image="$1"
 
-trap 'docker rm -f app >/dev/null 2>&1 || true' EXIT
-docker run -d --name app -p 127.0.0.1:3000:3000 \
-  --read-only --tmpfs /tmp "${image}"
-if [[ "$(docker exec app id -u)" == 0 ]]; then
+# a container of its own, removed on exit (never one of another name)
+app="$(docker run -d -p 127.0.0.1:3000:3000 --read-only --tmpfs /tmp "${image}")"
+trap 'docker rm -f "${app}" >/dev/null 2>&1 || true' EXIT
+if [[ "$(docker exec "${app}" id -u)" == 0 ]]; then
   echo "::error::The container runs as root"
   exit 1
 fi
@@ -32,7 +32,7 @@ for _ in $(seq 30); do
   # `/tmp`)
   login="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/auth/login || true)"
   if [[ "${login}" =~ ^[1-5] && "${login}" != 200 ]]; then
-    docker logs app
+    docker logs "${app}"
     echo "::error::The login page returned ${login}, expected 200"
     exit 1
   fi
@@ -43,12 +43,12 @@ for _ in $(seq 30); do
       exit 1
     fi
     if ! curl -fs -o /dev/null "http://127.0.0.1:3000/_next/image?url=%2Fls-login-grey-wide.jpg&w=640&q=75"; then
-      docker logs app
+      docker logs "${app}"
       echo "::error::The image optimizer failed"
       exit 1
     fi
-    if ! docker exec app sh -c 'ls /tmp/next-cache/images | grep -q .'; then
-      docker logs app
+    if ! docker exec "${app}" sh -c 'ls /tmp/next-cache/images | grep -q .'; then
+      docker logs "${app}"
       echo "::error::The image optimizer didn't write to /tmp/next-cache"
       exit 1
     fi
@@ -56,6 +56,6 @@ for _ in $(seq 30); do
   fi
   sleep 2
 done
-docker logs app
+docker logs "${app}"
 echo "::error::The container didn't serve the login page"
 exit 1

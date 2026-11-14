@@ -17,9 +17,11 @@ all releases are GitHub pre-releases; stable versions (without `-alphaN`,
    "Citation metadata" in the
    [contributing guide][org-contributing]). Each version, also each
    pre-release (e.g., `X.Y.Z-rc1`), needs its own such change. CI's
-   `Release readiness` job checks it: once `CITATION.cff` has a version that
-   isn't tagged yet, `package.json` must have the same version, and the
-   notes must exist, without TODOs, in the organization's format. Merge it.
+   `Release readiness` job checks it, on every pull request and push: the
+   versions in `package.json` and `CITATION.cff` must always agree, and
+   once `CITATION.cff` has a `date-released` and its version isn't tagged
+   yet, the notes must exist, without TODOs, in the organization's format.
+   Merge it.
 
    The release workflow publishes the notes as the start of the GitHub
    release, so they follow the organization's format: an intro paragraph

@@ -266,7 +266,7 @@ jobs:
           fi
           docker pull "${IMAGE_NAME}@${DIGEST}"
           docker tag "${IMAGE_NAME}@${DIGEST}" "${IMAGE_NAME}:scan"
-      # see the script for what it checks
+      # the smoke test, which `release.yml` also runs on release images
       - name: Check that the image serves the app
         run: scripts/check-image.sh "${IMAGE_NAME}:scan"
       - name: Save the image
@@ -555,12 +555,13 @@ jobs:
   # The release workflow (`release.yml`) checks the versions and the
   # curated release notes only after the tag is pushed, and tags can't be
   # moved: check them here, so that a release-prep pull request fails
-  # instead. A release is in preparation when `CITATION.cff` has a version
-  # that isn't tagged yet (or is tagged on this commit): then
-  # `package.json` must have the same version, and its notes
+  # instead. The versions in `package.json` and `CITATION.cff` must always
+  # agree. A release is in preparation when `CITATION.cff` has a
+  # `date-released` (which the release-prep pull request sets) and its
+  # version isn't tagged yet (or is tagged on this commit): then its notes
   # (`docs/releases/<version>.md`) must exist, without TODOs, in the
   # organization's format (checker of the shared action that `release.yml`
-  # pins: keep the commit in sync)
+  # pins: keep the commit in sync with it and with `docs/releasing.md`)
   readiness:
     name: Release readiness
     runs-on: ubuntu-latest
@@ -575,12 +576,18 @@ jobs:
           SHA: ${{ github.sha }}
           CHECKER: https://raw.githubusercontent.com/elixir-cloud-aai/.github/31f22fccc1f3c597ed7c1d1f75b2f85522155348/actions/publish-release/publish.py
         run: |
-          version=""
-          if [[ -f CITATION.cff ]]; then
-            version="$(yq -r '.version // ""' CITATION.cff)"
+          if [[ ! -f CITATION.cff ]]; then
+            echo "::error::CITATION.cff is missing"
+            exit 1
           fi
-          if [[ -z "${version}" ]]; then
-            echo "No version in CITATION.cff: no release in preparation"
+          version="$(yq -r '.version // ""' CITATION.cff)"
+          package="$(jq -r '.version // ""' package.json)"
+          if [[ -z "${version}" || "${package}" != "${version}" ]]; then
+            echo "::error file=CITATION.cff::Version '${version}' isn't the version of package.json ('${package}')"
+            exit 1
+          fi
+          if [[ -z "$(yq -r '.date-released // ""' CITATION.cff)" ]]; then
+            echo "No date-released in CITATION.cff: no release in preparation"
             exit 0
           fi
           # The commit of the (annotated) tag, if any: later commits are
@@ -589,11 +596,6 @@ jobs:
           if [[ -n "${tagged}" && "${tagged}" != "${SHA}" ]]; then
             echo "v${version} is tagged: no release in preparation"
             exit 0
-          fi
-          package="$(jq -r .version package.json)"
-          if [[ "${package}" != "${version}" ]]; then
-            echo "::error file=package.json::Version ${package} isn't the version of CITATION.cff (${version})"
-            exit 1
           fi
           notes="docs/releases/${version}.md"
           if [[ ! -f "${notes}" ]]; then
