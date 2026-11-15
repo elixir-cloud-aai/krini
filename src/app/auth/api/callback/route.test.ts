@@ -155,11 +155,11 @@ describe("GET /auth/api/callback", () => {
         );
     });
 
-    it("works without a refresh token", async () => {
+    it("clears a stale refresh token when the response omits one", async () => {
         const { refresh_token: _, ...rest } = tokens();
         const { response } = await callback("?code=c1&state=s1", rest);
         expect(locationOf(response)).toBe(`${appOrigin}/dashboard`);
-        expect(cookieOf(response, "refresh_token")).toBeUndefined();
+        expect(cookieOf(response, "refresh_token")?.value).toBe("");
     });
 
     it.each([

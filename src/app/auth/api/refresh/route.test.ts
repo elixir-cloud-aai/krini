@@ -92,6 +92,14 @@ describe("POST /auth/api/refresh", () => {
         expect(expiry?.attributes).not.toContain("httponly");
     });
 
+    it("keeps the refresh token when the response does not rotate it", async () => {
+        const { refresh_token: _, ...reply } = tokens();
+        const { response } = await refresh(undefined, reply);
+        expect(response.status).toBe(200);
+        expect(cookieOf(response, "refresh_token")).toBeUndefined();
+        expect(cookieOf(response, "access_token")?.value).toBe("access-2");
+    });
+
     it("honours refresh_expires_in for the refresh cookie", async () => {
         const { response } = await refresh(undefined, {
             ...tokens(),

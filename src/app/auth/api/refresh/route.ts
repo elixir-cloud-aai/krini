@@ -124,7 +124,9 @@ export async function POST() {
         }
 
         const jsonResponse = NextResponse.json({ success: true });
-        applySessionCookies(jsonResponse, response.data, provider.id);
+        applySessionCookies(jsonResponse, response.data, provider.id, {
+            keepRefreshToken: true,
+        });
 
         return jsonResponse;
     } catch (err) {

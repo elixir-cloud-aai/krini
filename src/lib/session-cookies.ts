@@ -16,11 +16,18 @@ export type SessionTokens = {
  * Writes the Krini session cookies on a response. Token cookies are httpOnly;
  * `token_expires_at` is a non-sensitive timestamp the client uses to schedule
  * refreshes. Lifetimes follow the provider's `expires_in`/`refresh_expires_in`.
+ *
+ * When the token response omits `refresh_token`, the cookie is deleted —
+ * a new session must not inherit a credential from a previous login, which
+ * may belong to another provider. Pass `keepRefreshToken` on token refresh,
+ * where an omitted `refresh_token` means "not rotated" and the existing
+ * cookie stays valid.
  */
 export function applySessionCookies(
     response: NextResponse,
     tokens: SessionTokens,
     providerId: string,
+    options: { keepRefreshToken?: boolean } = {},
 ): void {
     const cookieOptions = {
         secure: process.env.NODE_ENV === "production",
@@ -55,6 +62,8 @@ export function applySessionCookies(
                     ? Math.floor(tokens.refresh_expires_in)
                     : THIRTY_DAYS_SECONDS,
         });
+    } else if (!options.keepRefreshToken) {
+        response.cookies.delete("refresh_token");
     }
 
     response.cookies.set("oidc_provider", providerId, {
