@@ -123,6 +123,15 @@ describe("GET /auth/api/callback", () => {
         expect(error.mock.calls[0][0]).not.toContain("secret-details");
     });
 
+    it("strips control characters from the logged provider error", async () => {
+        const { error } = await callback(
+            "?error=bad%0AINFO:%20forged%20entry&state=s1",
+        );
+        const logged = error.mock.calls[0][0] as string;
+        expect(logged).not.toContain("\n");
+        expect(logged).toContain("provider_error=badINFO: forged entry");
+    });
+
     it("sets secure cookies in production", async () => {
         vi.stubEnv("NODE_ENV", "production");
         // `setUp()` in `callback()` keeps NODE_ENV

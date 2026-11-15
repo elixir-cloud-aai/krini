@@ -42,7 +42,11 @@ export async function GET(request: NextRequest) {
     if (providerError) {
         // The provider reports the failure in `error`/`error_description`;
         // log the error code only, never the description (may echo params).
-        console.error(`OIDC callback: provider_error=${providerError}`);
+        // Control characters are stripped so the value cannot forge log
+        // entries.
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point
+        const safeError = providerError.replace(/[\x00-\x1f\x7f]/g, "");
+        console.error(`OIDC callback: provider_error=${safeError}`);
         return redirectError(request, "params");
     }
 
