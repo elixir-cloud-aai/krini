@@ -1,0 +1,36 @@
+{{- /*
+Gateway API HTTPRoute for `hostName`, attached to an existing Gateway
+(`krini.httpRoute.parentRefs`, e.g., its HTTPS listener, which terminates
+TLS); requires `krini.ingress.enabled: false` (see `krini.validate`).
+*/ -}}
+{{- $route := .Values.krini.httpRoute -}}
+{{- if $route.enabled -}}
+{{- $hostName := required "hostName must be set if krini.httpRoute.enabled" .Values.hostName -}}
+{{- if not $route.parentRefs -}}
+{{- fail "krini.httpRoute.parentRefs must list at least one Gateway (or listener) to attach the HTTPRoute to" -}}
+{{- end -}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "krini.fullname" . | quote }}
+  labels:
+    {{- include "krini.labels" . | nindent 4 }}
+  {{- with $route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    {{- toYaml $route.parentRefs | nindent 2 }}
+  hostnames:
+  - {{ $hostName | quote }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    # A port number, as backendRefs take no port names
+    backendRefs:
+    - name: {{ include "krini.fullname" . | quote }}
+      port: 3000
+{{- end }}

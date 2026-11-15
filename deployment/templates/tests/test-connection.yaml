@@ -1,0 +1,47 @@
+{{- /*
+Test of the release (`helm test`): a pod with Krini's image requests the
+privacy notice (no login, no requests to other services) and the start
+page (a redirect to the dashboard) from the Service.
+*/ -}}
+{{- $values := .Values.krini -}}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ printf "%s-test" (include "krini.fullname" . | trunc 58 | trimSuffix "-") | quote }}
+  labels:
+    {{- include "krini.baseLabels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  automountServiceAccountToken: false
+  enableServiceLinks: false
+  restartPolicy: Never
+  securityContext:
+    {{- include "krini.securityContext" (dict "root" . "context" $values.podSecurityContext) | nindent 4 }}
+  containers:
+  - name: test
+    image: {{ include "krini.image" . | quote }}
+    imagePullPolicy: {{ $values.imagePullPolicy | default "Always" }}
+    env:
+    - name: BASE_URL
+      value: {{ printf "http://%s:3000" (include "krini.fullname" .) | quote }}
+    command:
+    - bun
+    - -e
+    - |
+      const base = process.env.BASE_URL;
+      const privacy = await fetch(`${base}/privacy`);
+      const start = await fetch(`${base}/`, { redirect: "manual" });
+      console.log(`/privacy: ${privacy.status}, /: ${start.status} ${start.headers.get("location")}`);
+      process.exit(privacy.status === 200 && start.status === 307 ? 0 : 1);
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    securityContext:
+      {{- include "krini.securityContext" (dict "root" . "context" $values.securityContext) | nindent 6 }}

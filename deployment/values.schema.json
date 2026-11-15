@@ -1,0 +1,304 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema#",
+    "$comment": "Values of the Krini chart; see values.yaml and docs/operator-guide/helm-chart.md. Settings that are empty strings aren't passed to Krini",
+    "$defs": {
+        "url": {
+            "type": "string",
+            "pattern": "^(https?://[^\\s]+)?$",
+            "description": "An http(s) URL, or empty"
+        },
+        "annotations": {
+            "type": "object",
+            "additionalProperties": {
+                "type": ["string", "null"]
+            }
+        },
+        "probe": {
+            "type": "object",
+            "description": "Kubernetes probe spec; replaces the default probe on probePath if not empty"
+        }
+    },
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["config", "loginProviders", "krini"],
+    "properties": {
+        "global": {
+            "type": "object"
+        },
+        "nameOverride": {
+            "type": "string"
+        },
+        "fullnameOverride": {
+            "type": "string"
+        },
+        "hostName": {
+            "type": "string",
+            "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)?$",
+            "description": "Public host name of Krini, without scheme or path (e.g., krini.example.org)"
+        },
+        "config": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "cloudRegistryUrl": {
+                    "$ref": "#/$defs/url",
+                    "description": "Base URL of the Cloud Registry (CLOUD_REGISTRY_URL); required"
+                },
+                "appOrigin": {
+                    "$ref": "#/$defs/url",
+                    "description": "Origin of Krini (APP_ORIGIN); https://<hostName> if empty"
+                },
+                "oidcRedirectUri": {
+                    "$ref": "#/$defs/url",
+                    "description": "Callback URL of the login (OIDC_REDIRECT_URI)"
+                },
+                "computeAccessRequestUrl": {
+                    "$ref": "#/$defs/url",
+                    "description": "URL where users request access to compute services (COMPUTE_ACCESS_REQUEST_URL)"
+                },
+                "privacy": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "controller": {
+                            "type": "string",
+                            "description": "Name and address of the controller (PRIVACY_CONTROLLER)"
+                        },
+                        "contact": {
+                            "type": "string",
+                            "description": "Email address or https URL for privacy questions (PRIVACY_CONTACT)"
+                        },
+                        "noticeUrl": {
+                            "$ref": "#/$defs/url",
+                            "description": "https URL of the deployment's privacy notice (PRIVACY_NOTICE_URL)"
+                        },
+                        "loginNoticeUrl": {
+                            "$ref": "#/$defs/url",
+                            "description": "https URL of the login provider's privacy notice (PRIVACY_LOGIN_NOTICE_URL)"
+                        }
+                    }
+                }
+            }
+        },
+        "loginProviders": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "existingSecret": {
+                    "type": "string",
+                    "description": "Name of an existing Secret with the login providers (LOGIN_PROVIDERS); required"
+                },
+                "secretKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Key of the Secret with the JSON array of login providers"
+                }
+            }
+        },
+        "extraEnv": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                }
+            },
+            "description": "Further environment variables (Kubernetes EnvVars)"
+        },
+        "krini": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["image", "probePath", "replicas"],
+            "properties": {
+                "image": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Image repository, optionally with a tag or digest"
+                },
+                "tag": {
+                    "type": "string",
+                    "description": "Image tag; the chart's appVersion if empty"
+                },
+                "imagePullPolicy": {
+                    "enum": ["Always", "IfNotPresent", "Never"]
+                },
+                "probePath": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "description": "Path of the default probes"
+                },
+                "startupProbe": {
+                    "$ref": "#/$defs/probe"
+                },
+                "readinessProbe": {
+                    "$ref": "#/$defs/probe"
+                },
+                "livenessProbe": {
+                    "$ref": "#/$defs/probe"
+                },
+                "replicas": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of pods"
+                },
+                "podDisruptionBudget": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "minAvailable": {
+                            "type": ["integer", "string", "null"],
+                            "minimum": 0,
+                            "pattern": "^(100|[1-9]?[0-9])%$"
+                        },
+                        "maxUnavailable": {
+                            "type": ["integer", "string", "null"],
+                            "minimum": 0,
+                            "pattern": "^(100|[1-9]?[0-9])%$"
+                        }
+                    }
+                },
+                "ingress": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "className": {
+                            "type": "string"
+                        },
+                        "annotations": {
+                            "$ref": "#/$defs/annotations"
+                        },
+                        "https": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "issuer": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "httpRoute": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "annotations": {
+                            "$ref": "#/$defs/annotations"
+                        },
+                        "parentRefs": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": ["name"],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "group": {
+                                        "type": "string"
+                                    },
+                                    "kind": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "namespace": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "sectionName": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "port": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 65535
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "route": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "annotations": {
+                            "$ref": "#/$defs/annotations"
+                        }
+                    }
+                },
+                "networkPolicy": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "ingressFrom": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "podSecurityContext": {
+                    "type": "object"
+                },
+                "securityContext": {
+                    "type": "object"
+                },
+                "resources": {
+                    "type": "object"
+                },
+                "tmpSizeLimit": {
+                    "type": ["string", "integer", "null"],
+                    "pattern": "^([0-9]+(\\.[0-9]*)?|\\.[0-9]+)([KMGTPE]i|[mkMGTPE]|[eE][+-]?[0-9]+)?$",
+                    "minimum": 1,
+                    "description": "Size limit of the emptyDir at /tmp: a Kubernetes quantity or a number of bytes; none if null"
+                },
+                "preStopSleepSeconds": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "nodeSelector": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "tolerations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "affinity": {
+                    "type": "object"
+                }
+            }
+        }
+    }
+}

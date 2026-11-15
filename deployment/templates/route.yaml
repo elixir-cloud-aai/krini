@@ -1,0 +1,30 @@
+{{- /*
+OpenShift Route for `hostName` (all paths), unless `krini.route.enabled` is
+false, without an Ingress or HTTPRoute, if the cluster serves Routes; TLS is
+terminated at the router, which redirects HTTP to HTTPS.
+*/ -}}
+{{- if include "krini.routeEnabled" . -}}
+{{- $hostName := required "hostName must be set if an OpenShift Route is created" .Values.hostName -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "krini.fullname" . | quote }}
+  labels:
+    {{- include "krini.labels" . | nindent 4 }}
+  {{- with .Values.krini.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  host: {{ $hostName | quote }}
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: {{ include "krini.fullname" . | quote }}
+    weight: 100
+  wildcardPolicy: None
+{{- end }}
