@@ -92,6 +92,57 @@ describe("POST /auth/api/refresh", () => {
         expect(expiry?.attributes).not.toContain("httponly");
     });
 
+    it("does not clear cookies when a concurrent refresh already succeeded", async () => {
+        setUp({ refresh_token: "rt-SECRET-1" });
+        mockOidcProvider();
+        const post = vi.spyOn(await http(), "post");
+        post.mockResolvedValueOnce({ status: 200, data: tokens() });
+        post.mockRejectedValueOnce(httpError(401));
+        const { POST } = await import("./route");
+
+        // two tabs refresh the same session; the provider rotates the
+        // refresh token, so the second request is a replay rejection
+        expect((await POST()).status).toBe(200);
+        const replay = await POST();
+        expect(replay.status).toBe(401);
+        // the losing response must not undo the winner's session cookies
+        expect(replay.headers.getSetCookie()).toEqual([]);
+    });
+
+    it("still clears cookies once the success record expires", async () => {
+        setUp({ refresh_token: "rt-SECRET-1" });
+        mockOidcProvider();
+        const post = vi.spyOn(await http(), "post");
+        post.mockResolvedValueOnce({ status: 200, data: tokens() });
+        const { POST } = await import("./route");
+        await POST();
+
+        vi.setSystemTime(now + 61 * 1000);
+        post.mockRejectedValueOnce(httpError(401));
+        const response = await POST();
+        expect(response.status).toBe(401);
+        expect(cookieOf(response, "access_token")?.value).toBe("");
+        expect(cookieOf(response, "refresh_token")?.value).toBe("");
+    });
+
+    it("keeps recent successes while sweeping expired ones", async () => {
+        setUp({ refresh_token: "rt-1" });
+        mockOidcProvider();
+        const post = vi.spyOn(await http(), "post");
+        post.mockResolvedValue({ status: 200, data: tokens() });
+        const { POST } = await import("./route");
+        expect((await POST()).status).toBe(200);
+
+        // a second session's success inside the window is kept
+        vi.setSystemTime(now + 30 * 1000);
+        jar.set("refresh_token", { name: "refresh_token", value: "rt-2" });
+        expect((await POST()).status).toBe(200);
+
+        // later, the first session's expired entry is swept
+        vi.setSystemTime(now + 61 * 1000);
+        expect((await POST()).status).toBe(200);
+    });
+
     it("keeps the refresh token when the response does not rotate it", async () => {
         const { refresh_token: _, ...reply } = tokens();
         const { response } = await refresh(undefined, reply);

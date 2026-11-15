@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import axios from "axios";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -9,6 +10,35 @@ import {
     validateIdToken,
 } from "@/lib/oidc";
 import { applySessionCookies } from "@/lib/session-cookies";
+
+const REFRESH_SUCCESS_WINDOW_MS = 60 * 1000;
+
+/**
+ * Hashes of refresh tokens that a refresh succeeded with recently. When the
+ * provider rotates refresh tokens, concurrent refreshes of the same session
+ * race: one wins and sets new cookies, the loser gets a 401 replay rejection.
+ * That 401 must not clear the cookies the winner just established.
+ */
+const recentRefreshSuccess = new Map<string, number>();
+
+function refreshTokenKey(token: string): string {
+    return createHash("sha256").update(token).digest("hex");
+}
+
+function noteRefreshSuccess(refreshToken: string): void {
+    const now = Date.now();
+    for (const [key, at] of recentRefreshSuccess) {
+        if (at <= now - REFRESH_SUCCESS_WINDOW_MS) {
+            recentRefreshSuccess.delete(key);
+        }
+    }
+    recentRefreshSuccess.set(refreshTokenKey(refreshToken), now);
+}
+
+function refreshSucceededRecently(refreshToken: string): boolean {
+    const at = recentRefreshSuccess.get(refreshTokenKey(refreshToken));
+    return at !== undefined && at > Date.now() - REFRESH_SUCCESS_WINDOW_MS;
+}
 
 /** Logs only the HTTP status and the provider's `error` field — never codes, secrets or tokens. */
 function logTokenError(context: string, err: unknown, tokenEndpoint: string) {
@@ -127,13 +157,16 @@ export async function POST() {
         applySessionCookies(jsonResponse, response.data, provider.id, {
             keepRefreshToken: true,
         });
+        noteRefreshSuccess(refreshToken);
 
         return jsonResponse;
     } catch (err) {
         logTokenError("OIDC refresh error", err, endpoints.tokenEndpoint);
 
         const shouldClearCookies =
-            axios.isAxiosError(err) && err.response?.status === 401;
+            axios.isAxiosError(err) &&
+            err.response?.status === 401 &&
+            !refreshSucceededRecently(refreshToken);
 
         const response = NextResponse.json(
             { error: "Failed to refresh token" },
