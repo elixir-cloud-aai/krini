@@ -1,10 +1,10 @@
 /**
  * @description fixtures of the end-to-end tests: login through the mock
- * provider, the requests that the mock WES service received, and a check
+ * provider, the requests that the mock WES and TES services received, and a check
  * that no page throws or gets server errors from the app
  */
 import { test as base, expect, type Page } from "@playwright/test";
-import { mockURL, type WesRequest } from "./settings";
+import { mockURL, type TesRequest, type WesRequest } from "./settings";
 
 /** Base URL of the mock login provider and registry (`e2e/mock/server.ts`) */
 const mock = mockURL;
@@ -51,16 +51,13 @@ async function wesRequests(): Promise<WesRequest[]> {
 }
 
 /**
- * Whether a page error is a known one of a dependency
- * @param message Message of the error
- * @returns Whether to ignore it
+ * Get the requests that the mock TES service received, except for its
+ * service info
+ * @returns The requests, oldest first
  */
-function knownError(message: string) {
-    // the code editor of `@elixir-cloud/design` 2.0.0-alpha.49 (from
-    // `@elixir-cloud/wes`) checks `:host-context()`, which Firefox doesn't
-    // support; fixed upstream in elixir-cloud-aai/cloud-components#446:
-    // remove once Krini uses a release with the fix
-    return message.includes("':host-context(.dark)' is not a valid selector");
+async function tesRequests(): Promise<TesRequest[]> {
+    const response = await fetch(`${mock}/mock/tes-requests`);
+    return response.json();
 }
 
 type Fixtures = {
@@ -75,8 +72,7 @@ const test = base.extend<Fixtures>({
             const problems: string[] = [];
             const app = new URL(baseURL as string).origin;
             page.on("pageerror", (err) => {
-                if (!knownError(err.message))
-                    problems.push(`page error: ${err.message}`);
+                problems.push(`page error: ${err.message}`);
             });
             page.on("response", (response) => {
                 if (
@@ -96,4 +92,4 @@ const test = base.extend<Fixtures>({
     ],
 });
 
-export { accessToken, expect, login, test, user, wesRequests };
+export { accessToken, expect, login, test, tesRequests, user, wesRequests };

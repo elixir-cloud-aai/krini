@@ -1,12 +1,13 @@
 /**
  * @description the main user journey: browse anonymously, log in, submit a
- * workflow to a WES service from the registry with the user's token, and
- * log out
+ * workflow to a WES service and a task to a TES service from the registry
+ * with the user's token, and log out
  */
 import {
     accessToken,
     expect,
     login,
+    tesRequests,
     test,
     user,
     wesRequests,
@@ -27,6 +28,14 @@ test.describe("anonymous visitors", () => {
         // only the https entry; the http entry and the TES are dropped
         await expect(page.getByRole("option")).toHaveCount(1);
         await expect(page.getByRole("option")).toContainText("Mock WES");
+    });
+
+    test("can browse the TES services of the registry", async ({ page }) => {
+        await page.goto("/dashboard/tasks");
+        await page.getByRole("combobox").click();
+        // only the https entry; the http entry and the WES are dropped
+        await expect(page.getByRole("option")).toHaveCount(1);
+        await expect(page.getByRole("option")).toContainText("Mock TES");
     });
 
     test("get no token", async ({ page }) => {
@@ -104,5 +113,66 @@ test.describe("members", () => {
         await page.getByRole("link", { name: "View Workflows" }).click();
         await page.waitForURL(/\/dashboard\/workflows$/);
         await expect(page.getByText("run-1")).toBeVisible();
+    });
+
+    test("submit, view and cancel a task with their token", async ({
+        page,
+    }) => {
+        await login(page);
+        const token = await accessToken(page);
+
+        await page.goto("/dashboard/tasks/create");
+        await page.getByRole("combobox").click();
+        await page.getByRole("option", { name: /Mock TES/ }).click();
+        await page
+            .getByRole("textbox", { name: "Name", exact: true })
+            .fill("hello");
+        await page.getByRole("textbox", { name: "Image" }).fill("alpine");
+        await page
+            .getByRole("textbox", { name: "Executor 1 command" })
+            .fill("echo\nhello");
+        await page.getByRole("button", { name: "Submit Task" }).click();
+
+        // the service got the task with the user's token
+        const submissions = async () =>
+            (await tesRequests()).filter(
+                (val) => val.method === "POST" && val.path === "/tasks",
+            );
+        await expect.poll(submissions).toHaveLength(1);
+        expect(await submissions()).toEqual([
+            {
+                method: "POST",
+                path: "/tasks",
+                authorization: `Bearer ${token}`,
+                body: {
+                    name: "hello",
+                    executors: [
+                        { image: "alpine", command: ["echo", "hello"] },
+                    ],
+                },
+            },
+        ]);
+
+        // the task is in the list of the same service, with its details
+        await page.getByRole("link", { name: "View Tasks" }).click();
+        await page.waitForURL(/\/dashboard\/tasks$/);
+        await page.getByRole("button", { name: "View Details" }).click();
+        await page.waitForURL(/\/dashboard\/tasks\/details\?id=task-1$/);
+        await expect(
+            page.getByRole("heading", { name: "hello" }),
+        ).toBeVisible();
+
+        await page.getByRole("button", { name: "Cancel" }).click();
+        const cancels = async () =>
+            (await tesRequests()).filter(
+                (val) =>
+                    val.method === "POST" &&
+                    val.path === "/tasks/task-1:cancel",
+            );
+        await expect.poll(cancels).toHaveLength(1);
+        expect((await cancels())[0].authorization).toBe(`Bearer ${token}`);
+        // every request to the service carried the token
+        for (const request of await tesRequests())
+            expect(request.authorization).toBe(`Bearer ${token}`);
     });
 });

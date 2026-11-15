@@ -7,14 +7,15 @@
  *   uses PKCE and validates the signed ID token against the JWKS, so the
  *   provider signs real RS256 JWTs;
  * - a service registry (`/ga4gh/registry/v1/services`);
- * - a WES service over `https` with a self-signed certificate
- *   (`/ga4gh/wes/v1/...`), which the browser calls directly, as with real
- *   services, and which allows the app's origin (CORS);
- * - `/mock/requests` and `/mock/reset` to inspect and clear the requests
- *   that the WES service received.
+ * - a WES service (`/ga4gh/wes/v1/...`) and a TES service
+ *   (`/ga4gh/tes/v1/...`) over `https` with a self-signed certificate,
+ *   which the browser calls directly, as with real services, and which
+ *   allow the app's origin (CORS);
+ * - `/mock/requests`, `/mock/tes-requests` and `/mock/reset` to inspect and
+ *   clear the requests that the WES and TES services received.
  *
  * The registry and the login provider listen on `MOCK_HTTP_PORT`, the WES
- * service on `MOCK_HTTPS_PORT`. The certificate goes to `MOCK_CERT_DIR`;
+ * and TES services on `MOCK_HTTPS_PORT`. The certificate goes to `MOCK_CERT_DIR`;
  * the app trusts it through `NODE_EXTRA_CA_CERTS`. Run with `bun`.
  */
 import { execFileSync } from "node:child_process";
@@ -38,6 +39,7 @@ import {
     client,
     mockHttpPort,
     mockHttpsPort,
+    type TesRequest,
     type WesRequest,
 } from "../settings";
 
@@ -84,6 +86,7 @@ const user = {
 };
 
 const wesUrl = `https://127.0.0.1:${httpsPort}/ga4gh/wes/v1`;
+const tesUrl = `https://127.0.0.1:${httpsPort}/ga4gh/tes/v1`;
 
 /** Entries of the registry: the WES service, and entries the app drops */
 const services = [
@@ -111,7 +114,13 @@ const services = [
         id: "mock-tes",
         name: "Mock TES",
         type: { group: "org.ga4gh", artifact: "tes", version: "1.1.0" },
-        url: `https://127.0.0.1:${httpsPort}/ga4gh/tes/v1`,
+        url: tesUrl,
+    },
+    {
+        id: "plain-tes",
+        name: "Plain TES",
+        type: { group: "org.ga4gh", artifact: "tes", version: "1.1.0" },
+        url: `http://127.0.0.1:${httpPort}/ga4gh/tes/v1`,
     },
 ];
 
@@ -143,6 +152,10 @@ const accessTokens = new Set<string>();
 const runs: { run_id: string; state: string }[] = [];
 /** Requests that the WES service received, for the tests */
 const requests: WesRequest[] = [];
+/** Tasks that the TES service accepted */
+const tasks: { id: string; state: string; name?: string }[] = [];
+/** Requests that the TES service received, for the tests */
+const tesRequests: TesRequest[] = [];
 
 function send(
     res: ServerResponse,
@@ -290,9 +303,14 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
     if (req.method === "GET" && url.pathname === "/mock/requests")
         return send(res, 200, requests);
 
+    if (req.method === "GET" && url.pathname === "/mock/tes-requests")
+        return send(res, 200, tesRequests);
+
     if (req.method === "POST" && url.pathname === "/mock/reset") {
         requests.length = 0;
         runs.length = 0;
+        tesRequests.length = 0;
+        tasks.length = 0;
         return send(res, 204);
     }
 
@@ -302,7 +320,77 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
     return send(res, 404, { error: "not found" });
 }
 
-/** WES service */
+/** TES service; `path` is relative to its base URL */
+async function handleTes(
+    req: IncomingMessage,
+    res: ServerResponse,
+    path: string,
+    cors: Record<string, string>,
+) {
+    if (req.method === "GET" && path === "/service-info")
+        return send(
+            res,
+            200,
+            {
+                id: "mock-tes",
+                name: "Mock TES",
+                type: { group: "org.ga4gh", artifact: "tes", version: "1.1.0" },
+                organization: {
+                    name: "Mock organization",
+                    url: "https://example.org",
+                },
+                version: "1.0.0",
+            },
+            cors,
+        );
+
+    const entry: TesRequest = {
+        method: req.method ?? "",
+        path,
+        authorization: req.headers.authorization ?? null,
+    };
+    tesRequests.push(entry);
+    const token = bearerOf(req);
+    if (!token || !accessTokens.has(token))
+        return send(res, 401, { msg: "unauthorized", status_code: 401 }, cors);
+
+    if (req.method === "GET" && path === "/tasks")
+        return send(res, 200, { tasks, next_page_token: "" }, cors);
+
+    if (req.method === "POST" && path === "/tasks") {
+        const body = JSON.parse((await bodyOf(req)) || "null");
+        entry.body = body;
+        if (!Array.isArray(body?.executors) || !body.executors.length)
+            return send(
+                res,
+                400,
+                { msg: "invalid task", status_code: 400 },
+                cors,
+            );
+        const task = {
+            id: `task-${tasks.length + 1}`,
+            state: "QUEUED",
+            name: body.name,
+        };
+        tasks.push(task);
+        return send(res, 200, { id: task.id }, cors);
+    }
+
+    const task = tasks.find(
+        (val) =>
+            path === `/tasks/${val.id}` || path === `/tasks/${val.id}:cancel`,
+    );
+    if (req.method === "GET" && task && !path.endsWith(":cancel"))
+        return send(res, 200, { ...task, executors: [], logs: [] }, cors);
+    if (req.method === "POST" && task && path.endsWith(":cancel")) {
+        task.state = "CANCELED";
+        return send(res, 200, {}, cors);
+    }
+
+    return send(res, 404, { msg: "not found", status_code: 404 }, cors);
+}
+
+/** WES and TES services */
 async function handleHttps(req: IncomingMessage, res: ServerResponse) {
     const url = new URL(req.url ?? "/", wesUrl);
     const cors = {
@@ -312,6 +400,10 @@ async function handleHttps(req: IncomingMessage, res: ServerResponse) {
         Vary: "Origin",
     };
     if (req.method === "OPTIONS") return send(res, 204, undefined, cors);
+
+    const tesPrefix = new URL(tesUrl).pathname;
+    if (url.pathname.startsWith(tesPrefix))
+        return handleTes(req, res, url.pathname.slice(tesPrefix.length), cors);
 
     const prefix = "/ga4gh/wes/v1";
     const path = url.pathname.startsWith(prefix)
