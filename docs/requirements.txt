@@ -2,5 +2,5 @@
 # (`.readthedocs.yaml`) and the `docs` job in `.github/workflows/ci.yml`;
 # the app itself has no Python code, so there is no `pyproject.toml`
 mkdocs==1.6.1
-mkdocs-material==9.8.0
-pymdown-extensions==12.3
+mkdocs-material==9.8.1
+pymdown-extensions==13.1
