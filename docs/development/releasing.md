@@ -100,7 +100,7 @@ deploys the release's image by default (`appVersion` is its tag).
         # The notes of the commit, with the checker of the action that
         # `release.yml` pins (as the `readiness` job of `ci.yml` does)
         notes="$(mktemp -d)" && git show "${sha}:docs/releases/${version}.md" > "${notes}/notes.md" &&
-            curl -fsSL "https://raw.githubusercontent.com/elixir-cloud-aai/.github/c425eedcb3afef55f64f04117d404bd6edbd70f6/actions/publish-release/publish.py" -o "${notes}/publish.py" &&
+            curl -fsSL "https://raw.githubusercontent.com/elixir-cloud-aai/.github/7b4bff2bce8b0afb9ea2292193707b4c3a50fae4/actions/publish-release/publish.py" -o "${notes}/publish.py" &&
             python3 -I "${notes}/publish.py" check "${notes}/notes.md" || { echo "Release notes docs/releases/${version}.md missing or not in the format"; exit 1; }
         # The chart of the commit, packaged and checked as the release
         # workflow packages it (version from the tag, lint, render); in a
@@ -146,9 +146,10 @@ deploys the release's image by default (`appVersion` is its tag).
     (`Prepare release`); builds
     and pushes the image by digest (`Push release image`, needs approval);
     scans exactly that digest (`Scan release image`) and runs the smoke test
-    of CI on it (`Smoke test`, `scripts/check-image.sh`); attests, signs and
-    tags it `X.Y.Z` (and `latest` for the highest stable version), and
-    attests and signs the chart
+    of CI on it (`Smoke test`, `scripts/check-image.sh`); attests and signs
+    it, attests and signs the chart, and only then tags the image `X.Y.Z`
+    (and `latest` for the highest stable version), so that a failure before
+    leaves the image untagged
     (`Release image`, needs approval); and then, without another approval,
     creates the GitHub release (`Publish release`): the curated notes of the
     tagged commit, then GitHub's generated notes under `## Commits` (without

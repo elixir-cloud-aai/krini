@@ -116,6 +116,8 @@ assert_check() {
 assert_check "chart" pass "${dist}" "${file}" "${sum}"
 assert_check "wrong checksum" "FAILED" "${dist}" "${file}" "$(printf 'a%.0s' {1..64})"
 assert_check "invalid checksum" "Invalid checksum" "${dist}" "${file}" abc
+assert_check "invalid bundle checksum" "Invalid checksum" "${dist}" "${file}" "${sum}" abc
+assert_check "no arguments" "Usage"
 assert_check "invalid name" "Invalid chart file name" "${dist}" "other.tgz" "${sum}"
 assert_check "other name" "Expected" "${dist}" "krini-9.9.9.tgz" "${sum}"
 echo '{}' > "${dist}/${file}.sigstore.json"

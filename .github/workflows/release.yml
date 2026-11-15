@@ -8,9 +8,9 @@
 # untagged (`push`); scan exactly that digest for vulnerabilities in a job
 # of its own, without the release credentials and signing identity
 # (`scan`), and smoke-test it as CI does (`smoke`); and only then attest
-# its build provenance, sign it (Sigstore keyless signing) and tag it, and
-# attest and sign the chart, checked against its recorded name and SHA-256
-# (`release-image`; see "Verifying images" in
+# its build provenance and sign it (Sigstore keyless signing), attest and
+# sign the chart, checked against its recorded name and SHA-256, and last
+# tag the image (`release-image`; see "Verifying images" in
 # `docs/operator-guide/deployment.md` and "Verifying the chart" in
 # `docs/operator-guide/helm-chart.md`). Last, create the GitHub release
 # with the curated notes followed by GitHub's generated notes, with the
@@ -152,7 +152,7 @@ jobs:
       # release of it exists. Keep the pin in sync with the checker of the
       # `readiness` job of `ci.yml` and with `docs/development/releasing.md`
       - name: Check release notes
-        uses: elixir-cloud-aai/.github/actions/publish-release@c425eedcb3afef55f64f04117d404bd6edbd70f6 # unreleased (feat/publish-release-assets)
+        uses: elixir-cloud-aai/.github/actions/publish-release@7b4bff2bce8b0afb9ea2292193707b4c3a50fae4 # unreleased (feat/publish-release-assets)
         with:
           notes: docs/releases/${{ steps.version.outputs.version }}.md
           commit: ${{ steps.version.outputs.sha }}
@@ -517,12 +517,11 @@ jobs:
   # `release-image`: the action creates the release as a draft, uploads
   # them, and publishes it only then (immutable releases), and deletes the
   # draft if that fails. One at a time, so that the latest release is
-  # decided in
-  # order; a cancelled pending run is re-run like a failed one. The latest
-  # GitHub release (the action, by version among published releases) and
-  # the image's `latest` tag (`release-image`, by version among the tags on
-  # `main`) are decided separately, by the same rule: the highest stable
-  # version
+  # decided in order; a cancelled pending run is re-run like a failed one.
+  # The latest GitHub release (the action, by version among published
+  # releases) and the image's `latest` tag (`release-image`, by version
+  # among the tags on `main`) are decided separately, by the same rule: the
+  # highest stable version
   publish:
     name: Publish release
     needs: [prepare, release-image]
@@ -560,7 +559,7 @@ jobs:
           scripts/check-chart-artifact.sh dist "${CHART_FILE}" "${CHART_SHA256}"
           "${BUNDLE_SHA256}"
       - name: Create release
-        uses: elixir-cloud-aai/.github/actions/publish-release@c425eedcb3afef55f64f04117d404bd6edbd70f6 # unreleased (feat/publish-release-assets)
+        uses: elixir-cloud-aai/.github/actions/publish-release@7b4bff2bce8b0afb9ea2292193707b4c3a50fae4 # unreleased (feat/publish-release-assets)
         with:
           notes: docs/releases/${{ needs.prepare.outputs.version }}.md
           commit: ${{ needs.prepare.outputs.sha }}

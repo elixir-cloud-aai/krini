@@ -663,7 +663,7 @@ jobs:
       - name: Check versions and release notes
         env:
           SHA: ${{ github.sha }}
-          CHECKER: https://raw.githubusercontent.com/elixir-cloud-aai/.github/c425eedcb3afef55f64f04117d404bd6edbd70f6/actions/publish-release/publish.py
+          CHECKER: https://raw.githubusercontent.com/elixir-cloud-aai/.github/7b4bff2bce8b0afb9ea2292193707b4c3a50fae4/actions/publish-release/publish.py
         run: |
           if [[ ! -f CITATION.cff ]]; then
             echo "::error::CITATION.cff is missing"
