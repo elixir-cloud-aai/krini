@@ -18,8 +18,14 @@
  * the app trusts it through `NODE_EXTRA_CA_CERTS`. Run with `bun`.
  */
 import { execFileSync } from "node:child_process";
-import { createHash, generateKeyPairSync, randomUUID, sign } from "node:crypto";
-import { mkdirSync, readFileSync } from "node:fs";
+import {
+    createHash,
+    generateKeyPairSync,
+    randomUUID,
+    sign,
+    X509Certificate,
+} from "node:crypto";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import {
     createServer,
     type IncomingMessage,
@@ -381,6 +387,20 @@ function certificate() {
     mkdirSync(certDir, { recursive: true });
     const key = join(certDir, "key.pem");
     const cert = join(certDir, "cert.pem");
+    // Reuse a still-valid pair: openssl is not available everywhere.
+    if (existsSync(key) && existsSync(cert)) {
+        try {
+            const existing = new X509Certificate(readFileSync(cert));
+            if (new Date(existing.validTo).getTime() > Date.now()) {
+                return {
+                    key: readFileSync(key),
+                    cert: readFileSync(cert),
+                };
+            }
+        } catch {
+            // unreadable certificate: regenerate below
+        }
+    }
     execFileSync(
         "openssl",
         [

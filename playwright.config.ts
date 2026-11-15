@@ -48,15 +48,15 @@ export default defineConfig({
             },
         },
         {
-            // the build doesn't get the privacy settings, so the test fails if
-            // the notice is rendered at build time
-            command: `env -u PRIVACY_CONTROLLER -u PRIVACY_CONTACT -u PRIVACY_NOTICE_URL -u PRIVACY_LOGIN_NOTICE_URL bun run build && bun run start --port ${port}`,
+            // `e2e/build.ts` builds without the privacy settings, so the test
+            // fails if the notice is rendered at build time; `env -u` would be
+            // Unix-only
+            command: `bun e2e/build.ts && bun run start --port ${port}`,
             url: `${baseURL}/auth/login`,
             reuseExistingServer: !process.env.CI,
             timeout: 300_000,
             env: {
                 NEXT_TELEMETRY_DISABLED: "1",
-                // the app checks the mock WES service's certificate
                 NODE_EXTRA_CA_CERTS: `${certDir}/cert.pem`,
                 LOGIN_PROVIDERS: JSON.stringify([
                     {
@@ -72,6 +72,7 @@ export default defineConfig({
                 ]),
                 CLOUD_REGISTRY_URL: `${mockHttp}/ga4gh/registry/v1`,
                 APP_ORIGIN: baseURL,
+                OIDC_REDIRECT_URI: `${baseURL}/auth/api/callback`,
                 PRIVACY_CONTROLLER: privacy.controller,
                 PRIVACY_CONTACT: privacy.contact,
                 PRIVACY_NOTICE_URL: privacy.noticeUrl,
