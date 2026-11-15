@@ -17,29 +17,8 @@ keeps quotes as part of the value (see
 ```env
 # Login providers: a JSON array; each entry configures one OIDC provider
 # (endpoints are discovered via <issuer>/.well-known/openid-configuration)
-LOGIN_PROVIDERS=[
-  {
-    "id": "ls-login",
-    "name": "LS Login",
-    "logo": "/icon.jpg",
-    "issuer": "issuer-url",
-    "clientId": "your-client-id",
-    "clientSecret": "your-client-secret",
-    "scopes": [
-      "openid",
-      "profile",
-      "email",
-      "eduperson_entitlement"
-    ],
-    "groupsClaim": "eduperson_entitlement",
-    "computeGroups": [
-      "your-compute-group"
-    ],
-    "adminGroups": [
-      "your-admin-group"
-    ]
-  }
-]
+# One line only: env files can't carry a multiline value
+LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/icon.jpg","issuer":"issuer-url","clientId":"your-client-id","clientSecret":"your-client-secret","scopes":["openid","profile","email","eduperson_entitlement", "offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["your-compute-group"],"adminGroups":["your-admin-group"]}]
 
 # Optional override of the callback URL (default: <APP_ORIGIN>/auth/api/callback)
 OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
@@ -72,7 +51,9 @@ PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
   derives the access tier: `adminGroups` → admin, `computeGroups` → compute,
   otherwise user; compute actions are limited to compute and admin tiers.
 - `OIDC_REDIRECT_URI`: Callback URL registered with the identity provider.
-  Must match a redirect URI configured there. Defaults to
+  Must match a redirect URI configured there, and must use the same origin
+  as `APP_ORIGIN` — the session cookies are set for that origin, so a
+  cross-origin callback is rejected. Defaults to
   `<APP_ORIGIN>/auth/api/callback`.
 - `COMPUTE_ACCESS_REQUEST_URL`: Optional URL shown to logged-in users
   without compute access ("Request compute access").
