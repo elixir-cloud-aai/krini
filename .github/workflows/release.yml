@@ -152,7 +152,7 @@ jobs:
       # release of it exists. Keep the pin in sync with the checker of the
       # `readiness` job of `ci.yml` and with `docs/development/releasing.md`
       - name: Check release notes
-        uses: elixir-cloud-aai/.github/actions/publish-release@6801716ba0271440ff8ed01482811971ae807204 # unreleased (feat/publish-release-assets)
+        uses: elixir-cloud-aai/.github/actions/publish-release@c425eedcb3afef55f64f04117d404bd6edbd70f6 # unreleased (feat/publish-release-assets)
         with:
           notes: docs/releases/${{ steps.version.outputs.version }}.md
           commit: ${{ steps.version.outputs.sha }}
@@ -384,27 +384,12 @@ jobs:
           name: chart
           path: dist/
       # Any job of the run can overwrite artifacts with the run's token, so
-      # the artifact must be exactly the chart that `prepare` packaged: a
-      # single file with the name and checksum of `prepare`. Hidden files
-      # count too, so that nothing else is in `dist/`. Checked first, so
-      # that a rejected chart leaves the image unsigned and untagged
+      # `dist/` must hold exactly the chart that `prepare` packaged, with
+      # its name and checksum (`scripts/check-chart-artifact.sh`). Checked
+      # first, so that a rejected chart leaves the image unsigned and
+      # untagged
       - name: Check chart
-        run: |
-          if [[ ! "${CHART_FILE}" =~ ^krini-[0-9A-Za-z.+-]+\.tgz$ ]]; then
-            echo "::error::Invalid chart file name '${CHART_FILE}'"
-            exit 1
-          fi
-          if [[ ! "${CHART_SHA256}" =~ ^[0-9a-f]{64}$ ]]; then
-            echo "::error::Invalid chart checksum '${CHART_SHA256}'"
-            exit 1
-          fi
-          shopt -s nullglob dotglob
-          files=(dist/*)
-          if [[ "${#files[@]}" -ne 1 || "${files[0]}" != "dist/${CHART_FILE}" ]]; then
-            echo "::error::Expected one chart in dist/, found: ${files[*]}"
-            exit 1
-          fi
-          echo "${CHART_SHA256}  ${files[0]}" | sha256sum --check --strict
+        run: scripts/check-chart-artifact.sh dist "${CHART_FILE}" "${CHART_SHA256}"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Log in to Docker Hub
@@ -448,6 +433,30 @@ jobs:
       # The signature covers the digest, and so every tag of it
       - name: Sign image
         run: cosign sign --yes "${IMAGE_NAME}@${DIGEST}"
+      # Provenance attestation (stored by GitHub) and a Sigstore bundle
+      # (`<chart>.tgz.sigstore.json`, attached to the release by `publish`)
+      # for the chart; before the image is tagged, so that a failure here
+      # leaves no tagged image without a signed chart
+      - name: Attest chart provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/${{ needs.prepare.outputs.chart_file }}
+      # The bundle's SHA-256 is recorded, for `publish` to check the
+      # artifact against
+      - name: Sign chart
+        id: sign-chart
+        run: |
+          chart="dist/${CHART_FILE}"
+          cosign sign-blob --yes --bundle "${chart}.sigstore.json" "${chart}"
+          echo "sha256=$(sha256sum "${chart}.sigstore.json" | cut -d ' ' -f 1)" >> "${GITHUB_OUTPUT}"
+      - name: Upload chart signature
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: chart-signature
+          path: dist/${{ needs.prepare.outputs.chart_file }}.sigstore.json
+          if-no-files-found: error
+          # Re-runs replace the bundle of the earlier attempt
+          overwrite: true
       # Decided last, from freshly fetched tags (the repository is
       # public, so no credentials are needed), so that neither a re-run
       # of an older release nor a concurrent release moves `latest`
@@ -493,29 +502,6 @@ jobs:
               exit 1
             fi
           done
-      # Provenance attestation (stored by GitHub) and a Sigstore bundle
-      # (`<chart>.tgz.sigstore.json`, attached to the release by `publish`)
-      # for the chart
-      - name: Attest chart provenance
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
-        with:
-          subject-path: dist/${{ needs.prepare.outputs.chart_file }}
-      # The bundle's SHA-256 is recorded, for `publish` to check the
-      # artifact against
-      - name: Sign chart
-        id: sign-chart
-        run: |
-          chart="dist/${CHART_FILE}"
-          cosign sign-blob --yes --bundle "${chart}.sigstore.json" "${chart}"
-          echo "sha256=$(sha256sum "${chart}.sigstore.json" | cut -d ' ' -f 1)" >> "${GITHUB_OUTPUT}"
-      - name: Upload chart signature
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: chart-signature
-          path: dist/${{ needs.prepare.outputs.chart_file }}.sigstore.json
-          if-no-files-found: error
-          # Re-runs replace the bundle of the earlier attempt
-          overwrite: true
 
   # Creates the GitHub release of the tag once the image is released: the
   # curated notes of the tagged commit (`docs/releases/<version>.md`), then
@@ -526,11 +512,12 @@ jobs:
   # `contents: write`. The tag must still point to the release commit.
   # Fails on a draft of the tag, and on a published release unless an
   # earlier attempt of this job created it (then it passes without
-  # changes). The packaged chart and its Sigstore bundle are attached, checked
-# against the names and checksums recorded by `prepare` and
-# `release-image`: the action creates the release as a draft, uploads them,
-# and publishes it only then (immutable releases), and deletes the draft if
-# that fails. One at a time, so that the latest release is decided in
+  # changes). The packaged chart and its Sigstore bundle are attached,
+  # checked against the names and checksums recorded by `prepare` and
+  # `release-image`: the action creates the release as a draft, uploads
+  # them, and publishes it only then (immutable releases), and deletes the
+  # draft if that fails. One at a time, so that the latest release is
+  # decided in
   # order; a cancelled pending run is re-run like a failed one. The latest
   # GitHub release (the action, by version among published releases) and
   # the image's `latest` tag (`release-image`, by version among the tags on
@@ -569,28 +556,11 @@ jobs:
           CHART_FILE: ${{ needs.prepare.outputs.chart_file }}
           CHART_SHA256: ${{ needs.prepare.outputs.chart_sha256 }}
           BUNDLE_SHA256: ${{ needs.release-image.outputs.chart_bundle_sha256 }}
-        run: |
-          if [[ ! "${CHART_FILE}" =~ ^krini-[0-9A-Za-z.+-]+\.tgz$ ]]; then
-            echo "::error::Invalid chart file name '${CHART_FILE}'"
-            exit 1
-          fi
-          for sum in "${CHART_SHA256}" "${BUNDLE_SHA256}"; do
-            if [[ ! "${sum}" =~ ^[0-9a-f]{64}$ ]]; then
-              echo "::error::Invalid checksum '${sum}'"
-              exit 1
-            fi
-          done
-          shopt -s nullglob dotglob
-          files=(dist/*)
-          expected=("dist/${CHART_FILE}" "dist/${CHART_FILE}.sigstore.json")
-          if [[ "${files[*]}" != "${expected[*]}" ]]; then
-            echo "::error::Expected ${expected[*]} in dist/, found: ${files[*]}"
-            exit 1
-          fi
-          printf '%s  %s\n' "${CHART_SHA256}" "${expected[0]}" "${BUNDLE_SHA256}" "${expected[1]}" \
-            | sha256sum --check --strict
+        run: >-
+          scripts/check-chart-artifact.sh dist "${CHART_FILE}" "${CHART_SHA256}"
+          "${BUNDLE_SHA256}"
       - name: Create release
-        uses: elixir-cloud-aai/.github/actions/publish-release@6801716ba0271440ff8ed01482811971ae807204 # unreleased (feat/publish-release-assets)
+        uses: elixir-cloud-aai/.github/actions/publish-release@c425eedcb3afef55f64f04117d404bd6edbd70f6 # unreleased (feat/publish-release-assets)
         with:
           notes: docs/releases/${{ needs.prepare.outputs.version }}.md
           commit: ${{ needs.prepare.outputs.sha }}

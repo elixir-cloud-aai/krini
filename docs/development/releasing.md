@@ -74,9 +74,9 @@ deploys the release's image by default (`appVersion` is its tag).
     (keep these commands in sync with the `prepare` job of
     `.github/workflows/release.yml`), in Bash, with `git`, `jq`, `yq`
     ([mikefarah/yq](https://github.com/mikefarah/yq) v4), `curl`, Python 3,
-    `bun`, `tar`, [Helm](https://helm.sh/) 3 (the version of
-    `release.yml`) and the [GitHub CLI](https://cli.github.com/). Run them before
-    tagging: tags can't be moved or deleted, and the release workflow
+    `bun`, `tar`, [Helm](https://helm.sh/) 3.22.1 (the version of
+    `release.yml`) and the [GitHub CLI](https://cli.github.com/). Run them
+    before tagging: tags can't be moved or deleted, and the release workflow
     checks the tagged commit, so a check that fails after the tag is pushed
     (other than a CI run that hasn't finished yet) fails again on re-runs,
     and the release then needs a new version, with its own release-prep
@@ -100,10 +100,11 @@ deploys the release's image by default (`appVersion` is its tag).
         # The notes of the commit, with the checker of the action that
         # `release.yml` pins (as the `readiness` job of `ci.yml` does)
         notes="$(mktemp -d)" && git show "${sha}:docs/releases/${version}.md" > "${notes}/notes.md" &&
-            curl -fsSL "https://raw.githubusercontent.com/elixir-cloud-aai/.github/6801716ba0271440ff8ed01482811971ae807204/actions/publish-release/publish.py" -o "${notes}/publish.py" &&
+            curl -fsSL "https://raw.githubusercontent.com/elixir-cloud-aai/.github/c425eedcb3afef55f64f04117d404bd6edbd70f6/actions/publish-release/publish.py" -o "${notes}/publish.py" &&
             python3 -I "${notes}/publish.py" check "${notes}/notes.md" || { echo "Release notes docs/releases/${version}.md missing or not in the format"; exit 1; }
         # The chart of the commit, packaged and checked as the release
-        # workflow packages it (version from the tag, lint, render)
+        # workflow packages it (version from the tag, lint, render); in a
+        # fork, use the image of its DOCKERHUB_ORG
         chart="$(mktemp -d)" && git archive "${sha}" deployment scripts/package-chart.sh | tar -x -C "${chart}" &&
             "${chart}/scripts/package-chart.sh" "${version}" docker.io/elixircloud/krini "${chart}/dist" > /dev/null || { echo "The chart can't be packaged"; exit 1; }
         # Also drafts, which the release workflow can't see before it fails on them
