@@ -77,6 +77,25 @@ describe("POST /auth/api/logout", () => {
         expect(body.end_session_url).toBeUndefined();
     });
 
+    it.each([
+        ["malformed", "not a url"],
+        ["non-http", "javascript:alert(1)"],
+    ])("still clears the session when the end-session endpoint is %s", async (_, endSessionEndpointValue) => {
+        setUp();
+        mockOidcProvider({
+            discovery: {
+                end_session_endpoint: endSessionEndpointValue,
+            },
+        });
+        const response = await logout(appOrigin);
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body.end_session_url).toBeUndefined();
+        for (const name of sessionCookies)
+            expect(cookieOf(response, name)?.value).toBe("");
+        expect(cookieOf(response, "logout_marker")?.value).toBeTruthy();
+    });
+
     it("has no end-session URL when no provider matches the session", async () => {
         setUp();
         mockOidcProvider();

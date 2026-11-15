@@ -40,16 +40,22 @@ export async function POST(req: NextRequest) {
     if (provider) {
         const endpoints = await getEndpoints(provider);
         if (endpoints?.endSessionEndpoint) {
-            const logoutUrl = new URL(endpoints.endSessionEndpoint);
-            logoutUrl.searchParams.set(
-                "post_logout_redirect_uri",
-                `${appOrigin}/`,
-            );
-            logoutUrl.searchParams.set("client_id", provider.clientId);
-            if (idToken) {
-                logoutUrl.searchParams.set("id_token_hint", idToken);
+            try {
+                const logoutUrl = new URL(endpoints.endSessionEndpoint);
+                if (["http:", "https:"].includes(logoutUrl.protocol)) {
+                    logoutUrl.searchParams.set(
+                        "post_logout_redirect_uri",
+                        `${appOrigin}/`,
+                    );
+                    logoutUrl.searchParams.set("client_id", provider.clientId);
+                    if (idToken) {
+                        logoutUrl.searchParams.set("id_token_hint", idToken);
+                    }
+                    endSessionUrl = logoutUrl.toString();
+                }
+            } catch {
+                endSessionUrl = null;
             }
-            endSessionUrl = logoutUrl.toString();
         }
     }
 
