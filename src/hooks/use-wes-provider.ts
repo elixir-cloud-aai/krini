@@ -1,48 +1,7 @@
-import { RestWesProvider } from "@elixir-cloud/wes/providers";
+import type { RestWesProvider } from "@elixir-cloud/wes/providers";
 import { useEffect, useState } from "react";
+import { getAccessToken, TokenWesProvider } from "@/lib/service-providers";
 import { useWESStore } from "@/stores/wes";
-
-class TokenWesProvider extends RestWesProvider {
-    private getToken: () => Promise<string>;
-
-    constructor(baseUrl: string, getToken: () => Promise<string>) {
-        super(baseUrl);
-        this.getToken = getToken;
-    }
-
-    async fetch(input: string, init: RequestInit = {}) {
-        const headers = new Headers(init.headers);
-        const token = await this.getToken();
-
-        if (token) {
-            headers.set("Authorization", `Bearer ${token}`);
-        }
-
-        return super.fetch(input, {
-            ...init,
-            headers,
-        });
-    }
-}
-
-async function getAccessToken(): Promise<string> {
-    try {
-        const response = await fetch("/auth/api/token", {
-            method: "GET",
-            credentials: "same-origin",
-            cache: "no-store",
-        });
-
-        if (!response.ok) {
-            return "";
-        }
-
-        const data: { access_token: string } = await response.json();
-        return data.access_token || "";
-    } catch {
-        return "";
-    }
-}
 
 function useWESProvider() {
     const selectedServer = useWESStore((state) => state.selectedServer);
