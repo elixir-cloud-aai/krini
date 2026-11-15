@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
 import {
+    getAppOrigin,
     getEndpoints,
     getProviderById,
     getRedirectUri,
@@ -14,12 +15,18 @@ function appUrl(path: string, request: NextRequest) {
     const appOrigin = process.env.APP_ORIGIN;
     if (appOrigin) {
         try {
-            return new URL(path, new URL(appOrigin).origin);
-        } catch {
-            console.error(
-                "OIDC callback error: APP_ORIGIN isn't a URL; redirecting to the origin of the request",
-            );
-        }
+            const { origin, protocol } = new URL(appOrigin);
+            if (protocol === "http:" || protocol === "https:") {
+                return new URL(path, origin);
+            }
+        } catch {}
+        console.error(
+            "OIDC callback error: APP_ORIGIN isn't a valid http(s) origin; redirecting to the origin of the request",
+        );
+    } else {
+        console.error(
+            "OIDC callback error: APP_ORIGIN isn't set; redirecting to the origin of the request",
+        );
     }
     return new URL(path, request.url);
 }
@@ -78,6 +85,20 @@ export async function GET(request: NextRequest) {
     const redirectUri = getRedirectUri();
     if (!redirectUri) {
         return redirectError(request, "internal");
+    }
+
+    const appOrigin = getAppOrigin();
+    if (appOrigin) {
+        try {
+            if (new URL(redirectUri).origin !== new URL(appOrigin).origin) {
+                console.error(
+                    "OIDC callback error: category=origin_mismatch, callback and app origins differ",
+                );
+                return redirectError(request, "internal");
+            }
+        } catch {
+            return redirectError(request, "internal");
+        }
     }
 
     const cookieStore = await cookies();

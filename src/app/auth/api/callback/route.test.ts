@@ -150,6 +150,7 @@ describe("GET /auth/api/callback", () => {
     it.each([
         ["without APP_ORIGIN", null],
         ["with an APP_ORIGIN that isn't a URL", "app.example.org"],
+        ["with a non-http APP_ORIGIN", "ftp://app.example.org"],
     ])("redirects to the request's origin %s", async (_, setting) => {
         setUp({ "authState-s1": transaction, logout_marker: "1" });
         mockOidcProvider();
@@ -164,9 +165,13 @@ describe("GET /auth/api/callback", () => {
             new NextRequest(`${listening}/auth/api/callback?code=c1&state=s1`),
         );
         expect(locationOf(response)).toBe(`${listening}/dashboard`);
-        expect(error.mock.calls.length).toBe(setting ? 1 : 0);
-        if (setting)
-            expect(error.mock.calls[0][0]).toMatch(/APP_ORIGIN isn't a URL/);
+        // the fallback to the request's origin is logged
+        expect(error.mock.calls.length).toBe(1);
+        expect(error.mock.calls[0][0]).toMatch(
+            setting
+                ? /APP_ORIGIN isn't a valid http\(s\) origin/
+                : /APP_ORIGIN isn't set/,
+        );
     });
 
     it("rejects a callback with a provider error", async () => {
@@ -322,6 +327,41 @@ describe("GET /auth/api/callback", () => {
         expect(error.mock.calls[0][0]).toMatch(
             /category=id_token_validation_failed/,
         );
+    });
+
+    it("fails when the callback origin differs from APP_ORIGIN", async () => {
+        setUp({ "authState-s1": transaction });
+        mockOidcProvider();
+        vi.stubEnv(
+            "OIDC_REDIRECT_URI",
+            "https://auth.example.org/auth/api/callback",
+        );
+        const post = vi.spyOn(await http(), "post");
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        const { GET } = await import("./route");
+        const response = await GET(
+            new NextRequest(`${appOrigin}/auth/api/callback?code=c1&state=s1`),
+        );
+        expect(locationOf(response)).toBe(
+            `${appOrigin}/auth/error?type=internal`,
+        );
+        expect(post).not.toHaveBeenCalled();
+        expect(error.mock.calls[0][0]).toMatch(/origin_mismatch/);
+    });
+
+    it("fails when the redirect URI is not a URL", async () => {
+        setUp({ "authState-s1": transaction });
+        mockOidcProvider();
+        vi.stubEnv("OIDC_REDIRECT_URI", "not a url");
+        const post = vi.spyOn(await http(), "post");
+        const { GET } = await import("./route");
+        const response = await GET(
+            new NextRequest(`${appOrigin}/auth/api/callback?code=c1&state=s1`),
+        );
+        expect(locationOf(response)).toBe(
+            `${appOrigin}/auth/error?type=internal`,
+        );
+        expect(post).not.toHaveBeenCalled();
     });
 
     it("fails when no redirect URI can be determined", async () => {
