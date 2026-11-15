@@ -1,8 +1,8 @@
 import { getCookie } from "cookies-next/server";
-import { Info } from "lucide-react";
+import { Info, LogIn } from "lucide-react";
 import { cookies } from "next/headers";
-import Image from "next/image";
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import {
     Tooltip,
     TooltipContent,
@@ -29,15 +29,16 @@ async function AppTopbarActions() {
             <ThemeToggle />
 
             {!idToken && (
-                <a href="/auth/api/login-redirect">
-                    <Image
-                        src="/ls-login-grey-wide.jpg"
-                        height={80}
-                        width={130}
-                        alt="Login with LS Login"
-                        loading="eager"
-                    />
-                </a>
+                <Link
+                    href="/auth/login"
+                    className={buttonVariants({
+                        variant: "secondary",
+                        size: "sm",
+                    })}
+                >
+                    <LogIn />
+                    Log in
+                </Link>
             )}
         </div>
     );

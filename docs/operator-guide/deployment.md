@@ -165,7 +165,7 @@ tokens: TES and WES services expect JWT access tokens for authentication.
 
 ### Client allowlisting
 
-TES and WES services must allowlist Krini's `OIDC_CLIENT_ID` in their
+TES and WES services must allowlist Krini's `clientId` of each `LOGIN_PROVIDERS` in their
 authorization configuration: only allowlisted clients can use their access
 tokens to authenticate with these services.
 
@@ -244,7 +244,7 @@ its build takes no settings. Pass the settings of
 environment variables, for example:
 
 - Docker: `docker run --env-file krini.env ...`, with `krini.env` kept outside the repository and the build context. Docker reads plain `KEY=value` lines and doesn't strip quotes, so write `PRIVACY_CONTROLLER=Example Institute, Example City`, not `PRIVACY_CONTROLLER="..."`.
-- Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `OIDC_CLIENT_SECRET`, referenced with `envFrom` or `env[].valueFrom` in the deployment.
+- Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `LOGIN_PROVIDERS` (it contains each provider's `clientSecret`), referenced with `envFrom` or `env[].valueFrom` in the deployment.
 
 Changing a setting needs a restart, not a new image; which settings reach
 the browser is described in [Configuration](configuration.md#settings).
@@ -254,7 +254,7 @@ the browser is described in [Configuration](configuration.md#settings).
 - Cookies get the `Secure` flag in production builds (`next build`, as in the Docker image); `NODE_ENV` is fixed when the app is built, so setting it at runtime changes nothing
 - Use HTTPS for all production deployments
 - Configure `APP_ORIGIN` to your production domain
-- Store `OIDC_CLIENT_SECRET` securely (e.g., using a secrets manager)
+- Store `LOGIN_PROVIDERS` securely (e.g., using a secrets manager) — it contains the providers' `clientSecret` values
 - Rotate credentials regularly
 - Set the `PRIVACY_*` variables (see [Privacy notice](configuration.md#privacy-notice)), so that the privacy notice at `/privacy` names who is responsible and how to reach them.
 - The notice's text is the same for every deployment. It describes what Krini itself does. Put anything specific to your deployment (purposes, legal basis, retention, rights) into your own notice and link it with `PRIVACY_NOTICE_URL`.

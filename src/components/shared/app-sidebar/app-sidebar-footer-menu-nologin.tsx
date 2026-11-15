@@ -16,7 +16,7 @@ function AppSidebarFooterMenuNoUser() {
             <DropdownMenuGroup>
                 <DropdownMenuItem
                     render={
-                        <a href={"/auth/api/login-redirect"}>
+                        <a href={"/auth/login"}>
                             <LogIn />
                             Login
                         </a>

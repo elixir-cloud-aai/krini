@@ -12,6 +12,7 @@ const sessionCookies = [
     "access_token",
     "id_token",
     "refresh_token",
+    "oidc_provider",
     "token_expires_at",
 ];
 

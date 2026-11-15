@@ -21,6 +21,7 @@ async function login(page: Page) {
     await page.goto("/dashboard");
     await page.getByRole("button", { name: /Anonymous/ }).click();
     await page.getByRole("menuitem", { name: "Login" }).click();
+    await page.getByRole("link", { name: "Mock IdP" }).click();
     await page.waitForURL(/\/dashboard$/);
     await expect(
         page.getByRole("button", { name: /Alice Example/ }),

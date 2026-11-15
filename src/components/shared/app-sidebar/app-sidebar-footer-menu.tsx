@@ -1,4 +1,5 @@
-import { Copy } from "lucide-react";
+import { Copy, UserKey } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -9,12 +10,21 @@ import {
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useSidebar } from "@/components/ui/sidebar";
+import type { UserTier } from "@/lib/oidc";
 
 type Props = {
     user: User;
+    tier?: UserTier | null;
+    accessRequestUrl?: string | null;
 };
 
-function AppSidebarFooterMenu({ user }: Props) {
+const TIER_LABELS: Record<UserTier, string> = {
+    admin: "Admin",
+    compute: "Compute",
+    user: "User",
+};
+
+function AppSidebarFooterMenu({ user, tier, accessRequestUrl }: Props) {
     const { isMobile } = useSidebar();
 
     const copyToken = async () => {
@@ -50,6 +60,11 @@ function AppSidebarFooterMenu({ user }: Props) {
             if (!response.ok) {
                 throw new Error("Logout failed");
             }
+            const data = await response.json();
+            if (data.end_session_url) {
+                window.location.href = data.end_session_url;
+                return;
+            }
             toast.success("Logged out successfully.");
             window.location.reload();
         } catch {
@@ -79,6 +94,11 @@ function AppSidebarFooterMenu({ user }: Props) {
                             <span className="truncate text-xs">
                                 {user?.email || user?.sub}
                             </span>
+                            {tier && (
+                                <span className="truncate text-xs font-medium text-muted-foreground">
+                                    User Tier : {TIER_LABELS[tier]}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </DropdownMenuLabel>
@@ -87,6 +107,20 @@ function AppSidebarFooterMenu({ user }: Props) {
                     <Copy />
                     Copy token to Dashboard
                 </DropdownMenuItem>
+                {tier === "user" && accessRequestUrl && (
+                    <DropdownMenuItem
+                        render={
+                            <Link
+                                href={accessRequestUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <UserKey />
+                                Request compute access
+                            </Link>
+                        }
+                    ></DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                     className="text-red-500"

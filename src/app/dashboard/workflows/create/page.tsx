@@ -1,5 +1,6 @@
 import { Eye } from "lucide-react";
 import Link from "next/link";
+import { ComputeGate } from "@/components/shared/compute-gate";
 import { Button } from "@/components/ui/button";
 import {
     ECCClientGa4ghWesCreateRunsClient,
@@ -32,11 +33,25 @@ function Page() {
                     </Button>
                 </div>
             </div>
-            <WorkflowValidator>
-                <div className="overflow-hidden px-2">
-                    <ECCClientGa4ghWesCreateRunsClient />
-                </div>
-            </WorkflowValidator>
+            <ComputeGate
+                anonymousFallback={
+                    <p className="text-sm text-muted-foreground">
+                        <Link
+                            href="/auth/login"
+                            className="font-medium underline underline-offset-4"
+                        >
+                            Log in
+                        </Link>{" "}
+                        with compute access to submit workflows.
+                    </p>
+                }
+            >
+                <WorkflowValidator>
+                    <div className="overflow-hidden px-2">
+                        <ECCClientGa4ghWesCreateRunsClient />
+                    </div>
+                </WorkflowValidator>
+            </ComputeGate>
         </div>
     );
 }

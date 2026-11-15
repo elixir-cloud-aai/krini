@@ -1,63 +1,171 @@
 import { describe, expect, it, vi } from "vitest";
-import { cookieStore, http, httpError, loginUrl, setUp } from "@/test/routes";
+import { issuer, mockOidcProvider, providersJson } from "@/test/oidc";
+import { cookieStore, setUp } from "@/test/routes";
 
 vi.mock("next/headers", () => ({ cookies: async () => cookieStore }));
 
+const now = Date.now();
+
+function idTokenCookie(claims: Record<string, unknown> = {}) {
+    const payload = Buffer.from(
+        JSON.stringify({
+            iss: issuer,
+            aud: "client",
+            exp: Math.floor(now / 1000) + 3600,
+            sub: "u1",
+            ...claims,
+        }),
+    ).toString("base64url");
+    return `h.${payload}.s`;
+}
+
 /**
- * Get the user info with the given session cookies
+ * Get the user info: `setUp` + provider mock, optional provider settings
+ * applied after `setUp` (which resets env), then the route
  * @param cookies Cookies of the request
- * @param reply Result of the user info request: data, or an error to throw
+ * @param provider Provider fields that replace the defaults
+ * @param oidcProvider Options of the mock provider
  */
 async function userInfo(
-    cookies: Record<string, string | undefined>,
-    reply: unknown = { sub: "a", name: "Alice" },
+    cookies: Record<string, string | undefined> = { access_token: "at" },
+    provider: Record<string, unknown> = {},
+    oidcProvider?: Parameters<typeof mockOidcProvider>[0],
 ) {
     setUp(cookies);
-    const get = vi.spyOn(await http(), "get");
-    if (reply instanceof Error) get.mockRejectedValue(reply);
-    else get.mockResolvedValue({ status: 200, data: reply });
+    vi.stubEnv("LOGIN_PROVIDERS", providersJson(provider));
+    mockOidcProvider(oidcProvider);
     const { GET } = await import("./route");
-    return { response: await GET(), get };
+    return GET();
 }
 
 describe("GET /auth/api/user-info", () => {
-    it("returns the provider's user info", async () => {
-        const { response, get } = await userInfo({ access_token: "access" });
-        expect(response.status).toBe(200);
-        expect(await response.json()).toEqual({
-            error: false,
-            user: { sub: "a", name: "Alice" },
-        });
-        expect(get).toHaveBeenCalledWith(`${loginUrl}/oidc/userinfo`, {
-            headers: {
-                Authorization: "Bearer access",
-                Accept: "application/json",
+    it("returns the user, groups and tier", async () => {
+        const response = await userInfo(
+            { access_token: "at", id_token: idTokenCookie() },
+            {
+                groupsClaim: "groups",
+                computeGroups: ["compute"],
+                adminGroups: ["admin"],
             },
-        });
+            { userinfo: { sub: "u1", groups: ["compute"] } },
+        );
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body.error).toBe(false);
+        expect(body.user).toMatchObject({ sub: "u1" });
+        expect(body.groups).toEqual(["compute"]);
+        expect(body.tier).toBe("compute");
+        expect(body.access_request_url).toBeNull();
+    });
+
+    it("includes the configured access request URL", async () => {
+        setUp({ access_token: "at", id_token: idTokenCookie() });
+        mockOidcProvider();
+        vi.stubEnv("COMPUTE_ACCESS_REQUEST_URL", "https://example.org/access");
+        const { GET } = await import("./route");
+        const body = await (await GET()).json();
+        expect(body.access_request_url).toBe("https://example.org/access");
+    });
+
+    it("matches compute subgroups with the configured separator", async () => {
+        const response = await userInfo(
+            { access_token: "at", id_token: idTokenCookie() },
+            {
+                groupsClaim: "groups",
+                computeGroups: ["compute"],
+                groupSubgroupSeparator: ":",
+            },
+            { userinfo: { sub: "u1", groups: ["compute:wg1"] } },
+        );
+        const body = await response.json();
+        expect(body.tier).toBe("compute");
+        expect(body.groups).toEqual(["compute:wg1"]);
+    });
+
+    it("reads groups from the ID token when configured", async () => {
+        const response = await userInfo(
+            {
+                access_token: "at",
+                id_token: idTokenCookie({ groups: ["admin"] }),
+            },
+            {
+                groupsClaim: "groups",
+                groupsFromUserinfo: false,
+                adminGroups: ["admin"],
+            },
+        );
+        const body = await response.json();
+        expect(body.tier).toBe("admin");
+        expect(body.groups).toEqual(["admin"]);
     });
 
     it("rejects requests without a session", async () => {
-        const { response, get } = await userInfo({});
+        const response = await userInfo({});
         expect(response.status).toBe(401);
         expect(await response.json()).toEqual({ error: true, user: null });
-        expect(get).not.toHaveBeenCalled();
     });
 
-    it("fails on an error of the provider", async () => {
-        const { response } = await userInfo(
-            { access_token: "access" },
-            httpError(401),
+    it("rejects a session of an unknown provider", async () => {
+        setUp({ access_token: "at", oidc_provider: "missing" });
+        vi.stubEnv(
+            "LOGIN_PROVIDERS",
+            JSON.stringify([
+                {
+                    id: "a",
+                    issuer,
+                    clientId: "client",
+                    clientSecret: "s",
+                },
+                {
+                    id: "b",
+                    issuer: "https://other.example.org",
+                    clientId: "client",
+                    clientSecret: "s",
+                },
+            ]),
+        );
+        mockOidcProvider();
+        const { GET } = await import("./route");
+        const response = await GET();
+        expect(response.status).toBe(401);
+    });
+
+    it("fails when no login providers are configured", async () => {
+        setUp({ access_token: "at" });
+        vi.stubEnv("LOGIN_PROVIDERS", "[]");
+        const { GET } = await import("./route");
+        const response = await GET();
+        expect(response.status).toBe(401);
+    });
+
+    it("fails when the provider cannot be discovered", async () => {
+        setUp({ access_token: "at" });
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response("err", { status: 500 })),
+        );
+        const { GET } = await import("./route");
+        const response = await GET();
+        expect(response.status).toBe(500);
+    });
+
+    it("fails when userinfo is for another subject", async () => {
+        const response = await userInfo(
+            { access_token: "at", id_token: idTokenCookie() },
+            {},
+            { userinfo: { sub: "u2" } },
         );
         expect(response.status).toBe(502);
         expect(await response.json()).toEqual({ error: true, user: null });
     });
 
-    it.each([
-        ["no body", ""],
-        ["a body that isn't an object", "text"],
-    ])("fails on a response with %s", async (_, reply) => {
-        const { response } = await userInfo({ access_token: "access" }, reply);
-        expect(response.status).toBe(500);
+    it("fails when userinfo rejects the token", async () => {
+        const response = await userInfo(
+            { access_token: "at" },
+            {},
+            { userinfoStatus: 401 },
+        );
+        expect(response.status).toBe(502);
         expect(await response.json()).toEqual({ error: true, user: null });
     });
 });

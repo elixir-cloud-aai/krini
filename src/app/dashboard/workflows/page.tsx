@@ -1,5 +1,6 @@
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
+import { ComputeGate } from "@/components/shared/compute-gate";
 import { Button } from "@/components/ui/button";
 import { ECCClientGa4ghWesRunsClient, WESServerList } from "./_components";
 
@@ -20,15 +21,19 @@ function WESPage() {
                     <div className="flex gap-2 items-center">
                         <WESServerList />
                     </div>
-                    <Button className={"px-0"}>
-                        <Link
-                            href={"/dashboard/workflows/create"}
-                            className={"flex gap-2 items-center h-full px-3"}
-                        >
-                            Create Workflow
-                            <PlusIcon size={10} />
-                        </Link>
-                    </Button>
+                    <ComputeGate>
+                        <Button className={"px-0"}>
+                            <Link
+                                href={"/dashboard/workflows/create"}
+                                className={
+                                    "flex gap-2 items-center h-full px-3"
+                                }
+                            >
+                                Create Workflow
+                                <PlusIcon size={10} />
+                            </Link>
+                        </Button>
+                    </ComputeGate>
                 </div>
             </div>
             <div className="overflow-hidden px-2">
