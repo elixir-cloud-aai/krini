@@ -277,11 +277,11 @@ describe("getEndpoints", () => {
         expect(second).toEqual(endpoints);
     });
 
-    it("accepts a discovery document without an issuer", async () => {
+    it("rejects a discovery document without an issuer", async () => {
         mockOidcProvider({ discovery: { issuer: undefined } });
         const { getEndpoints } = await load();
         const result = await getEndpoints(provider);
-        expect(result?.tokenEndpoint).toBe(tokenEndpoint);
+        expect(result).toBeNull();
     });
 
     it("rejects a discovery document of another issuer", async () => {

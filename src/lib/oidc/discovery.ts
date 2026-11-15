@@ -49,7 +49,9 @@ export async function getEndpoints(
         return null;
     }
     if (!doc.token_endpoint || !doc.authorization_endpoint) return null;
-    if (doc.issuer && doc.issuer.replace(/\/+$/, "") !== provider.issuer) {
+    // The document must be bound to the configured issuer; without a
+    // matching issuer its endpoints are unverified.
+    if (!doc.issuer || doc.issuer.replace(/\/+$/, "") !== provider.issuer) {
         return null;
     }
 
