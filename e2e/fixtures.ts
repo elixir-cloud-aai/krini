@@ -51,8 +51,7 @@ async function wesRequests(): Promise<WesRequest[]> {
 }
 
 /**
- * Get the requests that the mock TES service received, except for its
- * service info
+ * Get all requests that the mock TES service received
  * @returns The requests, oldest first
  */
 async function tesRequests(): Promise<TesRequest[]> {

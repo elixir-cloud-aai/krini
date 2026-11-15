@@ -327,6 +327,13 @@ async function handleTes(
     path: string,
     cors: Record<string, string>,
 ) {
+    const entry: TesRequest = {
+        method: req.method ?? "",
+        path,
+        authorization: req.headers.authorization ?? null,
+    };
+    tesRequests.push(entry);
+
     if (req.method === "GET" && path === "/service-info")
         return send(
             res,
@@ -344,12 +351,6 @@ async function handleTes(
             cors,
         );
 
-    const entry: TesRequest = {
-        method: req.method ?? "",
-        path,
-        authorization: req.headers.authorization ?? null,
-    };
-    tesRequests.push(entry);
     const token = bearerOf(req);
     if (!token || !accessTokens.has(token))
         return send(res, 401, { msg: "unauthorized", status_code: 401 }, cors);

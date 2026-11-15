@@ -38,6 +38,28 @@ test.describe("anonymous visitors", () => {
         await expect(page.getByRole("option")).toContainText("Mock TES");
     });
 
+    test("see hints on task details without a task or service", async ({
+        page,
+    }) => {
+        await page.goto("/dashboard/tasks/details");
+        await expect(page.getByText("No task ID was provided.")).toBeVisible();
+
+        // e.g. a bookmarked link: the service must be chosen first
+        await page.goto("/dashboard/tasks/details?id=task-1");
+        await expect(
+            page.getByText("Select the TES instance of the task to view it."),
+        ).toBeVisible();
+
+        // only services of the registry list: not the http entry
+        await page.goto("/dashboard/tasks/details?id=task-1&service=plain-tes");
+        await expect(
+            page.getByText(
+                "The service of this task isn't in the list of TES instances.",
+            ),
+        ).toBeVisible();
+        expect(await tesRequests()).toEqual([]);
+    });
+
     test("get no token", async ({ page }) => {
         const response = await page.request.get("/auth/api/token");
         expect(response.status()).toBe(401);
@@ -157,7 +179,16 @@ test.describe("members", () => {
         await page.getByRole("link", { name: "View Tasks" }).click();
         await page.waitForURL(/\/dashboard\/tasks$/);
         await page.getByRole("button", { name: "View Details" }).click();
-        await page.waitForURL(/\/dashboard\/tasks\/details\?id=task-1$/);
+        await page.waitForURL(
+            /\/dashboard\/tasks\/details\?id=task-1&service=mock-tes$/,
+        );
+        await expect(
+            page.getByRole("heading", { name: "hello" }),
+        ).toBeVisible();
+        // the link names the service: it still works after a reload, which
+        // clears the selection
+        await page.reload();
+        await expect(page.getByText("TES instance: Mock TES")).toBeVisible();
         await expect(
             page.getByRole("heading", { name: "hello" }),
         ).toBeVisible();

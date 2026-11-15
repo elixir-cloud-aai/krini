@@ -1,16 +1,19 @@
 import { ListIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ECCClientGa4ghTesTaskClient, TESServerList } from "../_components";
+import { ECCClientGa4ghTesTaskClient } from "../_components";
 
 interface PageProps {
     searchParams: Promise<{
+        /** ID of the task */
         id?: string | string[];
+        /** Registry ID of the task's TES service */
+        service?: string | string[];
     }>;
 }
 
 async function Page({ searchParams }: PageProps) {
-    const { id } = await searchParams;
+    const { id, service } = await searchParams;
 
     return (
         <div className="space-y-6">
@@ -24,7 +27,6 @@ async function Page({ searchParams }: PageProps) {
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2 justify-end w-full md:w-auto">
-                    <TESServerList />
                     <Button className={"px-0"}>
                         <Link
                             href={"/dashboard/tasks"}
@@ -38,7 +40,14 @@ async function Page({ searchParams }: PageProps) {
             </div>
             <div className="overflow-hidden px-2">
                 {typeof id === "string" && id ? (
-                    <ECCClientGa4ghTesTaskClient taskId={id} />
+                    <ECCClientGa4ghTesTaskClient
+                        taskId={id}
+                        serviceId={
+                            typeof service === "string" && service
+                                ? service
+                                : undefined
+                        }
+                    />
                 ) : (
                     <p className="p-4 text-sm text-muted-foreground text-center">
                         No task ID was provided.

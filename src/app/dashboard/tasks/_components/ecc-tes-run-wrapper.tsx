@@ -22,7 +22,12 @@ const ECCClientGa4ghTesRuns = dynamic(
 export function ECCClientGa4ghTesRunsClient() {
     const router = useRouter();
     const selectedServer = useTESStore((state) => state.selectedServer);
+    const servers = useTESStore((state) => state.servers);
     const provider = useTESProvider();
+    // the details link names the service, so the task is looked up there
+    const serviceId = servers.find(
+        (server) => server.url === selectedServer,
+    )?.id;
 
     if (!provider) {
         return (
@@ -39,7 +44,10 @@ export function ECCClientGa4ghTesRunsClient() {
             pageSize={10}
             onEccRunsSelected={(event) =>
                 router.push(
-                    `/dashboard/tasks/details?id=${encodeURIComponent(event.detail.runId)}`,
+                    `/dashboard/tasks/details?${new URLSearchParams({
+                        id: event.detail.runId,
+                        ...(serviceId ? { service: serviceId } : {}),
+                    })}`,
                 )
             }
         />
