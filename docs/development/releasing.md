@@ -100,7 +100,7 @@ deploys the release's image by default (`appVersion` is its tag).
         # The notes of the commit, with the checker of the action that
         # `release.yml` pins (as the `readiness` job of `ci.yml` does)
         notes="$(mktemp -d)" && git show "${sha}:docs/releases/${version}.md" > "${notes}/notes.md" &&
-            curl -fsSL "https://raw.githubusercontent.com/elixir-cloud-aai/.github/7b4bff2bce8b0afb9ea2292193707b4c3a50fae4/actions/publish-release/publish.py" -o "${notes}/publish.py" &&
+            curl -fsSL "https://raw.githubusercontent.com/elixir-cloud-aai/.github/bf3840c9c072aaf37d6cafe199aaa1994087d1ef/actions/publish-release/publish.py" -o "${notes}/publish.py" &&
             python3 -I "${notes}/publish.py" check "${notes}/notes.md" || { echo "Release notes docs/releases/${version}.md missing or not in the format"; exit 1; }
         # The chart of the commit, packaged and checked as the release
         # workflow packages it (version from the tag, lint, render); in a

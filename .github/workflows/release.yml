@@ -152,7 +152,7 @@ jobs:
       # release of it exists. Keep the pin in sync with the checker of the
       # `readiness` job of `ci.yml` and with `docs/development/releasing.md`
       - name: Check release notes
-        uses: elixir-cloud-aai/.github/actions/publish-release@7b4bff2bce8b0afb9ea2292193707b4c3a50fae4 # unreleased (feat/publish-release-assets)
+        uses: elixir-cloud-aai/.github/actions/publish-release@bf3840c9c072aaf37d6cafe199aaa1994087d1ef # v1.2.0
         with:
           notes: docs/releases/${{ steps.version.outputs.version }}.md
           commit: ${{ steps.version.outputs.sha }}
@@ -559,7 +559,7 @@ jobs:
           scripts/check-chart-artifact.sh dist "${CHART_FILE}" "${CHART_SHA256}"
           "${BUNDLE_SHA256}"
       - name: Create release
-        uses: elixir-cloud-aai/.github/actions/publish-release@7b4bff2bce8b0afb9ea2292193707b4c3a50fae4 # unreleased (feat/publish-release-assets)
+        uses: elixir-cloud-aai/.github/actions/publish-release@bf3840c9c072aaf37d6cafe199aaa1994087d1ef # v1.2.0
         with:
           notes: docs/releases/${{ needs.prepare.outputs.version }}.md
           commit: ${{ needs.prepare.outputs.sha }}
