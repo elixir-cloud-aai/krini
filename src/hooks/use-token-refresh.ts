@@ -43,7 +43,7 @@ export function useTokenRefresh() {
                     );
                 }
             } catch {
-                window.location.href = "/auth/api/login-redirect";
+                window.location.href = "/auth/login";
             }
         };
 

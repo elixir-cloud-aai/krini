@@ -32,6 +32,11 @@ const COOKIES = [
         lifetime: "up to 30 days; deleted when you log out",
     },
     {
+        name: "oidc_provider",
+        purpose: "which login provider your session belongs to",
+        lifetime: "up to 30 days; deleted when you log out",
+    },
+    {
         name: "token_expires_at",
         purpose: "when your access token needs to be renewed",
         lifetime: "up to 30 days; deleted when you log out",
@@ -40,7 +45,7 @@ const COOKIES = [
         name: "logout_marker",
         purpose:
             "keeps you logged out, so that no open page renews the session",
-        lifetime: "30 days after you log out, or until you log in again",
+        lifetime: "15 minutes after you log out, or until you log in again",
     },
     {
         name: "sidebar_state",

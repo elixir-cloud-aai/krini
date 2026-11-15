@@ -2,16 +2,14 @@ import axios from "axios";
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
+import {
+    getEndpoints,
+    getProviderById,
+    getRedirectUri,
+    validateIdToken,
+} from "@/lib/oidc";
+import { applySessionCookies } from "@/lib/session-cookies";
 
-/**
- * Get the URL of a page of the app, for redirects: at `APP_ORIGIN`, as the
- * standalone server of the image sees its listening address (e.g.
- * `http://0.0.0.0:3000`) as the origin of requests; without the setting, or
- * if it isn't a URL, at the origin of the request
- * @param path Path of the page, with its query
- * @param request The request
- * @returns The URL
- */
 function appUrl(path: string, request: NextRequest) {
     const appOrigin = process.env.APP_ORIGIN;
     if (appOrigin) {
@@ -26,37 +24,107 @@ function appUrl(path: string, request: NextRequest) {
     return new URL(path, request.url);
 }
 
+function redirectError(request: NextRequest, type: string, state?: string) {
+    const response = NextResponse.redirect(
+        appUrl(`/auth/error?type=${type}`, request),
+    );
+    if (state) expireLoginArtifacts(response, state);
+    return response;
+}
+
+function expireLoginArtifacts(response: NextResponse, state: string) {
+    response.cookies.delete(`authState-${state}`);
+    response.cookies.delete("logout_marker");
+}
+
+/** Logs only the HTTP status and the provider's `error` field — never codes, secrets or tokens. */
+function logTokenError(context: string, err: unknown, tokenEndpoint: string) {
+    if (axios.isAxiosError(err)) {
+        const providerError =
+            typeof err.response?.data?.error === "string"
+                ? err.response.data.error
+                : undefined;
+        console.error(
+            `${context}: category=${err.response ? `upstream_${err.response.status}` : err.code ? `network_${err.code}` : "unknown"}, endpoint=${tokenEndpoint}, provider_error=${providerError ?? "none"}`,
+        );
+    } else {
+        console.error(
+            `${context}: category=unexpected, endpoint=${tokenEndpoint}`,
+        );
+    }
+}
+
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get("code");
     const state = searchParams.get("state");
+    const providerError = searchParams.get("error");
+
+    if (providerError) {
+        // The provider reports the failure in `error`/`error_description`;
+        // log the error code only, never the description (may echo params).
+        // Control characters are stripped so the value cannot forge log
+        // entries.
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point
+        const safeError = providerError.replace(/[\x00-\x1f\x7f]/g, "");
+        console.error(`OIDC callback: provider_error=${safeError}`);
+        return redirectError(request, "params");
+    }
 
     if (!code || !state) {
-        return NextResponse.redirect(
-            appUrl("/auth/error?type=params", request),
-        );
+        return redirectError(request, "params");
+    }
+
+    const redirectUri = getRedirectUri();
+    if (!redirectUri) {
+        return redirectError(request, "internal");
     }
 
     const cookieStore = await cookies();
-    const authState = cookieStore.get(`authState-${state}`)?.value;
+    const txnRaw = cookieStore.get(`authState-${state}`)?.value;
 
-    if (!authState || authState !== state) {
-        return NextResponse.redirect(appUrl("/auth/error?type=state", request));
+    let txn: {
+        state?: string;
+        nonce?: string;
+        codeVerifier?: string;
+        providerId?: string;
+    } | null = null;
+    try {
+        txn = txnRaw ? JSON.parse(txnRaw) : null;
+    } catch {
+        txn = null;
     }
 
-    cookieStore.delete(`authState-${state}`);
-    cookieStore.delete("logout_marker");
+    const provider =
+        txn && typeof txn.providerId === "string"
+            ? getProviderById(txn.providerId)
+            : undefined;
+
+    if (
+        !txn ||
+        txn.state !== state ||
+        typeof txn.nonce !== "string" ||
+        typeof txn.codeVerifier !== "string" ||
+        !provider
+    ) {
+        return redirectError(request, "state");
+    }
+
+    const endpoints = await getEndpoints(provider);
+    if (!endpoints) {
+        return redirectError(request, "internal", state);
+    }
 
     try {
-        const baseUrl = `${process.env.LS_LOGIN_URL}/oidc/token`;
         const response = await axiosBase.post(
-            baseUrl,
+            endpoints.tokenEndpoint,
             new URLSearchParams({
                 grant_type: "authorization_code",
-                code: code,
-                redirect_uri: process.env.OIDC_REDIRECT_URI ?? "",
-                client_id: process.env.OIDC_CLIENT_ID ?? "",
-                client_secret: process.env.OIDC_CLIENT_SECRET ?? "",
+                code,
+                redirect_uri: redirectUri,
+                client_id: provider.clientId,
+                client_secret: provider.clientSecret,
+                code_verifier: txn.codeVerifier,
             }),
             {
                 headers: {
@@ -66,80 +134,37 @@ export async function GET(request: NextRequest) {
             },
         );
 
-        const { access_token, id_token, refresh_token, expires_in } =
-            response.data;
+        const { access_token, id_token } = response.data;
 
         if (typeof access_token !== "string" || typeof id_token !== "string") {
             console.error(
-                `OIDC callback error: category=invalid_response, url=${process.env.LS_LOGIN_URL}/oidc/token, has_access_token=${typeof access_token === "string"}, has_id_token=${typeof id_token === "string"}`,
+                `OIDC callback error: category=invalid_response, endpoint=${endpoints.tokenEndpoint}`,
             );
-            return NextResponse.redirect(
-                appUrl("/auth/error?type=internal", request),
-            );
+            return redirectError(request, "internal", state);
         }
 
-        const cookieOptions = {
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax" as const,
-            path: "/",
-            httpOnly: true,
-        };
+        const idTokenPayload = await validateIdToken(
+            id_token,
+            endpoints,
+            provider,
+            txn.nonce,
+        );
+        if (!idTokenPayload) {
+            console.error(
+                `OIDC callback error: category=id_token_validation_failed, endpoint=${endpoints.tokenEndpoint}`,
+            );
+            return redirectError(request, "internal", state);
+        }
 
         const responseRedirect = NextResponse.redirect(
             appUrl("/dashboard", request),
         );
-
-        const expiresAt =
-            Date.now() +
-            (typeof expires_in === "number" && expires_in > 0
-                ? expires_in * 1000
-                : 60 * 60 * 1000) -
-            5 * 60 * 1000;
-
-        responseRedirect.cookies.set("access_token", access_token, {
-            ...cookieOptions,
-            maxAge:
-                typeof expires_in === "number" && expires_in > 0
-                    ? Math.floor(expires_in)
-                    : 60 * 60,
-        });
-
-        responseRedirect.cookies.set("id_token", id_token, {
-            ...cookieOptions,
-            maxAge: 60 * 60,
-        });
-
-        if (typeof refresh_token === "string") {
-            responseRedirect.cookies.set("refresh_token", refresh_token, {
-                ...cookieOptions,
-                maxAge: 30 * 24 * 60 * 60,
-            });
-        }
-
-        responseRedirect.cookies.set("token_expires_at", String(expiresAt), {
-            ...cookieOptions,
-            httpOnly: false,
-            maxAge: 30 * 24 * 60 * 60,
-        });
+        applySessionCookies(responseRedirect, response.data, provider.id);
+        expireLoginArtifacts(responseRedirect, state);
 
         return responseRedirect;
     } catch (err) {
-        if (axios.isAxiosError(err)) {
-            const errorCategory = err.code
-                ? `network_${err.code}`
-                : err.response
-                  ? `upstream_${err.response.status}`
-                  : "unknown";
-            console.error(
-                `OIDC callback error: category=${errorCategory}, url=${process.env.LS_LOGIN_URL}/oidc/token, has_response=${!!err.response}`,
-            );
-        } else {
-            console.error(
-                `OIDC callback error: category=unexpected, url=${process.env.LS_LOGIN_URL}/oidc/token`,
-            );
-        }
-        return NextResponse.redirect(
-            appUrl("/auth/error?type=internal", request),
-        );
+        logTokenError("OIDC callback error", err, endpoints.tokenEndpoint);
+        return redirectError(request, "internal", state);
     }
 }

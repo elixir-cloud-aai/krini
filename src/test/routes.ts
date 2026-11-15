@@ -5,6 +5,7 @@
  */
 import { AxiosError, AxiosHeaders } from "axios";
 import { vi } from "vitest";
+import { providersJson } from "./oidc";
 
 type Cookie = { name: string; value: string; [option: string]: unknown };
 
@@ -24,7 +25,6 @@ const cookieStore = {
 };
 
 const appOrigin = "https://app.example.org";
-const loginUrl = "https://login.example.org";
 const registryUrl = "https://registry.example.org/ga4gh/registry/v1";
 
 /**
@@ -34,17 +34,14 @@ const registryUrl = "https://registry.example.org/ga4gh/registry/v1";
  */
 function setUp(cookies: Record<string, string | undefined> = {}) {
     vi.resetModules();
+    vi.unstubAllGlobals();
     jar.clear();
     for (const [name, value] of Object.entries(cookies))
         if (value !== undefined) jar.set(name, { name, value });
-    vi.stubEnv("LS_LOGIN_URL", loginUrl);
-    vi.stubEnv("OIDC_CLIENT_ID", "client");
-    vi.stubEnv("OIDC_CLIENT_SECRET", "client-secret");
-    vi.stubEnv("OIDC_REDIRECT_URI", `${appOrigin}/auth/api/callback`);
+    vi.stubEnv("LOGIN_PROVIDERS", providersJson());
     vi.stubEnv("CLOUD_REGISTRY_URL", registryUrl);
     vi.stubEnv("APP_ORIGIN", appOrigin);
-    // the default scope, whatever the shell sets
-    vi.stubEnv("OIDC_SCOPE", undefined);
+    vi.stubEnv("COMPUTE_ACCESS_REQUEST_URL", undefined);
 }
 
 /**
@@ -108,7 +105,6 @@ export {
     http,
     httpError,
     jar,
-    loginUrl,
     networkError,
     registryUrl,
     setUp,

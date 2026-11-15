@@ -16,7 +16,8 @@ import AppSidebarFooterMenu from "./app-sidebar-footer-menu";
 import AppSidebarFooterMenuNoUser from "./app-sidebar-footer-menu-nologin";
 
 export function AppSidebarFooter() {
-    const { user, loading, error, refetch } = useUserInfo();
+    const { user, tier, accessRequestUrl, loading, error, refetch } =
+        useUserInfo();
 
     if (loading) {
         return (
@@ -87,7 +88,13 @@ export function AppSidebarFooter() {
                             </SidebarMenuButton>
                         }
                     ></DropdownMenuTrigger>
-                    {user && <AppSidebarFooterMenu user={user} />}
+                    {user && (
+                        <AppSidebarFooterMenu
+                            user={user}
+                            tier={tier}
+                            accessRequestUrl={accessRequestUrl}
+                        />
+                    )}
                     {!user && <AppSidebarFooterMenuNoUser />}
                 </DropdownMenu>
             </SidebarMenuItem>
