@@ -22,6 +22,10 @@
     "additionalProperties": false,
     "required": ["config", "loginProviders", "krini"],
     "properties": {
+        "global": {
+            "type": "object",
+            "description": "Values that a parent chart passes to its subcharts"
+        },
         "nameOverride": {
             "type": "string"
         },

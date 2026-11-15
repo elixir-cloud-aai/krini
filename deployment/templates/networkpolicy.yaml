@@ -1,8 +1,9 @@
 {{- /*
 NetworkPolicy allowing connections to Krini only from the peers in
-`krini.networkPolicy.ingressFrom` and the test pod of `helm test` (e.g., the pods of the ingress controller
-or Gateway; no defaults, as they depend on the cluster); connections from
-the pod's node (the kubelet's probes) are always allowed. Egress isn't
+`krini.networkPolicy.ingressFrom` (e.g., the pods of the ingress
+controller or Gateway; no defaults, as they depend on the cluster) and
+from the test pod of `helm test`; connections from the pod's node (the
+kubelet's probes) are always allowed. Egress isn't
 restricted, as Krini's server connects to the registry, the login providers
 and the services.
 */ -}}

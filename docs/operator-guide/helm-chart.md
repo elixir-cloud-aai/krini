@@ -192,12 +192,12 @@ paths to it:
   controller: `className` sets the Ingress class (default: the cluster's
   default class), and `annotations` sets annotations for the controller;
   they take precedence over the chart's, and `null` removes one of the
-  chart's. The chart sets no annotations for particular controllers. By default, the
-  Ingress has no TLS, so TLS must be terminated in front of the cluster
-  (e.g. by a load balancer); with `https.enabled: true`, cert-manager issues
-  a certificate via the ClusterIssuer `https.issuer` (required then, e.g.
-  `letsencrypt-prod`), and the Ingress serves
-  HTTPS with it (Secret `<release>-krini-tls`, or `krini-tls` for a release
+  chart's. The chart sets no annotations for particular controllers. By
+  default, the Ingress has no TLS, so TLS must be terminated in front of
+  the cluster (e.g. by a load balancer); with `https.enabled: true`,
+  cert-manager issues a certificate via the ClusterIssuer `https.issuer`
+  (required then, e.g. `letsencrypt-prod`), and the Ingress serves HTTPS
+  with it (Secret `<release>-krini-tls`, or `krini-tls` for a release
   named `krini`).
 - **Gateway API HTTPRoute** (`krini.httpRoute`), attached to an existing
   Gateway whose listener terminates TLS, with the annotations of
@@ -256,8 +256,9 @@ and `krini.securityContext` for other platforms.
 With `krini.networkPolicy.enabled`, a NetworkPolicy allows connections to
 Krini only from the peers in `krini.networkPolicy.ingressFrom` (e.g. the
 namespace of the ingress controller), from the node (the kubelet's
-probes), and from the release's `helm test` pod. There are no default peers, as they depend on the cluster:
-rendering fails if the policy is enabled without any. For example, for an
+probes), and from the release's `helm test` pod. There are no default
+peers, as they depend on the cluster: rendering fails if the policy is
+enabled without any. For example, for an
 ingress controller in the namespace `ingress-nginx`:
 
 ```yaml

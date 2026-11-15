@@ -33,15 +33,38 @@ app.kubernetes.io/component: app
 {{- end -}}
 
 {{/*
+Version of the deployed image, as a label value: `krini.tag`, the tag in
+`krini.image`, or the chart's `appVersion` if the image has neither tag nor
+digest; empty for an image with a digest only. Characters that labels don't
+allow become `_`, and the value starts and ends with a letter or digit.
+*/}}
+{{- define "krini.version" -}}
+{{- $version := .Values.krini.tag -}}
+{{- if not $version -}}
+{{- $image := .Values.krini.image | default "" -}}
+{{- $ref := regexFind "[^/]+$" $image | splitList "@" | first -}}
+{{- if contains ":" $ref -}}
+{{- $version = splitList ":" $ref | last -}}
+{{- else if not (contains "@" $image) -}}
+{{- $version = .Chart.AppVersion -}}
+{{- end -}}
+{{- end -}}
+{{- $version = regexReplaceAll "[^A-Za-z0-9_.-]" $version "_" | trunc 63 -}}
+{{- regexReplaceAll "^[^A-Za-z0-9]+|[^A-Za-z0-9]+$" $version "" -}}
+{{- end -}}
+
+{{/*
 Standard labels (see https://helm.sh/docs/chart_best_practices/labels/),
-without the component; the version is that of the image's tag (`krini.tag`,
-or the chart's `appVersion`).
+without the component; the version is that of the image (see
+`krini.version`), left out if unknown.
 */}}
 {{- define "krini.baseLabels" -}}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 app.kubernetes.io/name: {{ include "krini.name" . | quote }}
 app.kubernetes.io/instance: {{ .Release.Name | quote }}
-app.kubernetes.io/version: {{ .Values.krini.tag | default .Chart.AppVersion | replace "+" "_" | trunc 63 | trimSuffix "-" | quote }}
+{{- with include "krini.version" . }}
+app.kubernetes.io/version: {{ . | quote }}
+{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 

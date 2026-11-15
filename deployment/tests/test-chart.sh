@@ -156,6 +156,13 @@ assert_eq "pull policy override" "$(get Deployment '.spec.template.spec.containe
 render --set krini.image=registry.example.org/krini@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 assert_eq "image with digest" "$(get Deployment '.spec.template.spec.containers[0].image')" \
   "registry.example.org/krini@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+assert_eq "version label of a digest" "$(get Deployment '.metadata.labels."app.kubernetes.io/version" // "none"')" "none"
+render --set krini.image=docker.io/elixircloud/krini:0.2.0
+assert_eq "version label of the image's tag" "$(get Deployment '.metadata.labels."app.kubernetes.io/version"')" "0.2.0"
+render --set krini.tag=_1.0+build.
+assert_eq "version label as a valid label value" "$(get Deployment '.metadata.labels."app.kubernetes.io/version"')" "1.0_build"
+render --set global.example=1
+assert_eq "global values of a parent chart" "$(get Deployment .metadata.name)" "krini"
 render --set krini.image=localhost:5000/krini
 assert_eq "registry with port" "$(get Deployment '.spec.template.spec.containers[0].image')" "localhost:5000/krini:dev"
 
@@ -240,7 +247,9 @@ assert_eq "NetworkPolicy" \
   "$(get NetworkPolicy '.spec | (.ingress[0].ports[0].port | tostring) + "," + .podSelector.matchLabels."app.kubernetes.io/component"')" \
   "3000,app"
 assert_eq "NetworkPolicy admits the test pod" \
-  "$(get NetworkPolicy '.spec.ingress[0].from[1].podSelector.matchLabels."app.kubernetes.io/component"')" "test"
+  "$(jq -r '(.[] | select(.kind == "Pod") | .metadata.labels) as $pod
+    | .[] | select(.kind == "NetworkPolicy") | .spec.ingress[0].from[1].podSelector.matchLabels
+    | [to_entries[] | $pod[.key] == .value] | (length == 3 and all)' <<< "${out}")" "true"
 
 # --- Invalid values ---
 assert_fails "no registry" "cloudRegistryUrl" \
