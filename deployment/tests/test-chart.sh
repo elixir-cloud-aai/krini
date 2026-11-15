@@ -125,7 +125,7 @@ RELEASE=prod render
 assert_eq "release name prefix" "$(get Deployment .metadata.name)" "prod-krini"
 
 # --- Settings ---
-render --set config.appOrigin=https://portal.example.org/ \
+render --set config.appOrigin=https://portal.example.org \
   --set config.oidcRedirectUri=https://portal.example.org/auth/api/callback \
   --set config.computeAccessRequestUrl=https://example.org/access \
   --set 'config.privacy.controller=Example Institute\, Example City' \
@@ -133,7 +133,7 @@ render --set config.appOrigin=https://portal.example.org/ \
   --set config.privacy.noticeUrl=https://example.org/privacy \
   --set config.privacy.loginNoticeUrl=https://login.example.org/privacy \
   --set loginProviders.secretKey=providers.json
-assert_eq "appOrigin" "$(env_value APP_ORIGIN)" "https://portal.example.org/"
+assert_eq "appOrigin" "$(env_value APP_ORIGIN)" "https://portal.example.org"
 assert_eq "oidcRedirectUri" "$(env_value OIDC_REDIRECT_URI)" "https://portal.example.org/auth/api/callback"
 assert_eq "computeAccessRequestUrl" "$(env_value COMPUTE_ACCESS_REQUEST_URL)" "https://example.org/access"
 assert_eq "privacy controller" "$(env_value PRIVACY_CONTROLLER)" "Example Institute, Example City"
@@ -246,10 +246,6 @@ render --set krini.networkPolicy.enabled=true \
 assert_eq "NetworkPolicy" \
   "$(get NetworkPolicy '.spec | (.ingress[0].ports[0].port | tostring) + "," + .podSelector.matchLabels."app.kubernetes.io/component"')" \
   "3000,app"
-assert_eq "NetworkPolicy admits the test pod" \
-  "$(jq -r '(.[] | select(.kind == "Pod") | .metadata.labels) as $pod
-    | .[] | select(.kind == "NetworkPolicy") | .spec.ingress[0].from[1].podSelector.matchLabels
-    | [to_entries[] | $pod[.key] == .value] | (length == 3 and all)' <<< "${out}")" "true"
 
 # --- Invalid values ---
 assert_fails "no registry" "cloudRegistryUrl" \
@@ -261,6 +257,10 @@ assert_fails "Ingress without hostName" "hostName" -f "${values}" --set hostName
   --set config.appOrigin=https://portal.example.org
 assert_fails "registry URL scheme" "cloudRegistryUrl" -f "${values}" --set config.cloudRegistryUrl=registry.example.org
 assert_fails "appOrigin scheme" "appOrigin" -f "${values}" --set config.appOrigin=portal.example.org
+assert_fails "appOrigin over HTTP" "appOrigin" -f "${values}" --set config.appOrigin=http://portal.example.org
+assert_fails "appOrigin with a path" "appOrigin" -f "${values}" --set config.appOrigin=https://example.org/krini
+assert_fails "privacy notice over HTTP" "noticeUrl" -f "${values}" --set config.privacy.noticeUrl=http://example.org/privacy
+assert_fails "zero /tmp limit" "tmpSizeLimit" -f "${values}" --set-string krini.tmpSizeLimit=0Mi
 assert_fails "host name with scheme" "hostName" -f "${values}" --set hostName=https://krini.example.org
 assert_fails "unknown value" "additional properties|not allowed" -f "${values}" --set krini.unknown=1
 assert_fails "tag and image tag" "krini.tag" -f "${values}" --set krini.image=docker.io/elixircloud/krini:0.1.0 --set krini.tag=0.1.0
@@ -269,6 +269,8 @@ assert_fails "Ingress and HTTPRoute" "httpRoute" -f "${values}" --set krini.http
 assert_fails "HTTPRoute without parentRefs" "parentRefs" -f "${values}" \
   --set krini.ingress.enabled=false --set krini.httpRoute.enabled=true
 assert_fails "NetworkPolicy without peers" "ingressFrom" -f "${values}" --set krini.networkPolicy.enabled=true
+assert_fails "NetworkPolicy peer without selectors" "podSelector, namespaceSelector or ipBlock" -f "${values}" \
+  --set krini.networkPolicy.enabled=true --set-json 'krini.networkPolicy.ingressFrom=[{}]'
 assert_fails "PodDisruptionBudget bounds" "minAvailable|maxUnavailable" -f "${values}" --set krini.replicas=2 \
   --set krini.podDisruptionBudget.minAvailable=1 --set krini.podDisruptionBudget.maxUnavailable=1
 assert_fails "extraEnv for a setting of the chart" "APP_ORIGIN" -f "${values}" \

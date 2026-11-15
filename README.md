@@ -52,8 +52,17 @@ docker run --rm -p 3000:3000 --read-only --tmpfs /tmp \
     --env-file ~/krini/settings.env docker.io/elixircloud/krini:<version>
 ```
 
-On Kubernetes or OpenShift, install the Helm chart in
-[`deployment/`](deployment/) instead, with the login providers in a Secret
+On Kubernetes or OpenShift, write the login providers to
+`login-providers.json`, a JSON array with Krini's OpenID Connect client
+at each provider (more fields in the [Helm chart][docs-helm-chart] docs):
+
+```json
+[{"id": "example", "issuer": "https://login.example.org/oidc",
+  "clientId": "my-client-id", "clientSecret": "my-client-secret"}]
+```
+
+Then install the Helm chart in
+[`deployment/`](deployment/), with the login providers in a Secret
 of your own and the settings in a values file (see [Helm
 chart][docs-helm-chart] for all steps and values), e.g. from a checkout of
 the release's tag:

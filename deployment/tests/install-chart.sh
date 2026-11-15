@@ -63,4 +63,4 @@ fi
 
 trap - ERR
 helm uninstall "${release}" -n "${namespace}" --wait
-kubectl delete namespace "${namespace}" --wait=false
+kubectl delete namespace "${namespace}" --wait

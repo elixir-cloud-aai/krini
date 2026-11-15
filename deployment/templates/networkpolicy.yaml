@@ -1,9 +1,10 @@
 {{- /*
 NetworkPolicy allowing connections to Krini only from the peers in
 `krini.networkPolicy.ingressFrom` (e.g., the pods of the ingress
-controller or Gateway; no defaults, as they depend on the cluster) and
-from the test pod of `helm test`; connections from the pod's node (the
-kubelet's probes) are always allowed. Egress isn't
+controller or Gateway; no defaults, as they depend on the cluster);
+connections from the pod's node (the kubelet's probes) are always
+allowed. The test pod of `helm test` gets no exception, as pod labels
+can be forged. Egress isn't
 restricted, as Krini's server connects to the registry, the login providers
 and the services.
 */ -}}
@@ -11,6 +12,11 @@ and the services.
 {{- if $policy.enabled -}}
 {{- if not $policy.ingressFrom -}}
 {{- fail "krini.networkPolicy.ingressFrom must list at least one NetworkPolicy peer (no peers would allow all sources), e.g., the pods of the ingress controller or Gateway; set krini.networkPolicy.enabled to false to allow all sources" -}}
+{{- end -}}
+{{- range $peer := $policy.ingressFrom -}}
+{{- if not (or $peer.podSelector $peer.namespaceSelector $peer.ipBlock) -}}
+{{- fail "each peer of krini.networkPolicy.ingressFrom must set podSelector, namespaceSelector or ipBlock (a peer without them allows all sources)" -}}
+{{- end -}}
 {{- end -}}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -27,12 +33,6 @@ spec:
   ingress:
   - from:
       {{- toYaml $policy.ingressFrom | nindent 4 }}
-    # The test pod of `helm test`
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/name: {{ include "krini.name" . | quote }}
-          app.kubernetes.io/instance: {{ .Release.Name | quote }}
-          app.kubernetes.io/component: test
     ports:
     - port: {{ include "krini.port" . }}
       protocol: TCP

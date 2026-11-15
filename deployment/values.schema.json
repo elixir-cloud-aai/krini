@@ -2,6 +2,11 @@
     "$schema": "https://json-schema.org/draft-07/schema#",
     "$comment": "Values of the Krini chart; see values.yaml and docs/operator-guide/helm-chart.md. Settings that are empty strings aren't passed to Krini",
     "$defs": {
+        "httpsUrl": {
+            "type": "string",
+            "pattern": "^(https://[^\\s]+)?$",
+            "description": "An https URL, or empty"
+        },
         "url": {
             "type": "string",
             "pattern": "^(https?://[^\\s]+)?$",
@@ -46,8 +51,9 @@
                     "description": "Base URL of the Cloud Registry (CLOUD_REGISTRY_URL); required"
                 },
                 "appOrigin": {
-                    "$ref": "#/$defs/url",
-                    "description": "Origin of Krini (APP_ORIGIN); https://<hostName> if empty"
+                    "type": "string",
+                    "pattern": "^(https://[^/\\s]+)?$",
+                    "description": "Origin of Krini (APP_ORIGIN): https://, host and optional port, without path or trailing slash; https://<hostName> if empty"
                 },
                 "oidcRedirectUri": {
                     "$ref": "#/$defs/url",
@@ -70,11 +76,11 @@
                             "description": "Email address or https URL for privacy questions (PRIVACY_CONTACT)"
                         },
                         "noticeUrl": {
-                            "$ref": "#/$defs/url",
+                            "$ref": "#/$defs/httpsUrl",
                             "description": "https URL of the deployment's privacy notice (PRIVACY_NOTICE_URL)"
                         },
                         "loginNoticeUrl": {
-                            "$ref": "#/$defs/url",
+                            "$ref": "#/$defs/httpsUrl",
                             "description": "https URL of the login provider's privacy notice (PRIVACY_LOGIN_NOTICE_URL)"
                         }
                     }
@@ -277,6 +283,11 @@
                 "tmpSizeLimit": {
                     "type": ["string", "integer", "null"],
                     "pattern": "^([0-9]+(\\.[0-9]*)?|\\.[0-9]+)([KMGTPE]i|[mkMGTPE]|[eE][+-]?[0-9]+)?$",
+                    "not": {
+                        "type": "string",
+                        "pattern": "^(0+(\\.0*)?|\\.0+)([KMGTPE]i|[mkMGTPE]|[eE][+-]?[0-9]+)?$",
+                        "$comment": "Rejects all-zero quantities"
+                    },
                     "minimum": 1,
                     "description": "Size limit of the emptyDir at /tmp: a Kubernetes quantity or a number of bytes; none if null"
                 },

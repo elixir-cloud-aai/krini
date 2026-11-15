@@ -18,9 +18,21 @@ checkout of the repository, at the tag of the release that you deploy.
   Gateway of the [Gateway API](https://gateway-api.sigs.k8s.io/), or
   OpenShift's router.
 - An OpenID Connect client at each login provider, with the redirect URI
-  `https://<host name>/auth/api/callback`, and a Cloud Registry with the TES
-  and WES services; see [Service configuration](deployment.md#service-configuration)
-  for what the services need.
+  `https://<host name>/auth/api/callback`, the scopes of
+  [Scopes](deployment.md#scopes), and the scope with which the provider
+  releases the claim with the user's groups (`groupsClaim`), if access
+  tiers are used: add it to the provider's `scopes` (see
+  [Login providers](#login-providers)).
+- A Cloud Registry whose list of services (`GET /services`, without
+  login) has the TES services and gateways (types `tes` and
+  `tes-gateway`) and WES services that Krini should offer; Krini lists
+  what the registry returns, so register only services that you have
+  checked. Krini only reads the registry.
+- TES services, gateways and WES services that accept access tokens
+  issued to Krini's `clientId` of each login provider, and allow
+  Krini's origin in their CORS settings: see [Service
+  configuration](deployment.md#service-configuration) and [CORS
+  configuration](deployment.md#cors-configuration).
 
 ## Installation
 
@@ -113,7 +125,7 @@ upgrade`.
 | --- | --- | --- |
 | `hostName` | — | none; the public host name of the Ingress, HTTPRoute or Route, e.g. `krini.example.org` |
 | `config.cloudRegistryUrl` | `CLOUD_REGISTRY_URL` | none; required |
-| `config.appOrigin` | `APP_ORIGIN` | `https://<hostName>` |
+| `config.appOrigin` | `APP_ORIGIN` | `https://<hostName>`; an `https` origin without path or trailing slash |
 | `config.oidcRedirectUri` | `OIDC_REDIRECT_URI` | not set: Krini uses `<APP_ORIGIN>/auth/api/callback` |
 | `config.computeAccessRequestUrl` | `COMPUTE_ACCESS_REQUEST_URL` | not set |
 | `config.privacy.controller` | `PRIVACY_CONTROLLER` | not set |
@@ -255,10 +267,13 @@ and `krini.securityContext` for other platforms.
 
 With `krini.networkPolicy.enabled`, a NetworkPolicy allows connections to
 Krini only from the peers in `krini.networkPolicy.ingressFrom` (e.g. the
-namespace of the ingress controller), from the node (the kubelet's
-probes), and from the release's `helm test` pod. There are no default
-peers, as they depend on the cluster: rendering fails if the policy is
-enabled without any. For example, for an
+namespace of the ingress controller), and from the node (the kubelet's
+probes). There are no default peers, as they depend on the cluster:
+rendering fails if the policy is enabled without any, or with a peer
+without `podSelector`, `namespaceSelector` or `ipBlock`, which would
+allow all sources. The policy also blocks the test pod of `helm test`
+(pod labels can be forged, so it gets no exception): run the test before
+enabling the policy, or check Krini through the ingress instead. For example, for an
 ingress controller in the namespace `ingress-nginx`:
 
 ```yaml
@@ -276,9 +291,13 @@ login providers and the WES services.
 
 ### Pods
 
-- `krini.replicas` (default 1): Krini keeps no state of its own (sessions
-  are in cookies), so any number of pods serve the same users. With more
-  than one, a PodDisruptionBudget (`krini.podDisruptionBudget`) lets node
+- `krini.replicas` (default 1): sessions are in cookies, but each pod
+  remembers the refresh tokens it has just used only in memory, to tell a
+  concurrent refresh of the same session (e.g. in two tabs) from a replay.
+  With more than one pod, two such refreshes that reach different pods
+  can log the user out, so keep one replica, or let the ingress keep each
+  browser on one pod (sticky sessions, e.g. cookie-based affinity of the
+  ingress controller). With more than one, a PodDisruptionBudget (`krini.podDisruptionBudget`) lets node
   drains evict one pod at a time (`maxUnavailable: 1`), or as set by
   `minAvailable` or `maxUnavailable`.
 - `krini.resources`: requests and limits of the container (default:
@@ -328,7 +347,9 @@ helm uninstall krini -n krini
 ```
 
 This deletes all resources of the release, but not the Secret with the
-login providers, which isn't part of it. Krini keeps no data, so nothing
+login providers, which isn't part of it, nor the pod of the last `helm
+test` (`krini-test`; Helm keeps it for its logs and replaces it on the
+next test): delete it with `kubectl delete pod krini-test -n krini`. Krini keeps no data, so nothing
 else is lost.
 
 ## Testing the chart

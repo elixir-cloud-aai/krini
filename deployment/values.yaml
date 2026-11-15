@@ -22,8 +22,9 @@ hostName: ""
 config:
   # Base URL of the Cloud Registry (`CLOUD_REGISTRY_URL`); required
   cloudRegistryUrl: ""
-  # Origin of Krini as browsers see it (`APP_ORIGIN`), e.g.,
-  # `https://krini.example.org`; `https://<hostName>` if empty
+  # Origin of Krini as browsers see it (`APP_ORIGIN`): `https://`, host
+  # and optional port, without path or trailing slash (e.g.,
+  # `https://krini.example.org`); `https://<hostName>` if empty
   appOrigin: ""
   # Callback URL of the login (`OIDC_REDIRECT_URI`); Krini uses
   # `<APP_ORIGIN>/auth/api/callback` if empty
@@ -82,8 +83,12 @@ krini:
   startupProbe: {}
   readinessProbe: {}
   livenessProbe: {}
-  # Number of pods; Krini keeps no state of its own (sessions are in
-  # cookies), so any number of pods can serve the same users
+  # Number of pods. Sessions are in cookies, but each pod remembers the
+  # refresh tokens it just used only in memory: with more than one pod,
+  # concurrent token refreshes of a session (e.g., two tabs) that reach
+  # different pods can log the user out, unless the ingress keeps each
+  # browser on one pod (sticky sessions; see
+  # docs/operator-guide/helm-chart.md, Pods)
   replicas: 1
   # PodDisruptionBudget, so that voluntary disruptions (e.g., node drains)
   # evict at most `maxUnavailable` pods at once (1 if neither it nor
