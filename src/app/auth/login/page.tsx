@@ -3,6 +3,8 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { getPublicProviders } from "@/lib/oidc";
 
+export const dynamic = "force-dynamic";
+
 function Page() {
     const providers = getPublicProviders();
 
