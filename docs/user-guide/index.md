@@ -15,7 +15,9 @@ shows what a WES service supports (e.g. workflow languages and versions).
 
 ## Logging in
 
-Use **Login** to log in with LS Login. Krini then sends your access token
+Use **Login** to log in with one of the deployment's login providers (LS
+Login for the ELIXIR On-Cloud deployment). Krini then sends your access
+token
 to the WES services you use, so that they know who you are; services that
 require login accept it only if they trust the deployment's client (see the
 [Operator guide](../operator-guide/deployment.md#service-configuration)).
