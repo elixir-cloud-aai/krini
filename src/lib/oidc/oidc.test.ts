@@ -366,17 +366,34 @@ describe("validateIdToken", () => {
         ).resolves.toMatchObject({ sub: "u1", nonce: "n1" });
     });
 
-    it("accepts an audience list and an issuer with a trailing slash", async () => {
+    it("accepts an audience list with a matching azp and an issuer with a trailing slash", async () => {
         mockOidcProvider();
         const { validateIdToken } = await load();
         const token = signIdToken({
             ...validPayload,
             iss: `${issuer}/`,
             aud: ["other", "client"],
+            azp: "client",
         });
         await expect(
             validateIdToken(token, endpoints, provider, "n1"),
         ).resolves.not.toBeNull();
+    });
+
+    it.each([
+        ["missing", undefined],
+        ["for another client", "someone-else"],
+    ])("rejects a multi-audience token with %s azp", async (_, azp) => {
+        mockOidcProvider();
+        const { validateIdToken } = await load();
+        const token = signIdToken({
+            ...validPayload,
+            aud: ["other", "client"],
+            azp,
+        });
+        await expect(
+            validateIdToken(token, endpoints, provider, "n1"),
+        ).resolves.toBeNull();
     });
 
     it("skips the nonce check when none is expected", async () => {

@@ -13,4 +13,4 @@ export * from "./id-token";
 export * from "./pkce";
 export * from "./providers";
 export * from "./session";
-export * from "./types.d";
+export type * from "./types";

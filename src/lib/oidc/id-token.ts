@@ -11,6 +11,7 @@ type JwtHeader = { alg?: string; kid?: string; typ?: string };
 type JwtPayload = Record<string, unknown> & {
     iss?: string;
     aud?: string | string[];
+    azp?: string;
     exp?: number;
     nonce?: string;
 };
@@ -147,6 +148,10 @@ export async function validateIdToken(
 
     const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
     if (!aud.includes(provider.clientId)) return null;
+
+    // With multiple audiences the authorized party must be this client
+    // (OIDC Core 2 ID Token validation).
+    if (aud.length > 1 && payload.azp !== provider.clientId) return null;
 
     if (
         typeof payload.exp !== "number" ||

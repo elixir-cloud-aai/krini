@@ -44,5 +44,5 @@ export type UserTier = "admin" | "compute" | "user";
 export type UserSession = {
     user: Record<string, unknown>;
     groups: string[];
-    tier: Tier;
+    tier: UserTier;
 };
