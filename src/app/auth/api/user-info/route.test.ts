@@ -41,7 +41,7 @@ async function userInfo(
 describe("GET /auth/api/user-info", () => {
     it("returns the user, groups and tier", async () => {
         const response = await userInfo(
-            { access_token: "at" },
+            { access_token: "at", id_token: idTokenCookie() },
             {
                 groupsClaim: "groups",
                 computeGroups: ["compute"],
@@ -59,7 +59,7 @@ describe("GET /auth/api/user-info", () => {
     });
 
     it("includes the configured access request URL", async () => {
-        setUp({ access_token: "at" });
+        setUp({ access_token: "at", id_token: idTokenCookie() });
         mockOidcProvider();
         vi.stubEnv("COMPUTE_ACCESS_REQUEST_URL", "https://example.org/access");
         const { GET } = await import("./route");
@@ -69,7 +69,7 @@ describe("GET /auth/api/user-info", () => {
 
     it("matches compute subgroups with the configured separator", async () => {
         const response = await userInfo(
-            { access_token: "at" },
+            { access_token: "at", id_token: idTokenCookie() },
             {
                 groupsClaim: "groups",
                 computeGroups: ["compute"],
@@ -147,6 +147,16 @@ describe("GET /auth/api/user-info", () => {
         const { GET } = await import("./route");
         const response = await GET();
         expect(response.status).toBe(500);
+    });
+
+    it("fails when userinfo is for another subject", async () => {
+        const response = await userInfo(
+            { access_token: "at", id_token: idTokenCookie() },
+            {},
+            { userinfo: { sub: "u2" } },
+        );
+        expect(response.status).toBe(502);
+        expect(await response.json()).toEqual({ error: true, user: null });
     });
 
     it("fails when userinfo rejects the token", async () => {

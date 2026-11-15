@@ -854,7 +854,7 @@ describe("getUserSession", () => {
         const { getUserSession } = await load();
         const session = await getUserSession(
             "at",
-            null,
+            { sub: "u1" },
             endpoints,
             sessionConfig,
         );
@@ -870,8 +870,8 @@ describe("getUserSession", () => {
             userinfo: { sub: "u1", groups: ["admin"] },
         });
         const { getUserSession } = await load();
-        await getUserSession("at", null, endpoints, sessionConfig);
-        await getUserSession("at", null, endpoints, sessionConfig);
+        await getUserSession("at", { sub: "u1" }, endpoints, sessionConfig);
+        await getUserSession("at", { sub: "u1" }, endpoints, sessionConfig);
         const userinfoCalls = fetchMock.mock.calls.filter(([input]) =>
             String(input).includes("userinfo"),
         );
@@ -884,9 +884,9 @@ describe("getUserSession", () => {
             userinfo: { sub: "u1", groups: ["admin"] },
         });
         const { getUserSession } = await load();
-        await getUserSession("at", null, endpoints, sessionConfig);
+        await getUserSession("at", { sub: "u1" }, endpoints, sessionConfig);
         vi.setSystemTime(Date.now() + 6 * 60 * 1000);
-        await getUserSession("at", null, endpoints, sessionConfig);
+        await getUserSession("at", { sub: "u1" }, endpoints, sessionConfig);
         vi.useRealTimers();
         const userinfoCalls = fetchMock.mock.calls.filter(([input]) =>
             String(input).includes("userinfo"),
@@ -931,14 +931,60 @@ describe("getUserSession", () => {
             ).length;
 
         for (let i = 0; i < 1000; i++) {
-            await getUserSession(`at-${i}`, null, endpoints, sessionConfig);
+            await getUserSession(
+                `at-${i}`,
+                { sub: "u1" },
+                endpoints,
+                sessionConfig,
+            );
         }
         expect(userinfoCalls()).toBe(1000);
 
         // the next insert clears the cache, so a repeat token refetches
-        await getUserSession("at-new", null, endpoints, sessionConfig);
-        await getUserSession("at-0", null, endpoints, sessionConfig);
+        await getUserSession("at-new", { sub: "u1" }, endpoints, sessionConfig);
+        await getUserSession("at-0", { sub: "u1" }, endpoints, sessionConfig);
         expect(userinfoCalls()).toBe(1002);
+    });
+
+    it("rejects userinfo for a different subject", async () => {
+        mockOidcProvider({ userinfo: { sub: "u2", groups: ["admin"] } });
+        const { getUserSession } = await load();
+        await expect(
+            getUserSession("at", { sub: "u1" }, endpoints, sessionConfig),
+        ).resolves.toBeNull();
+    });
+
+    it("rejects userinfo without a subject claim", async () => {
+        mockOidcProvider({ userinfo: { name: "No Sub" } });
+        const { getUserSession } = await load();
+        await expect(
+            getUserSession("at", { sub: "u1" }, endpoints, sessionConfig),
+        ).resolves.toBeNull();
+    });
+
+    it("rejects userinfo when the ID token has no subject", async () => {
+        mockOidcProvider({ userinfo: { sub: "u1" } });
+        const { getUserSession } = await load();
+        await expect(
+            getUserSession("at", null, endpoints, sessionConfig),
+        ).resolves.toBeNull();
+    });
+
+    it("rejects a non-object userinfo document", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                async () =>
+                    new Response(JSON.stringify(["u1"]), {
+                        status: 200,
+                        headers: { "Content-Type": "application/json" },
+                    }),
+            ),
+        );
+        const { getUserSession } = await load();
+        await expect(
+            getUserSession("at", { sub: "u1" }, endpoints, sessionConfig),
+        ).resolves.toBeNull();
     });
 
     it("returns null when userinfo fails", async () => {

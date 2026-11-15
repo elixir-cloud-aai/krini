@@ -45,9 +45,21 @@ export async function getUserSession(
             return null;
         }
         if (!res.ok) return null;
+        let body: unknown;
         try {
-            userinfo = (await res.json()) as Record<string, unknown>;
+            body = await res.json();
         } catch {
+            return null;
+        }
+        if (typeof body !== "object" || body === null || Array.isArray(body)) {
+            return null;
+        }
+        userinfo = body as Record<string, unknown>;
+
+        // The userinfo subject must match the validated ID token's sub;
+        // claims for any other subject are a different identity.
+        const expectedSub = idTokenPayload?.sub;
+        if (typeof expectedSub !== "string" || userinfo.sub !== expectedSub) {
             return null;
         }
     }
