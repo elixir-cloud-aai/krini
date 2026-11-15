@@ -1,0 +1,7 @@
+# Code owners are requested for review on pull requests that change matching
+# files. @AnonymousXC is the code owner and @uniqueg the backup; if a ruleset
+# requires a code owner review, either owner's approval suffices. Code owners
+# need write access to the repository. To add owners for a path, add a line
+# below the catch-all (the last matching pattern wins). See
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+* @AnonymousXC @uniqueg

@@ -1,173 +1,97 @@
-# <img src="https://github.com/elixir-cloud-aai/krini/blob/master/public/logo.png?raw=true" align="left" height="38" alt=""> <span >Krini</span>
+<!-- markdownlint-disable MD033 MD041 -- logo first; <picture> for dark mode -->
+<a href="https://elixir-on.cloud/">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo_elixir_on_cloud_night.png">
+    <img src="docs/images/logo_elixir_on_cloud.png" alt="ELIXIR On-Cloud">
+  </picture>
+</a>
+<!-- markdownlint-enable MD033 MD041 -->
 
-**The Krini is a virtual research environment allowing users to run, manage, share and publish life science analyses.**
+# Krini
 
-Check out the application in the [production](https://krini.rahtiapp.fi/). The rest of this doc will mainly contain details about how to run and contribute to the Krini site locally.
+[![License][badge-license]][badge-url-license]
+[![Build_status][badge-build-status]][badge-url-build-status]
+[![Docs][badge-docs]][badge-url-docs]
 
-## Getting Started
+A virtual research environment for running and managing life science
+analyses, brought to you by [ELIXIR On-Cloud](https://elixir-on.cloud/).
+Users log in with LS Login, find compute services in a [Cloud
+Registry](https://cloud-registry.readthedocs.io/en/latest/), run tasks on
+[GA4GH Task Execution Service
+(TES)](https://github.com/ga4gh/task-execution-schemas) and workflows on
+[GA4GH Workflow Execution Service
+(WES)](https://github.com/ga4gh/workflow-execution-service-schemas) instances,
+and follow their runs. Deploy Krini with its container image for your own
+registry and services; other OpenID Connect providers than LS Login are
+planned ([#43](https://github.com/elixir-cloud-aai/krini/issues/43)).
 
-### Prerequisites
+**Read the [documentation][docs]**: the [user guide][docs-user-guide], the
+[operator guide][docs-operator-guide] for the deployment, configuration and
+upgrades, and [development][docs-development] for the local setup, checks,
+tests and releases.
 
-- Git
-- [Bun](https://bun.com/): Recent LTS version avaliable
+## Known deployments
 
-### Installation
+| Deployment | Operated by | Notes |
+| --- | --- | --- |
+| <https://krini.rahtiapp.fi/> | [ELIXIR On-Cloud](https://elixir-on.cloud/) | Hosted on CSC Rahti |
 
-- To start with, [fork](https://github.com/elixir-cloud-aai/krini) & clone the repository and traverse into the project's root directory with:
+Running Krini yourself? Open a pull request that adds your deployment to the
+table in [`README.md`](README.md).
 
-```
-git clone https://github.com/<your-github-username>/krini.git
-cd krini
-```
+## Quick start
 
-- Install the packages to be used in the development:
+Write the settings to a file outside the repository, e.g.
+`~/krini/settings.env` (see [Configuration][docs-configuration]; plain
+`KEY=value` lines without quotes, as Docker doesn't strip them), and start
+the image of a [release][releases]; it reads all settings when the
+container starts:
 
-```
-bun i
-```
-
-
-
-- Run the start script to start the development environment of the project:
-
-```
-bun run dev
-```
-
-- This will open the browser window on your desktop. If not visit `http://localhost:3000/` on your browser's new window.
-  > **_NOTE:_** You might face a problem while login if your application isn't running on `http://localhost:3000/`. In the case of port change, change `APP_ORIGIN` and `OIDC_REDIRECT_URI` in your `.env.local` file (see [Environment Variables](#environment-variables)) and register the new redirect URI with your OIDC client.
-
-Great, now you are good to go!
-
-
-### Environment Variables
-
-For local development, copy `.env.example` to `.env.local` in the project root and fill in your values:
-
-```env
-# Login providers (JSON array; endpoints come from OIDC discovery)
-LOGIN_PROVIDERS=[
-  {
-    "id": "ls-login",
-    "name": "LS Login",
-    "logo": "/ls-login-grey-wide.jpg",
-    "issuer": "https://login.aai-lifescience-ri.eu/oidc/",
-    "clientId": "your-client-id",
-    "clientSecret": "your-client-secret",
-    "scopes": [
-      "openid",
-      "profile",
-      "email",
-      "eduperson_entitlement"
-    ],
-    "groupsClaim": "eduperson_entitlement",
-    "computeGroups": [
-      "<compute group>"
-    ],
-    "adminGroups": [
-      "<admin group>"
-    ]
-  }
-]
-
-# Optional override of the callback URL (default: <APP_ORIGIN>/auth/api/callback)
-OIDC_REDIRECT_URI=
-
-# Where users without compute access can request it (shown in the UI)
-COMPUTE_ACCESS_REQUEST_URL=
-
-# Cloud Registry
-CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev
-
-# Application
-APP_ORIGIN=http://localhost:3000
-
-# Privacy notice (optional)
-PRIVACY_CONTROLLER="Example Institute, Example Street 1, Example City"
-PRIVACY_CONTACT=privacy@example.org
-PRIVACY_NOTICE_URL=https://example.org/privacy
-PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
+```bash
+docker run --rm -p 3000:3000 --read-only --tmpfs /tmp \
+    --env-file ~/krini/settings.env docker.io/elixircloud/krini:<version>
 ```
 
-#### Configuration
+The [operator guide][docs-operator-guide] describes the image tags, how to
+verify an image, and what the login provider and the TES and WES services
+need.
 
-- `LOGIN_PROVIDERS`: JSON array of login provider configurations; Krini offers a login button per entry. Each entry needs `id` (unique, used in URLs and the session cookie), `issuer` (endpoints are discovered from `<issuer>/.well-known/openid-configuration`), `clientId` and `clientSecret` (server-side only). Optional fields: `name` and `logo` (login button), `scopes` (default `["openid","profile","email","offline_access"]` — include the scope that releases group entitlements), `groupsClaim` (claim carrying group values, e.g. `eduperson_entitlement`), `groupsFromUserinfo` (default `true`; `false` reads groups from the ID token), `computeGroups` and `adminGroups` (comma... array of group values for the tiers), `groupSubgroupSeparator` (a claim value also matches a configured group when it starts with `<group><separator>`, e.g. `:` matches `compute:wg1`).
-- `OIDC_REDIRECT_URI`: Optional callback URL override. Default: `<APP_ORIGIN>/auth/api/callback`. It must match the redirect URI registered with each provider's client.
-- `COMPUTE_ACCESS_REQUEST_URL`: Optional URL shown to logged-in users without compute access ("Request compute access").
-- `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API.
-- `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000` for local development or your production URL).
-- Privacy notice at `/privacy`, linked from the login page and the sidebar and reachable without login. It describes what Krini processes, lists its cookies, and says what happens at the login provider and the services. The text is the same for every deployment. Each deployment adds who is responsible and can link its own full notice. All four settings are optional and read at runtime. Invalid values are ignored, with a warning in the server log.
-  - `PRIVACY_CONTROLLER`: Name and address of the operator who is responsible for the processing (the controller).
-  - `PRIVACY_CONTACT`: The controller's contact for privacy questions: an email address or an `https` URL.
-  - `PRIVACY_NOTICE_URL`: `https` URL of the deployment's full privacy notice, if it has one.
-  - `PRIVACY_LOGIN_NOTICE_URL`: `https` URL of the login provider's privacy notice.
+## Citation
 
-#### Cloud Component Versions
-
-This application supports the following GA4GH Cloud Component API versions:
-
-- **TES (Task Execution Service)**: v1
-- **WES (Workflow Execution Service)**: v1
-
-The application uses the following client libraries:
-- `@elixir-cloud/tes`: ^1.0.1
-- `@elixir-cloud/wes`: ^2.0.0-alpha.49
-
-Make sure the OIDC client has the following redirect URI registered:
-
-```text
-http://localhost:3000/auth/api/callback
-```
-
-Do not commit `.env.local` or expose `OIDC_CLIENT_SECRET` to client-side code.
-
-`.env.example` is the only env file in the repository; Git and the Docker build ignore all others, and CI fails if another one is committed or isn't excluded from the Docker build context. In production, pass the settings to the container when it starts, see the [Deployment Guide](./docs/deployment.md#environment-variables).
-
-For detailed deployment and service configuration requirements, see the [Deployment Guide](./docs/deployment.md).
-
-### Tests
-
-CI runs both test levels on pull requests and pushes to `dev`, `master` and `staging`. Neither calls real services.
-
-- **Unit tests** ([Vitest](https://vitest.dev/)): the route handlers and helpers, in `src/**/*.test.ts`. The code in `src/lib/`, `src/app/api/` and `src/app/auth/api/` must stay fully covered: CI fails if new code there has no tests. Components and hooks have no unit tests yet.
-
-  ```sh
-  bun run test            # run once
-  bun run test:coverage   # with the coverage report and the 100% threshold
-  ```
-
-- **End-to-end tests** ([Playwright](https://playwright.dev/)): the main user journey in Chromium and Firefox, in `e2e/`. They browse anonymously, log in, reject a forged login callback, submit a workflow with the user's token and log out. They also check the privacy notice and that visitors get no cookies and members only the session's. TES tasks aren't covered yet. The mock services in `e2e/mock/server.ts` play the login provider, the registry and a WES service. The WES service runs over `https` with a self-signed certificate, which `openssl` creates at start, so the tests need `bun` and `openssl`. Playwright starts the mock services, builds the app and starts it. The ports are in `e2e/settings.ts`.
-
-  ```sh
-  bunx playwright install chromium firefox   # once
-  bun run test:e2e
-  ```
-
-  On Linux distributions that Playwright doesn't support yet, run the tests in the Playwright image, as CI does (see the `e2e` job in `.github/workflows/checks.yml`).
-
+If you use Krini, please cite it with the metadata in
+[`CITATION.cff`](CITATION.cff): on GitHub, "Cite this repository" in the
+sidebar of the repository formats it as APA or BibTeX.
 
 ## Contributing
 
-This project is a community effort and lives off your contributions, be it in
-the form of bug reports, feature requests, discussions, or fixes, and other code
-changes. Please refer to our organization's [contribution
-guidelines](https://github.com/elixir-cloud-aai/elixir-cloud-aai/blob/dev/CONTRIBUTING.md) if you are interested in contributing.
-Please mind the [code of conduct](https://github.com/elixir-cloud-aai/elixir-cloud-aai/blob/dev/CODE_OF_CONDUCT.md) for all interactions with
-the community.
-
-## Versioning
-
-The project adopts the [semantic versioning](https://semver.org/) scheme for versioning.
-
-## License
-
-This project is covered by the MIT License also
-[shipped with this repository](https://github.com/elixir-cloud-aai/krini/blob/master/LICENSE).
+Contributions are welcome! See the organisation's [contributing
+guide][contributing], mind our [code of conduct][code-of-conduct], and see
+[Development][docs-development] in the documentation for the setup, checks,
+tests and releases of this repository; the sources of the documentation are
+in [`docs/`](docs/).
 
 ## Contact
 
-The project is a collaborative effort under the umbrella of [ELIXIR Cloud &
-AAI](https://github.com/elixir-cloud-aai/). Follow the link to get in touch with us via chat or email.
-Please mention the name of this service for any inquiry, proposal, question,
-etc. Alternatively, you can also make use of the [issue
-tracker](https://github.com/elixir-cloud-aai/krini/issues) to request features or report bugs.
+Use the [issue tracker](https://github.com/elixir-cloud-aai/krini/issues) to
+request features or report bugs. For anything else, write to
+[cloud-service@elixir-europe.org](mailto:cloud-service@elixir-europe.org).
+
+## License
+
+Krini is released under the [Apache License 2.0](LICENSE); third-party
+material that it contains or builds on is listed in [`NOTICE`](NOTICE).
+
+[badge-build-status]: <https://github.com/elixir-cloud-aai/krini/actions/workflows/ci.yml/badge.svg>
+[badge-docs]: <https://img.shields.io/readthedocs/krini>
+[badge-license]: <https://img.shields.io/badge/license-Apache%202.0-blue.svg>
+[badge-url-build-status]: <https://github.com/elixir-cloud-aai/krini/actions/workflows/ci.yml>
+[badge-url-docs]: <https://krini.readthedocs.io/en/latest/>
+[badge-url-license]: <https://www.apache.org/licenses/LICENSE-2.0>
+[code-of-conduct]: <https://github.com/elixir-cloud-aai/.github/blob/main/CODE_OF_CONDUCT.md>
+[contributing]: <https://github.com/elixir-cloud-aai/.github/blob/main/CONTRIBUTING.md>
+[docs]: <https://krini.readthedocs.io/en/latest/>
+[docs-configuration]: <https://krini.readthedocs.io/en/latest/operator-guide/configuration/>
+[docs-development]: <https://krini.readthedocs.io/en/latest/development/>
+[docs-operator-guide]: <https://krini.readthedocs.io/en/latest/operator-guide/>
+[docs-user-guide]: <https://krini.readthedocs.io/en/latest/user-guide/>
+[releases]: <https://github.com/elixir-cloud-aai/krini/releases>

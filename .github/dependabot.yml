@@ -1,10 +1,10 @@
 version: 2
-# Every entry targets `staging` (`target-branch`); commit messages start with
-# `build(deps)` (Conventional Commits), and pull requests have the
-# organization's label `type: dependencies` (not Dependabot's own labels).
-# Security updates always target the default branch. Dependabot reads this
-# file only from the default branch (currently `dev`), so it takes effect
-# once it is there or `staging` becomes the default branch
+# Every entry targets `dev` (`target-branch`), which takes all pull
+# requests whatever the default branch is (`main` only moves forward to
+# releases); commit messages start with `build(deps)` (Conventional
+# Commits), and pull requests have the organization's label
+# `type: dependencies` (not Dependabot's own labels). Security updates
+# always target the default branch
 updates:
   # Dependencies in `package.json` and the lock (`bun.lock`), updated
   # together
@@ -12,11 +12,15 @@ updates:
     directory: /
     schedule:
       interval: monthly
-    target-branch: staging
+    target-branch: dev
     labels: ["type: dependencies"]
     commit-message:
       prefix: build
       include: scope
+    ignore:
+      # Playwright is pinned exactly, in line with the Playwright image of
+      # the `e2e` job in `.github/workflows/ci.yml`: bump both by hand
+      - dependency-name: "@playwright/test"
     groups:
       # Cloud Components (prereleases), whose updates may break the forms:
       # in pull requests of their own
@@ -25,6 +29,19 @@ updates:
       node-dependencies:
         patterns: ["*"]
         exclude-patterns: ["@elixir-cloud/*"]
+  # Packages that build the docs (`docs/requirements.txt`)
+  - package-ecosystem: pip
+    directory: /docs
+    schedule:
+      interval: monthly
+    target-branch: dev
+    labels: ["type: dependencies"]
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      docs-dependencies:
+        patterns: ["*"]
   # Actions in the workflows, including the pins of the shared actions of
   # `elixir-cloud-aai/.github` (to the commits of its releases,
   # `@<commit> # vX.Y.Z`)
@@ -32,7 +49,7 @@ updates:
     directory: /
     schedule:
       interval: monthly
-    target-branch: staging
+    target-branch: dev
     labels: ["type: dependencies"]
     commit-message:
       prefix: build
@@ -47,7 +64,7 @@ updates:
     directory: /
     schedule:
       interval: monthly
-    target-branch: staging
+    target-branch: dev
     labels: ["type: dependencies"]
     commit-message:
       prefix: build

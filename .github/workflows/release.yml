@@ -1,0 +1,465 @@
+# Release when a version tag (`vX.Y.Z`, or `vX.Y.Z-alphaN`, `vX.Y.Z-betaN`,
+# `vX.Y.Z-rcN` for pre-releases) is pushed: check the tag, the versions in
+# `package.json` and `CITATION.cff`, the curated release notes
+# (`docs/releases/<version>.md`), and that CI passed for its commit
+# (`prepare`); build and push the Docker image (with SBOM and provenance
+# attestations) by digest, untagged (`push`); scan exactly that digest for
+# vulnerabilities in a job of its own, without the release credentials and
+# signing identity (`scan`), and smoke-test it as CI does (`smoke`); and
+# only then attest its build provenance, sign it (Sigstore keyless signing)
+# and tag it (`release-image`; see "Verifying images" in
+# `docs/operator-guide/deployment.md`). Last, create the GitHub release
+# with the curated notes followed by GitHub's generated notes (`publish`,
+# shared action
+# `elixir-cloud-aai/.github/actions/publish-release`).
+# `push` and `release-image` each need approval in the `release` environment
+# (required reviewer, Docker Hub secrets `DOCKERHUB_LOGIN` and
+# `DOCKERHUB_TOKEN`). Re-running all jobs builds, scans, signs and tags a new
+# digest, but stops before building if the version tag exists (released
+# images don't change); re-running failed jobs reuses the digest already
+# pushed. Once `release-image` has tagged the image, re-run only the failed
+# jobs: a new attempt of all jobs stops at the existing tag and supersedes
+# the attempt whose failed jobs could finish the release. `prepare` fails if
+# a published release of the tag exists already (it can't see drafts);
+# `publish` fails on a draft of the tag, and on a published release unless
+# an earlier attempt created it (same curated notes, title and pre-release
+# flag), so re-run only the failed jobs. The image has no settings: they
+# are passed when it starts, so one image serves any deployment. Until
+# 1.0.0, all releases are GitHub pre-releases (but stable ones still update
+# the `latest` image). Release commits are on `dev`, and `main` is moved
+# forward to them before they are tagged. See
+# `docs/development/releasing.md` for the steps and the repository settings
+# it needs. Adapted from the release
+# workflow of cloud-registry-ui.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+# Fully qualified (`docker.io/`), as the attestation needs it. The Docker Hub
+# organization is the repository variable `DOCKERHUB_ORG` (by default
+# `elixircloud`), so that forks can publish to their own organization
+env:
+  IMAGE_NAME: docker.io/${{ vars.DOCKERHUB_ORG || 'elixircloud' }}/krini
+
+# One run per tag, so that a run waiting for approval is not cancelled by
+# the run of another tag; `latest` is decided at the end of each run, from
+# freshly fetched tags on `main`
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read # read the CI runs of the release commit
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      sha: ${{ steps.version.outputs.sha }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Full history and all tags, to check that the release commit
+          # is on `main`
+          fetch-depth: 0
+      # `docs/development/releasing.md` runs the checks of this job that
+      # need no tag before tagging: keep them in sync.
+      # Guards against accidental releases, e.g., of unmerged commits;
+      # the `release` environment's protection rules (required reviewer)
+      # are what actually control publishing
+      - name: Check release tag and commit
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta|rc)[1-9][0-9]*)?$'
+          if [[ ! "${TAG}" =~ ${pattern} ]]; then
+            echo "::error::Tag '${TAG}' is not a release version (vX.Y.Z, or vX.Y.Z-alphaN, -betaN, -rcN)"
+            exit 1
+          fi
+          version="${TAG#v}"
+          # Pre-releases, and all releases until 1.0.0
+          prerelease=false
+          if [[ -n "${BASH_REMATCH[4]}" || "${BASH_REMATCH[1]}" == 0 ]]; then
+            prerelease=true
+          fi
+          # Annotated, with a signature that GitHub verified
+          if [[ "$(git cat-file -t "refs/tags/${TAG}")" != "tag" ]]; then
+            echo "::error::Tag '${TAG}' is not annotated (git tag -s)"
+            exit 1
+          fi
+          verified="$(gh api "repos/${REPOSITORY}/git/tags/$(git rev-parse "refs/tags/${TAG}")" \
+            --jq .verification.verified)"
+          if [[ "${verified}" != "true" ]]; then
+            echo "::error::Tag '${TAG}' has no signature verified by GitHub (git tag -s)"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Release commit is not on 'main' (move 'main' to it first: git push origin <sha>:main)"
+            exit 1
+          fi
+          {
+            echo "version=${version}"
+            echo "prerelease=${prerelease}"
+            echo "sha=$(git rev-parse HEAD)"
+          } >> "${GITHUB_OUTPUT}"
+      # The version of the release is set in the release commit, so that
+      # the sources, the citation metadata and the tag agree
+      - name: Check versions in package.json and CITATION.cff
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          package="$(jq -r .version package.json)"
+          citation="$(yq -r .version CITATION.cff)"
+          if [[ "${package}" != "${VERSION}" || "${citation}" != "${VERSION}" ]]; then
+            echo "::error::Versions don't match the tag: package.json '${package}', CITATION.cff '${citation}', tag '${VERSION}'"
+            exit 1
+          fi
+          # as the `readiness` job of `ci.yml` requires
+          if [[ -z "$(yq -r '.date-released // ""' CITATION.cff)" ]]; then
+            echo "::error::No date-released in CITATION.cff"
+            exit 1
+          fi
+      # The GitHub release (`publish`) starts with the curated notes of
+      # the tagged commit, so they must exist and be in the
+      # organization's format before anything is published; also checks
+      # that the tag points to the release commit and that no published
+      # release of it exists. Keep the pin in sync with the checker of the
+      # `readiness` job of `ci.yml` and with `docs/development/releasing.md`
+      - name: Check release notes
+        uses: elixir-cloud-aai/.github/actions/publish-release@31f22fccc1f3c597ed7c1d1f75b2f85522155348 # v1.1.0
+        with:
+          notes: docs/releases/${{ steps.version.outputs.version }}.md
+          commit: ${{ steps.version.outputs.sha }}
+          check-only: "true"
+      # The checks above don't run the tests: require a successful run of
+      # the CI workflow for a push of the release commit to `dev` (before
+      # `main` moved to it); runs for pull requests test merge commits, not
+      # the commit itself. Re-runs that succeeded count
+      - name: Check that CI passed for the release commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ steps.version.outputs.sha }}
+        run: |
+          runs="$(gh api "repos/${REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${SHA}&branch=dev&event=push&status=success&per_page=1" \
+            --jq .total_count)"
+          if [[ ! "${runs}" =~ ^[0-9]+$ || "${runs}" -lt 1 ]]; then
+            echo "::error::No successful run of the CI workflow (ci.yml) for a push of ${SHA} to dev; once CI passed for it, re-run this workflow"
+            exit 1
+          fi
+
+  # Builds the image of the release commit once and pushes it by digest only
+  # (untagged, with SBOM and provenance attestations), for `scan` to scan and
+  # `release-image` to sign and tag. Digests of runs that fail (or fail the
+  # scan) are never signed or tagged, but stay on Docker Hub, untagged
+  # (pullable by digest only)
+  push:
+    name: Push release image
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Docker Hub secrets (required reviewer)
+    environment: release
+    permissions:
+      contents: read
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      # The commit checked by `prepare`
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.prepare.outputs.sha }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # OCI labels with the version, commit and source; `tags` only sets
+      # the version label (the image is tagged by digest in
+      # `release-image`, after the scan)
+      - name: Generate image labels
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          flavor: latest=false
+          tags: type=raw,value=${{ needs.prepare.outputs.version }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          username: ${{ secrets.DOCKERHUB_LOGIN }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # Released images don't change: if the version tag exists (e.g.
+      # when re-running all jobs of a release), stop before building
+      - name: Check that the version isn't released yet
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          # The digest of the version tag, if it exists; errors other than
+          # "not found" stop the run, so that it never passes by mistake
+          status=0
+          output="$(docker buildx imagetools inspect "${IMAGE_NAME}:${VERSION}" \
+            --format '{{ json .Manifest }}' 2>&1)" || status=$?
+          current=""
+          if [[ "${status}" == 0 ]]; then
+            current="$(jq -r .digest <<< "${output}")"
+          elif ! grep -qiE 'not found|manifest unknown' <<< "${output}"; then
+            echo "::error::Cannot check whether ${IMAGE_NAME}:${VERSION} exists: ${output}"
+            exit 1
+          fi
+          if [[ -n "${current}" ]]; then
+            echo "::error::${IMAGE_NAME}:${VERSION} exists already (${current}); release a new version instead"
+            exit 1
+          fi
+      # The version for the image's version label (`Dockerfile`); the image
+      # has no settings
+      - name: Build and push image by digest
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          sbom: true
+          provenance: mode=max
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ needs.prepare.outputs.version }}
+
+  # Scans exactly the pushed digest (`<image>@<digest>`; public, so pulling
+  # it needs no login) with Trivy (shared action
+  # `elixir-cloud-aai/.github/actions/scan-image`; fails on fixable
+  # critical and high vulnerabilities). Kept apart from `push`,
+  # `release-image` and `publish`, so that Trivy never runs next to the
+  # Docker Hub credentials, the `contents: write` token and the signing
+  # identity
+  scan:
+    name: Scan release image
+    needs: [prepare, push]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.prepare.outputs.sha }}
+      - name: Check image digest
+        env:
+          DIGEST: ${{ needs.push.outputs.digest }}
+        run: |
+          if [[ ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Invalid image digest '${DIGEST}'"
+            exit 1
+          fi
+      - name: Scan image
+        uses: elixir-cloud-aai/.github/actions/scan-image@743e82d290a53768454999e413756a924e383259 # v1.0.0
+        with:
+          image: ${{ env.IMAGE_NAME }}@${{ needs.push.outputs.digest }}
+          category: release
+          upload: "false"
+
+  # Runs the smoke test of CI's `image` job (`scripts/check-image.sh`) on
+  # exactly the pushed digest (public, so pulling it needs no login), in a
+  # job without credentials, so that the released image is the checked one
+  smoke:
+    name: Smoke test
+    needs: [prepare, push]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      # The script of the commit checked by `prepare`
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.prepare.outputs.sha }}
+      - name: Pull the pushed image
+        env:
+          DIGEST: ${{ needs.push.outputs.digest }}
+        run: |
+          if [[ ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Invalid image digest '${DIGEST}'"
+            exit 1
+          fi
+          docker pull "${IMAGE_NAME}@${DIGEST}"
+      - name: Check that the image serves the app
+        env:
+          DIGEST: ${{ needs.push.outputs.digest }}
+        run: scripts/check-image.sh "${IMAGE_NAME}@${DIGEST}"
+
+  # Attests, signs and tags the scanned digest
+  release-image:
+    name: Release image
+    needs: [prepare, push, smoke, scan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+    # One at a time across tags, so that `latest` is decided and set by one
+    # run before the next one decides it (a run of a lower version can't
+    # overwrite it with a decision made before a higher version was tagged).
+    # A third waiting run cancels the pending one: re-run its failed jobs
+    concurrency:
+      group: ${{ github.workflow }}-release-image
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write # Sigstore signing certificates
+      attestations: write # GitHub artifact attestations
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      DIGEST: ${{ needs.push.outputs.digest }}
+    steps:
+      # The commit checked by `prepare`
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.prepare.outputs.sha }}
+      - name: Check image digest
+        run: |
+          if [[ ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Invalid image digest '${DIGEST}'"
+            exit 1
+          fi
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Log in to Docker Hub
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          username: ${{ secrets.DOCKERHUB_LOGIN }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # Released images don't change: a version tag of another digest
+      # stops the run before this digest is attested and signed (the
+      # same digest, e.g. when re-running failed jobs, is fine)
+      - name: Check the version tag
+        run: |
+          # The digest of the version tag, if it exists; errors other than
+          # "not found" stop the run, so that it never passes by mistake
+          status=0
+          output="$(docker buildx imagetools inspect "${IMAGE_NAME}:${VERSION}" \
+            --format '{{ json .Manifest }}' 2>&1)" || status=$?
+          current=""
+          if [[ "${status}" == 0 ]]; then
+            current="$(jq -r .digest <<< "${output}")"
+          elif ! grep -qiE 'not found|manifest unknown' <<< "${output}"; then
+            echo "::error::Cannot check whether ${IMAGE_NAME}:${VERSION} exists: ${output}"
+            exit 1
+          fi
+          if [[ -n "${current}" && "${current}" != "${DIGEST}" ]]; then
+            echo "::error::${IMAGE_NAME}:${VERSION} already points to ${current}; release a new version instead"
+            exit 1
+          fi
+      # Of the scanned digest
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ env.DIGEST }}
+          push-to-registry: true
+          # No artifact metadata storage record (needs another
+          # permission)
+          create-storage-record: false
+      - name: Install cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+      # The signature covers the digest, and so every tag of it
+      - name: Sign image
+        run: cosign sign --yes "${IMAGE_NAME}@${DIGEST}"
+      # Decided last, from freshly fetched tags (the repository is
+      # public, so no credentials are needed), so that neither a re-run
+      # of an older release nor a concurrent release moves `latest`
+      # back: the highest stable release among the tags on `main`, so
+      # that stray tags are ignored
+      - name: Check whether this is the highest release
+        id: latest
+        env:
+          TAG: ${{ github.ref_name }}
+          PRERELEASE_SUFFIX: ${{ contains(github.ref_name, '-') }}
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}.git
+        run: |
+          latest=false
+          if [[ "${PRERELEASE_SUFFIX}" != "true" ]]; then
+            git init --quiet repo
+            cd repo
+            git fetch --quiet --filter=blob:none --tags "${REPOSITORY_URL}" \
+              "+refs/heads/main:refs/remotes/origin/main"
+            highest="$(git tag -l 'v*' --merged origin/main \
+              | grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' \
+              | sort -V | tail -n 1 || true)"
+            if [[ "${highest}" == "${TAG}" ]]; then
+              latest=true
+            fi
+          fi
+          echo "latest=${latest}" >> "${GITHUB_OUTPUT}"
+      # Tags `X.Y.Z` (and `latest`) point to the checked, scanned and
+      # signed digest: a single source is copied as is
+      - name: Tag image
+        env:
+          LATEST: ${{ steps.latest.outputs.latest }}
+        run: |
+          tags=("${IMAGE_NAME}:${VERSION}")
+          if [[ "${LATEST}" == "true" ]]; then
+            tags+=("${IMAGE_NAME}:latest")
+          fi
+          for tag in "${tags[@]}"; do
+            docker buildx imagetools create --tag "${tag}" "${IMAGE_NAME}@${DIGEST}"
+            actual="$(docker buildx imagetools inspect "${tag}" \
+              --format '{{ json .Manifest }}' | jq -r .digest)"
+            if [[ "${actual}" != "${DIGEST}" ]]; then
+              echo "::error::${tag} points to ${actual}, expected ${DIGEST}"
+              exit 1
+            fi
+          done
+
+  # Creates the GitHub release of the tag once the image is released: the
+  # curated notes of the tagged commit (`docs/releases/<version>.md`), then
+  # GitHub's generated notes under `## Commits`, with the
+  # `**Full Changelog**` line last; a pre-release for versions below 1.0.0
+  # and `-alpha`, `-beta` and `-rc` versions, and the latest release by
+  # version otherwise. No environment: it needs no secrets, only
+  # `contents: write`. The tag must still point to the release commit.
+  # Fails on a draft of the tag, and on a published release unless an
+  # earlier attempt of this job created it (then it passes without
+  # changes). One at a time, so that the latest release is decided in
+  # order; a cancelled pending run is re-run like a failed one. The latest
+  # GitHub release (the action, by version among published releases) and
+  # the image's `latest` tag (`release-image`, by version among the tags on
+  # `main`) are decided separately, by the same rule: the highest stable
+  # version
+  publish:
+    name: Publish release
+    needs: [prepare, release-image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: ${{ github.workflow }}-publish-release
+      cancel-in-progress: false
+    permissions:
+      contents: write # create the release
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.prepare.outputs.sha }}
+      - name: Create release
+        uses: elixir-cloud-aai/.github/actions/publish-release@31f22fccc1f3c597ed7c1d1f75b2f85522155348 # v1.1.0
+        with:
+          notes: docs/releases/${{ needs.prepare.outputs.version }}.md
+          commit: ${{ needs.prepare.outputs.sha }}
