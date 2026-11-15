@@ -139,6 +139,25 @@ describe("getLoginProviders", () => {
         expect(getProviderById("missing")).toBeUndefined();
     });
 
+    it("drops duplicate provider ids, keeping the first", async () => {
+        baseEnv();
+        vi.stubEnv(
+            "LOGIN_PROVIDERS",
+            JSON.stringify([
+                { id: "a", issuer, clientId: "first", clientSecret: "s" },
+                {
+                    id: "a",
+                    issuer: "https://other.example.org",
+                    clientId: "second",
+                    clientSecret: "s",
+                },
+            ]),
+        );
+        const { getLoginProviders, getProviderById } = await load();
+        expect(getLoginProviders()).toHaveLength(1);
+        expect(getProviderById("a")?.clientId).toBe("first");
+    });
+
     it.each([
         undefined,
         "",
