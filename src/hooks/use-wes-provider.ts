@@ -1,33 +1,24 @@
-import type { RestWesProvider } from "@elixir-cloud/wes/providers";
-import { useEffect, useState } from "react";
-import { getAccessToken, TokenWesProvider } from "@/lib/service-providers";
+import { useMemo } from "react";
+import { TokenWesProvider } from "@/lib/service-providers";
 import { useWESStore } from "@/stores/wes";
 
+/**
+ * Get the provider of the selected WES service, which sends the user's
+ * access token
+ * @returns The provider, or `null` while no service is selected
+ */
 function useWESProvider() {
     const selectedServer = useWESStore((state) => state.selectedServer);
-    const [wesProvider, setWesProvider] = useState<RestWesProvider | null>(
-        null,
+
+    const wesProvider = useMemo(
+        () =>
+            selectedServer
+                ? new TokenWesProvider(selectedServer.replace(/\/+$/, ""))
+                : null,
+        [selectedServer],
     );
 
-    useEffect(() => {
-        if (!selectedServer) {
-            setWesProvider(null);
-            return;
-        }
-
-        const baseUrl = selectedServer.replace(/\/+$/, "");
-        const provider = new TokenWesProvider(baseUrl, getAccessToken);
-        setWesProvider(provider);
-
-        return () => {
-            setWesProvider(null);
-        };
-    }, [selectedServer]);
-
-    return {
-        wesProvider,
-        setWesProvider,
-    };
+    return { wesProvider };
 }
 
 export { useWESProvider };
