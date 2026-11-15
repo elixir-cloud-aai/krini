@@ -28,8 +28,11 @@ Your name in the sidebar opens a menu with your e-mail address and
 - **Tasks**: choose a TES service, then create a task (container image,
   command, inputs and outputs) and follow the tasks you submitted. **View
   Details** shows a task's state and logs; **Cancel** stops a task that
-  hasn't finished. Which tasks the list shows depends on the service: a
-  gateway such as proTES shows only your own tasks.
+  hasn't finished. The details page always shows the task on the service
+  you listed it from, so you can reload or bookmark it; a link without a
+  service uses the selected service, or asks you to choose one. Which
+  tasks the list shows depends on the service: a gateway such as proTES
+  shows only your own tasks.
 - **Workflows**: choose a WES service, then submit a workflow run (workflow
   URL, type and version, parameters) and follow your runs.
 

@@ -26,7 +26,8 @@ const ECCClientGa4ghTesRun = dynamic(
  * The task belongs to the service of the link (`serviceId`, the registry
  * ID), which is selected from the registry list. There is no selector to
  * switch to another service, which would look up the same task ID there.
- * Without a service in the link, the user chooses one first.
+ * Without a service in the link, the current selection is used, with a
+ * selector to change it, or the user chooses one first.
  * @param props.taskId ID of the task
  * @param props.serviceId Registry ID of the task's service, if known
  */
@@ -79,6 +80,9 @@ export function ECCClientGa4ghTesTaskClient({
 
     return (
         <div className="space-y-2">
+            {/* a link without a service uses the current selection, which
+            the user can change if the task is on another service */}
+            {serviceId ? null : <TESServerList />}
             {name ? (
                 <p className="text-sm text-muted-foreground">
                     TES instance: {name}
