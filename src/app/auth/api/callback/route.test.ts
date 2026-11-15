@@ -7,7 +7,6 @@ import {
     cookieStore,
     http,
     httpError,
-    jar,
     networkError,
     setUp,
 } from "@/test/routes";
@@ -90,9 +89,9 @@ describe("GET /auth/api/callback", () => {
         expect(options?.validateStatus?.(200)).toBe(true);
         expect(options?.validateStatus?.(400)).toBe(false);
 
-        // the pending login and an earlier logout are done
-        expect(jar.has("authState-s1")).toBe(false);
-        expect(jar.has("logout_marker")).toBe(false);
+        // the pending login and an earlier logout are expired on the response
+        for (const name of ["authState-s1", "logout_marker"])
+            expect(cookieOf(response, name)?.value).toBe("");
 
         // tokens are for the server only
         for (const name of ["access_token", "id_token", "refresh_token"])
@@ -246,7 +245,9 @@ describe("GET /auth/api/callback", () => {
         expect(locationOf(response)).toBe(
             `${appOrigin}/auth/error?type=internal`,
         );
-        expect(response.headers.getSetCookie()).toEqual([]);
+        // the consumed transaction and logout marker are expired
+        expect(cookieOf(response, "authState-s1")?.value).toBe("");
+        expect(cookieOf(response, "logout_marker")?.value).toBe("");
         expect(error.mock.calls[0][0]).toMatch(/category=invalid_response/);
     });
 

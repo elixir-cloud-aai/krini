@@ -10,10 +10,17 @@ import {
 } from "@/lib/oidc";
 import { applySessionCookies } from "@/lib/session-cookies";
 
-function redirectError(request: NextRequest, type: string) {
-    return NextResponse.redirect(
+function redirectError(request: NextRequest, type: string, state?: string) {
+    const response = NextResponse.redirect(
         new URL(`/auth/error?type=${type}`, request.url),
     );
+    if (state) expireLoginArtifacts(response, state);
+    return response;
+}
+
+function expireLoginArtifacts(response: NextResponse, state: string) {
+    response.cookies.delete(`authState-${state}`);
+    response.cookies.delete("logout_marker");
 }
 
 /** Logs only the HTTP status and the provider's `error` field — never codes, secrets or tokens. */
@@ -91,13 +98,8 @@ export async function GET(request: NextRequest) {
 
     const endpoints = await getEndpoints(provider);
     if (!endpoints) {
-        return redirectError(request, "internal");
+        return redirectError(request, "internal", state);
     }
-
-    // One-time transaction material: delete before the exchange so a replayed
-    // callback cannot reuse it.
-    cookieStore.delete(`authState-${state}`);
-    cookieStore.delete("logout_marker");
 
     try {
         const response = await axiosBase.post(
@@ -124,7 +126,7 @@ export async function GET(request: NextRequest) {
             console.error(
                 `OIDC callback error: category=invalid_response, endpoint=${endpoints.tokenEndpoint}`,
             );
-            return redirectError(request, "internal");
+            return redirectError(request, "internal", state);
         }
 
         const idTokenPayload = await validateIdToken(
@@ -137,17 +139,18 @@ export async function GET(request: NextRequest) {
             console.error(
                 `OIDC callback error: category=id_token_validation_failed, endpoint=${endpoints.tokenEndpoint}`,
             );
-            return redirectError(request, "internal");
+            return redirectError(request, "internal", state);
         }
 
         const responseRedirect = NextResponse.redirect(
             new URL("/dashboard", request.url),
         );
         applySessionCookies(responseRedirect, response.data, provider.id);
+        expireLoginArtifacts(responseRedirect, state);
 
         return responseRedirect;
     } catch (err) {
         logTokenError("OIDC callback error", err, endpoints.tokenEndpoint);
-        return redirectError(request, "internal");
+        return redirectError(request, "internal", state);
     }
 }

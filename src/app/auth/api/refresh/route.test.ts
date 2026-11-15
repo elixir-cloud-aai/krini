@@ -220,12 +220,39 @@ describe("POST /auth/api/refresh", () => {
     });
 
     it("resolves the session provider from the provider cookie and ID token", async () => {
-        const { response } = await refresh({
+        setUp({
             refresh_token: "rt-SECRET-1",
             oidc_provider: "test",
             id_token: "h.e30.c2ln",
         });
+        // a second provider, so the single-provider fallback cannot mask
+        // a failed cookie lookup
+        vi.stubEnv(
+            "LOGIN_PROVIDERS",
+            JSON.stringify([
+                {
+                    id: "test",
+                    name: "Test",
+                    issuer,
+                    clientId: "client",
+                    clientSecret: "client-secret",
+                },
+                {
+                    id: "other",
+                    name: "Other",
+                    issuer: "https://other.example.org",
+                    clientId: "client",
+                    clientSecret: "client-secret",
+                },
+            ]),
+        );
+        mockOidcProvider();
+        const post = vi.spyOn(await http(), "post");
+        post.mockResolvedValue({ status: 200, data: tokens() });
+        const { POST } = await import("./route");
+        const response = await POST();
         expect(response.status).toBe(200);
+        expect(post).toHaveBeenCalled();
     });
 
     it("fails when no login providers are configured", async () => {

@@ -182,18 +182,40 @@ describe("getPublicProviders", () => {
 });
 
 describe("getSessionProvider", () => {
+    // two providers, so the single-provider fallback cannot mask a failed
+    // cookie or issuer lookup
+    function twoProviders() {
+        vi.stubEnv(
+            "LOGIN_PROVIDERS",
+            JSON.stringify([
+                { id: "a", issuer, clientId: "c", clientSecret: "s" },
+                {
+                    id: "b",
+                    issuer: "https://b.example.org",
+                    clientId: "c",
+                    clientSecret: "s",
+                },
+            ]),
+        );
+    }
+
     it("finds the provider by the session cookie", async () => {
         baseEnv();
+        twoProviders();
         const { getSessionProvider } = await load();
-        expect(getSessionProvider("test", null)?.id).toBe("test");
+        expect(getSessionProvider("b", null)?.id).toBe("b");
     });
 
     it("falls back to the ID token issuer", async () => {
         baseEnv();
+        twoProviders();
         const { getSessionProvider } = await load();
-        expect(getSessionProvider(undefined, { iss: `${issuer}/` })?.id).toBe(
-            "test",
-        );
+        expect(getSessionProvider(undefined, { iss: issuer })?.id).toBe("a");
+        expect(
+            getSessionProvider(undefined, {
+                iss: "https://b.example.org/",
+            })?.id,
+        ).toBe("b");
     });
 
     it("uses the only provider when nothing identifies the session", async () => {
@@ -204,10 +226,9 @@ describe("getSessionProvider", () => {
 
     it("accepts the cookie provider when it matches the ID token issuer", async () => {
         baseEnv();
+        twoProviders();
         const { getSessionProvider } = await load();
-        expect(getSessionProvider("test", { iss: `${issuer}/` })?.id).toBe(
-            "test",
-        );
+        expect(getSessionProvider("a", { iss: issuer })?.id).toBe("a");
     });
 
     it("rejects the cookie provider when it differs from the ID token issuer", async () => {
