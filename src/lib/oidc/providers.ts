@@ -73,18 +73,24 @@ export function getProviderById(id: string): LoginProvider | undefined {
 
 /**
  * Finds the provider of a session: by the `oidc_provider` cookie set at
- * login, or by matching the ID token's `iss` claim.
+ * login, or by matching the ID token's `iss` claim. When both are present
+ * they must agree — the cookie is only a hint, and a mismatch means it does
+ * not describe this session (reject rather than risk sending the session's
+ * tokens to another provider's endpoints).
  */
 export function getSessionProvider(
     providerId: string | undefined,
     idTokenPayload: Record<string, unknown> | null,
 ): LoginProvider | undefined {
     const providers = getLoginProviders();
+    const iss = asString(idTokenPayload?.iss)?.replace(/\/+$/, "");
     if (providerId) {
         const byId = providers.find((p) => p.id === providerId);
-        if (byId) return byId;
+        if (byId) {
+            if (iss && byId.issuer !== iss) return undefined;
+            return byId;
+        }
     }
-    const iss = asString(idTokenPayload?.iss)?.replace(/\/+$/, "");
     if (iss) return providers.find((p) => p.issuer === iss);
     return providers.length === 1 ? providers[0] : undefined;
 }

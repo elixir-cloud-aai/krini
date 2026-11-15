@@ -183,6 +183,35 @@ describe("getSessionProvider", () => {
         expect(getSessionProvider(undefined, null)?.id).toBe("test");
     });
 
+    it("accepts the cookie provider when it matches the ID token issuer", async () => {
+        baseEnv();
+        const { getSessionProvider } = await load();
+        expect(getSessionProvider("test", { iss: `${issuer}/` })?.id).toBe(
+            "test",
+        );
+    });
+
+    it("rejects the cookie provider when it differs from the ID token issuer", async () => {
+        baseEnv();
+        vi.stubEnv(
+            "LOGIN_PROVIDERS",
+            JSON.stringify([
+                { id: "a", issuer, clientId: "c", clientSecret: "s" },
+                {
+                    id: "b",
+                    issuer: "https://b.example.org",
+                    clientId: "c",
+                    clientSecret: "s",
+                },
+            ]),
+        );
+        const { getSessionProvider } = await load();
+        // the session's ID token was issued by "a"; the cookie names "b"
+        expect(getSessionProvider("b", { iss: issuer })).toBeUndefined();
+        // without the conflicting cookie the issuer still resolves
+        expect(getSessionProvider(undefined, { iss: issuer })?.id).toBe("a");
+    });
+
     it("returns undefined for an unknown session", async () => {
         baseEnv();
         vi.stubEnv(
