@@ -14,3 +14,10 @@ restarts it.
 
 Deployments that pulled `krini:staging` must switch to `krini:dev` or,
 better, to a release (see [Deployment](deployment.md#branches-and-tags)).
+
+Krini no longer appends `/ga4gh/tes/v1` to the URLs of TES services, and
+lists only TES services over `https`, as for WES. Before upgrading from a
+version with `@elixir-cloud/tes` 1.x, check that the TES entries of your
+registry have `https` URLs with the API path, e.g.
+`https://tes.example.org/ga4gh/tes/v1`, not only the host (see
+[Service configuration](deployment.md#service-configuration)).
