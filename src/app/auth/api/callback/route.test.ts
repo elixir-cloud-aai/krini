@@ -51,20 +51,32 @@ afterEach(() => {
  * Run the callback with a pending login of state `s1`
  * @param query Query of the callback URL
  * @param reply Result of the token request: data, or an error to throw
+ * @param origin Origin of the request URL that the server sees
+ * @param setting `APP_ORIGIN` (null: not set)
  */
-async function callback(query: string, reply: unknown = tokens()) {
+async function callback(
+    query: string,
+    reply: unknown = tokens(),
+    origin = appOrigin,
+    setting: string | null = appOrigin,
+) {
     setUp({ "authState-s1": transaction, logout_marker: "1" });
     mockOidcProvider();
+    vi.stubEnv("APP_ORIGIN", setting ?? undefined);
     const post = vi.spyOn(await http(), "post");
     if (reply instanceof Error) post.mockRejectedValue(reply);
     else post.mockResolvedValue({ status: 200, data: reply });
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { GET } = await import("./route");
     const response = await GET(
-        new NextRequest(`${appOrigin}/auth/api/callback${query}`),
+        new NextRequest(`${origin}/auth/api/callback${query}`),
     );
     return { response, post, error };
 }
+
+/** Origin of requests as the standalone server of the image sees them: its
+ * listening address, not the origin of the browser */
+const listening = "http://0.0.0.0:3000";
 
 const locationOf = (response: Response) =>
     response.headers.get("location") as string;
@@ -107,6 +119,59 @@ describe("GET /auth/api/callback", () => {
         const expiry = cookieOf(response, "token_expires_at");
         expect(expiry?.value).toBe(String(now + 55 * 60 * 1000));
         expect(expiry?.attributes).not.toContain("httponly");
+    });
+
+    it.each([
+        ["after a login", "?code=c1&state=s1", tokens(), "/dashboard"],
+        ["without parameters", "?code=c1", tokens(), "/auth/error?type=params"],
+        [
+            "for another state",
+            "?code=c1&state=s2",
+            tokens(),
+            "/auth/error?type=state",
+        ],
+        [
+            "for an invalid token response",
+            "?code=c1&state=s1",
+            {},
+            "/auth/error?type=internal",
+        ],
+        [
+            "when the provider fails",
+            "?code=c1&state=s1",
+            httpError(500),
+            "/auth/error?type=internal",
+        ],
+    ])("redirects to APP_ORIGIN %s", async (_, query, reply, path) => {
+        const { response } = await callback(query, reply, listening);
+        expect(locationOf(response)).toBe(`${appOrigin}${path}`);
+    });
+
+    it.each([
+        ["without APP_ORIGIN", null],
+        ["with an APP_ORIGIN that isn't a URL", "app.example.org"],
+        ["with a non-http APP_ORIGIN", "ftp://app.example.org"],
+    ])("redirects to the request's origin %s", async (_, setting) => {
+        setUp({ "authState-s1": transaction, logout_marker: "1" });
+        mockOidcProvider();
+        vi.stubEnv("APP_ORIGIN", setting ?? undefined);
+        // the token exchange still needs a redirect URI
+        vi.stubEnv("OIDC_REDIRECT_URI", `${appOrigin}/auth/api/callback`);
+        const post = vi.spyOn(await http(), "post");
+        post.mockResolvedValue({ status: 200, data: tokens() });
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        const { GET } = await import("./route");
+        const response = await GET(
+            new NextRequest(`${listening}/auth/api/callback?code=c1&state=s1`),
+        );
+        expect(locationOf(response)).toBe(`${listening}/dashboard`);
+        // the fallback to the request's origin is logged
+        expect(error.mock.calls.length).toBe(1);
+        expect(error.mock.calls[0][0]).toMatch(
+            setting
+                ? /APP_ORIGIN isn't a valid http\(s\) origin/
+                : /APP_ORIGIN isn't set/,
+        );
     });
 
     it("rejects a callback with a provider error", async () => {
@@ -262,6 +327,41 @@ describe("GET /auth/api/callback", () => {
         expect(error.mock.calls[0][0]).toMatch(
             /category=id_token_validation_failed/,
         );
+    });
+
+    it("fails when the callback origin differs from APP_ORIGIN", async () => {
+        setUp({ "authState-s1": transaction });
+        mockOidcProvider();
+        vi.stubEnv(
+            "OIDC_REDIRECT_URI",
+            "https://auth.example.org/auth/api/callback",
+        );
+        const post = vi.spyOn(await http(), "post");
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        const { GET } = await import("./route");
+        const response = await GET(
+            new NextRequest(`${appOrigin}/auth/api/callback?code=c1&state=s1`),
+        );
+        expect(locationOf(response)).toBe(
+            `${appOrigin}/auth/error?type=internal`,
+        );
+        expect(post).not.toHaveBeenCalled();
+        expect(error.mock.calls[0][0]).toMatch(/origin_mismatch/);
+    });
+
+    it("fails when the redirect URI is not a URL", async () => {
+        setUp({ "authState-s1": transaction });
+        mockOidcProvider();
+        vi.stubEnv("OIDC_REDIRECT_URI", "not a url");
+        const post = vi.spyOn(await http(), "post");
+        const { GET } = await import("./route");
+        const response = await GET(
+            new NextRequest(`${appOrigin}/auth/api/callback?code=c1&state=s1`),
+        );
+        expect(locationOf(response)).toBe(
+            `${appOrigin}/auth/error?type=internal`,
+        );
+        expect(post).not.toHaveBeenCalled();
     });
 
     it("fails when no redirect URI can be determined", async () => {

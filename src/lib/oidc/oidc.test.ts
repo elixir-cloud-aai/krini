@@ -300,7 +300,11 @@ describe("getAppOrigin", () => {
         expect(getAppOrigin()).toBe(appOrigin);
     });
 
-    it.each([undefined, "not a url"])("returns null for %s", async (value) => {
+    it.each([
+        undefined,
+        "not a url",
+        "ftp://app.example.org",
+    ])("returns null for %s", async (value) => {
         vi.stubEnv("APP_ORIGIN", value);
         const { getAppOrigin } = await load();
         expect(getAppOrigin()).toBeNull();
