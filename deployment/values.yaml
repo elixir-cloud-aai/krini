@@ -108,10 +108,10 @@ krini:
     # removes one of these
     annotations: {}
     https:
-      # Request a certificate from cert-manager (via `issuer`, a
-      # ClusterIssuer) and serve HTTPS
+      # Request a certificate from cert-manager (via `issuer`, the name of
+      # a ClusterIssuer of the cluster; required if enabled) and serve HTTPS
       enabled: false
-      issuer: letsencrypt-prod
+      issuer: ""
   # Gateway API HTTPRoute (`gateway.networking.k8s.io/v1`) for `hostName`,
   # attached to an existing Gateway, whose listener terminates TLS;
   # requires `ingress.enabled: false`

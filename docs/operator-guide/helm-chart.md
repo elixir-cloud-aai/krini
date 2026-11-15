@@ -66,6 +66,10 @@ checkout of the repository, at the tag of the release that you deploy.
       tag: "0.1.0"
     ```
 
+    On OpenShift, add `ingress: {enabled: false}` under `krini`, so that
+    the chart creates a Route with TLS instead of an Ingress (see
+    [Exposing Krini](#exposing-krini)).
+
 4. Install the chart from a checkout of the release's tag:
 
     ```bash
@@ -186,15 +190,18 @@ paths to it:
 
 - **Ingress** (`krini.ingress`, enabled by default) for any ingress
   controller: `className` sets the Ingress class (default: the cluster's
-  default class), and `annotations` sets annotations for the controller.
-  The chart sets no annotations for particular controllers. By default, the
+  default class), and `annotations` sets annotations for the controller;
+  they take precedence over the chart's, and `null` removes one of the
+  chart's. The chart sets no annotations for particular controllers. By default, the
   Ingress has no TLS, so TLS must be terminated in front of the cluster
   (e.g. by a load balancer); with `https.enabled: true`, cert-manager issues
-  a certificate via the ClusterIssuer `https.issuer`, and the Ingress serves
+  a certificate via the ClusterIssuer `https.issuer` (required then, e.g.
+  `letsencrypt-prod`), and the Ingress serves
   HTTPS with it (Secret `<release>-krini-tls`, or `krini-tls` for a release
   named `krini`).
 - **Gateway API HTTPRoute** (`krini.httpRoute`), attached to an existing
-  Gateway whose listener terminates TLS; the Ingress must be disabled:
+  Gateway whose listener terminates TLS, with the annotations of
+  `krini.httpRoute.annotations`; the Ingress must be disabled:
 
     ```yaml
     krini:
@@ -211,7 +218,11 @@ paths to it:
 - **OpenShift Route** (`krini.route`): if neither the Ingress nor the
   HTTPRoute is enabled and the cluster serves Routes, the chart creates a
   Route with TLS terminated at the router, which redirects HTTP to HTTPS.
-  Set `krini.route.enabled: false` for a Route of your own.
+  `krini.route.annotations` sets annotations of the Route, e.g. the
+  router's timeouts (`haproxy.router.openshift.io/timeout`). Set
+  `krini.route.enabled: false` for a Route of your own. On OpenShift,
+  disable the Ingress (`krini.ingress.enabled: false`), which is enabled
+  by default: OpenShift turns a plain Ingress into a Route without TLS.
 
 Krini must be served over HTTPS: it sets secure cookies, and sends users
 back to `APP_ORIGIN` (`https://<hostName>`) after the login. If none of
@@ -226,7 +237,9 @@ as the image's non-root user `bun` (UID 1000, set as `runAsUser` so that
 Kubernetes can check `runAsNonRoot`), without privilege escalation or
 capabilities, with the seccomp profile `RuntimeDefault` and a read-only
 root file system; Next.js's cache goes to an `emptyDir` at `/tmp` (up to
-`krini.tmpSizeLimit`). The pod gets no service account token, as Krini
+`krini.tmpSizeLimit`, default `256Mi`; `null` for no limit). These are the
+defaults of `krini.podSecurityContext` and `krini.securityContext` (see
+`values.yaml`). The pod gets no service account token, as Krini
 doesn't call the Kubernetes API.
 
 On OpenShift (if the cluster serves `security.openshift.io/v1`), the chart
@@ -242,8 +255,8 @@ and `krini.securityContext` for other platforms.
 
 With `krini.networkPolicy.enabled`, a NetworkPolicy allows connections to
 Krini only from the peers in `krini.networkPolicy.ingressFrom` (e.g. the
-namespace of the ingress controller), and from the node (the kubelet's
-probes). There are no default peers, as they depend on the cluster:
+namespace of the ingress controller), from the node (the kubelet's
+probes), and from the release's `helm test` pod. There are no default peers, as they depend on the cluster:
 rendering fails if the policy is enabled without any. For example, for an
 ingress controller in the namespace `ingress-nginx`:
 

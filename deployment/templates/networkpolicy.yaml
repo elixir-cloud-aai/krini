@@ -1,6 +1,6 @@
 {{- /*
 NetworkPolicy allowing connections to Krini only from the peers in
-`krini.networkPolicy.ingressFrom` (e.g., the pods of the ingress controller
+`krini.networkPolicy.ingressFrom` and the test pod of `helm test` (e.g., the pods of the ingress controller
 or Gateway; no defaults, as they depend on the cluster); connections from
 the pod's node (the kubelet's probes) are always allowed. Egress isn't
 restricted, as Krini's server connects to the registry, the login providers
@@ -26,7 +26,13 @@ spec:
   ingress:
   - from:
       {{- toYaml $policy.ingressFrom | nindent 4 }}
+    # The test pod of `helm test`
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: {{ include "krini.name" . | quote }}
+          app.kubernetes.io/instance: {{ .Release.Name | quote }}
+          app.kubernetes.io/component: test
     ports:
-    - port: 3000
+    - port: {{ include "krini.port" . }}
       protocol: TCP
 {{- end }}

@@ -68,6 +68,9 @@ helm install krini deployment -n <namespace> \
     --set krini.tag=<version>
 ```
 
+On OpenShift, add `--set krini.ingress.enabled=false`, so that the chart
+creates a Route with TLS instead of an Ingress.
+
 The [operator guide][docs-operator-guide] describes the image tags, how to
 verify an image, and what the login provider and the TES and WES services
 need.

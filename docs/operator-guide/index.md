@@ -1,8 +1,9 @@
 # Operator guide
 
 This guide is for those who run Krini for their users: how to deploy the
-container image or the Helm chart, configure the login provider, the Cloud Registry and the
-privacy notice, prepare the TES and WES services, and upgrade.
+container image or the Helm chart, configure the login provider, the Cloud
+Registry and the privacy notice, prepare the TES and WES services, and
+upgrade.
 
 - [Deployment](deployment.md): the container image, its tags and how to
   verify and run it, and what the login provider and the TES and WES

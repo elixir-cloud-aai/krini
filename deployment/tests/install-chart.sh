@@ -8,7 +8,7 @@
 # the namespace on success.
 #
 # Usage: deployment/tests/install-chart.sh <image> [namespace]
-set -euo pipefail
+set -Eeuo pipefail
 
 if [[ $# -lt 1 || -z "$1" ]]; then
   echo "Usage: $0 <image> [namespace]" >&2

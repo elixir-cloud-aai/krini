@@ -32,5 +32,5 @@ spec:
     # A port number, as backendRefs take no port names
     backendRefs:
     - name: {{ include "krini.fullname" . | quote }}
-      port: 3000
+      port: {{ include "krini.port" . }}
 {{- end }}

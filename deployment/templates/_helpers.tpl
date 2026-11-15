@@ -34,13 +34,14 @@ app.kubernetes.io/component: app
 
 {{/*
 Standard labels (see https://helm.sh/docs/chart_best_practices/labels/),
-without the component.
+without the component; the version is that of the image's tag (`krini.tag`,
+or the chart's `appVersion`).
 */}}
 {{- define "krini.baseLabels" -}}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 app.kubernetes.io/name: {{ include "krini.name" . | quote }}
 app.kubernetes.io/instance: {{ .Release.Name | quote }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | replace "+" "_" | trunc 63 | trimSuffix "-" | quote }}
+app.kubernetes.io/version: {{ .Values.krini.tag | default .Chart.AppVersion | replace "+" "_" | trunc 63 | trimSuffix "-" | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
@@ -51,6 +52,14 @@ component `test` instead, so that the Service doesn't select it.
 {{- define "krini.labels" -}}
 {{ include "krini.baseLabels" . }}
 app.kubernetes.io/component: app
+{{- end -}}
+
+{{/*
+Port of Krini's server (`PORT`), of the container, the Service and the
+routes.
+*/}}
+{{- define "krini.port" -}}
+3000
 {{- end -}}
 
 {{/*
@@ -115,7 +124,7 @@ settings are left out, so that Krini's defaults apply.
       key: {{ required "loginProviders.secretKey must be set" .Values.loginProviders.secretKey | quote }}
 # The port of the Service and the probes
 - name: PORT
-  value: "3000"
+  value: {{ include "krini.port" . | quote }}
 {{- end -}}
 
 {{/*
@@ -185,7 +194,7 @@ true
 
 {{/*
 Checks of the values that the schema can't express; renders nothing.
-Included by the Deployment.
+Included by `validate.yaml`.
 */}}
 {{- define "krini.validate" -}}
 {{- if and .Values.krini.ingress.enabled .Values.krini.httpRoute.enabled -}}

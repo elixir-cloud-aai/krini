@@ -69,6 +69,8 @@ assert_eq "name" "$(get Deployment .metadata.name)" "krini"
 assert_eq "standard labels" \
   "$(get Deployment '.metadata.labels | [."app.kubernetes.io/name", ."app.kubernetes.io/instance", ."app.kubernetes.io/version", ."app.kubernetes.io/managed-by", ."helm.sh/chart"] | join(",")')" \
   "krini,krini,dev,Helm,krini-0.0.0"
+assert_eq "pod labels" \
+  "$(get Deployment '.spec.template.metadata.labels | [."app.kubernetes.io/managed-by", ."app.kubernetes.io/component"] | join(",")')" "Helm,app"
 assert_eq "selector" \
   "$(get Deployment '.spec.selector.matchLabels | to_entries | map(.key + "=" + .value) | join(",")')" \
   "app.kubernetes.io/name=krini,app.kubernetes.io/instance=krini,app.kubernetes.io/component=app"
@@ -148,6 +150,8 @@ assert_eq "no Ingress without hostName" "$(get Ingress .kind)" ""
 # --- Image ---
 render --set krini.tag=0.1.0 --set krini.imagePullPolicy=IfNotPresent
 assert_eq "tag" "$(get Deployment '.spec.template.spec.containers[0].image')" "docker.io/elixircloud/krini:0.1.0"
+assert_eq "version label of the tag" \
+  "$(get Deployment '[.metadata.labels, .spec.template.metadata.labels] | map(."app.kubernetes.io/version") | join(",")')" "0.1.0,0.1.0"
 assert_eq "pull policy override" "$(get Deployment '.spec.template.spec.containers[0].imagePullPolicy')" "IfNotPresent"
 render --set krini.image=registry.example.org/krini@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 assert_eq "image with digest" "$(get Deployment '.spec.template.spec.containers[0].image')" \
@@ -170,10 +174,24 @@ assert_eq "/tmp without limit" "$(get Deployment '.spec.template.spec.volumes[] 
 render --set-json 'krini.readinessProbe={"tcpSocket":{"port":"http"}}'
 assert_eq "probe override" \
   "$(get Deployment '.spec.template.spec.containers[0].readinessProbe | tojson')" '{"tcpSocket":{"port":"http"}}'
+render --set-json 'krini.startupProbe={"tcpSocket":{"port":"http"}}' \
+  --set-json 'krini.livenessProbe={"tcpSocket":{"port":"http"}}' \
+  --set krini.tmpSizeLimit=134217728
+assert_eq "startup and liveness probe overrides" \
+  "$(get Deployment '.spec.template.spec.containers[0] | [.startupProbe.tcpSocket.port, .livenessProbe.tcpSocket.port] | join(",")')" \
+  "http,http"
+assert_eq "/tmp limit in bytes" \
+  "$(get Deployment '.spec.template.spec.volumes[] | select(.name == "tmp") | .emptyDir.sizeLimit')" "134217728"
+render --set krini.replicas=2 --set krini.podDisruptionBudget.maxUnavailable=0
+assert_eq "PodDisruptionBudget maxUnavailable" "$(get PodDisruptionBudget .spec.maxUnavailable)" "0"
+render --set fullnameOverride=a-very-long-name-of-a-release-that-has-more-than-sixty-three-chars
+assert_eq "test pod name within 63 characters" "$(get Pod '.metadata.name | length <= 63')" "true"
 render --set-json 'krini.nodeSelector={"disk":"ssd"}' \
-  --set-json 'krini.tolerations=[{"key":"k","operator":"Exists"}]'
+  --set-json 'krini.tolerations=[{"key":"k","operator":"Exists"}]' \
+  --set-json 'krini.affinity={"nodeAffinity":{}}'
 assert_eq "nodeSelector" "$(get Deployment .spec.template.spec.nodeSelector.disk)" "ssd"
 assert_eq "tolerations" "$(get Deployment '.spec.template.spec.tolerations[0].key')" "k"
+assert_eq "affinity" "$(get Deployment '.spec.template.spec.affinity | keys | join(",")')" "nodeAffinity"
 
 # --- OpenShift ---
 render --set krini.ingress.enabled=false \
@@ -184,6 +202,10 @@ assert_eq "Route" \
   "$(get Route '.spec | .host + "," + .to.name + "," + .port.targetPort + "," + .tls.termination + "," + .tls.insecureEdgeTerminationPolicy')" \
   "krini.example.org,krini,http,edge,Redirect"
 assert_eq "no Ingress" "$(get Ingress .kind)" ""
+render --set krini.ingress.enabled=false --api-versions route.openshift.io/v1 \
+  --set krini.route.annotations.haproxy\\.router\\.openshift\\.io/timeout=60s
+assert_eq "Route annotations" \
+  "$(get Route '.metadata.annotations."haproxy.router.openshift.io/timeout"')" "60s"
 render --set krini.ingress.enabled=false --set krini.route.enabled=false --api-versions route.openshift.io/v1
 assert_eq "Route disabled" "$(get Route .kind)" ""
 render --set krini.ingress.enabled=false
@@ -191,19 +213,25 @@ assert_eq "no Route without the API" "$(get Route .kind)" ""
 
 # --- Ingress and HTTPRoute ---
 render --set krini.ingress.className=traefik --set krini.ingress.https.enabled=true \
+  --set krini.ingress.https.issuer=letsencrypt-prod \
   --set krini.ingress.annotations.example\\.org/a=b
 assert_eq "ingress class" "$(get Ingress .spec.ingressClassName)" "traefik"
 assert_eq "ingress TLS" "$(get Ingress '.spec.tls[0] | .hosts[0] + "," + .secretName')" "krini.example.org,krini-tls"
 assert_eq "ingress annotations" \
   "$(get Ingress '.metadata.annotations | to_entries | map(.key + "=" + .value) | join(",")')" \
   "cert-manager.io/cluster-issuer=letsencrypt-prod,example.org/a=b"
-render --set krini.ingress.https.enabled=true --set-json 'krini.ingress.annotations={"cert-manager.io/cluster-issuer":null}'
+render --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
+  --set-json 'krini.ingress.annotations={"cert-manager.io/cluster-issuer":null}'
 assert_eq "ingress annotation removed" "$(get Ingress '.metadata.annotations // {} | tojson')" "{}"
 render --set krini.ingress.enabled=false --set krini.httpRoute.enabled=true \
   --set-json 'krini.httpRoute.parentRefs=[{"name":"gateway","namespace":"gateway-system","sectionName":"https"}]'
 assert_eq "HTTPRoute" \
   "$(get HTTPRoute '.spec | .hostnames[0] + "," + .parentRefs[0].name + "," + .rules[0].backendRefs[0].name + "," + (.rules[0].backendRefs[0].port | tostring)')" \
   "krini.example.org,gateway,krini,3000"
+render --set krini.ingress.enabled=false --set krini.httpRoute.enabled=true \
+  --set-json 'krini.httpRoute.parentRefs=[{"name":"gateway"}]' \
+  --set krini.httpRoute.annotations.example\\.org/a=b
+assert_eq "HTTPRoute annotations" "$(get HTTPRoute '.metadata.annotations."example.org/a"')" "b"
 
 # --- NetworkPolicy ---
 render --set krini.networkPolicy.enabled=true \
@@ -211,6 +239,8 @@ render --set krini.networkPolicy.enabled=true \
 assert_eq "NetworkPolicy" \
   "$(get NetworkPolicy '.spec | (.ingress[0].ports[0].port | tostring) + "," + .podSelector.matchLabels."app.kubernetes.io/component"')" \
   "3000,app"
+assert_eq "NetworkPolicy admits the test pod" \
+  "$(get NetworkPolicy '.spec.ingress[0].from[1].podSelector.matchLabels."app.kubernetes.io/component"')" "test"
 
 # --- Invalid values ---
 assert_fails "no registry" "cloudRegistryUrl" \
@@ -234,6 +264,7 @@ assert_fails "PodDisruptionBudget bounds" "minAvailable|maxUnavailable" -f "${va
   --set krini.podDisruptionBudget.minAvailable=1 --set krini.podDisruptionBudget.maxUnavailable=1
 assert_fails "extraEnv for a setting of the chart" "APP_ORIGIN" -f "${values}" \
   --set-json 'extraEnv=[{"name":"APP_ORIGIN","value":"https://other.example.org"}]'
+assert_fails "HTTPS without issuer" "https.issuer" -f "${values}" --set krini.ingress.https.enabled=true
 assert_fails "replicas" "replicas" -f "${values}" --set krini.replicas=0
 
 echo "${tests} tests, ${failures} failures"

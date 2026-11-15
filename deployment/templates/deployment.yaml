@@ -1,4 +1,3 @@
-{{- include "krini.validate" . -}}
 {{- $values := .Values.krini -}}
 {{- $preStop := int ($values.preStopSleepSeconds | default 0) -}}
 apiVersion: apps/v1
@@ -21,7 +20,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "krini.selectorLabels" . | nindent 8 }}
+        {{- include "krini.labels" . | nindent 8 }}
     spec:
       # The pod doesn't call the Kubernetes API
       automountServiceAccountToken: false
@@ -42,7 +41,7 @@ spec:
         {{- end }}
         ports:
         - name: http
-          containerPort: 3000
+          containerPort: {{ include "krini.port" . }}
           protocol: TCP
         # Probes request `krini.probePath` (the privacy notice: no login, no
         # requests to other services), unless replaced. Up to 5 minutes are

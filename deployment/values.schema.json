@@ -22,9 +22,6 @@
     "additionalProperties": false,
     "required": ["config", "loginProviders", "krini"],
     "properties": {
-        "global": {
-            "type": "object"
-        },
         "nameOverride": {
             "type": "string"
         },

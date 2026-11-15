@@ -26,7 +26,7 @@ spec:
     imagePullPolicy: {{ $values.imagePullPolicy | default "Always" }}
     env:
     - name: BASE_URL
-      value: {{ printf "http://%s:3000" (include "krini.fullname" .) | quote }}
+      value: {{ printf "http://%s:%s" (include "krini.fullname" .) (include "krini.port" .) | quote }}
     command:
     - bun
     - -e
