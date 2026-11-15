@@ -3,7 +3,7 @@ import type { LoginProvider, OidcEndpoints } from "./types";
 
 const JWKS_TTL_MS = 60 * 60 * 1000;
 
-let jwksCache: { uri: string; keys: ProviderJwk[]; at: number } | null = null;
+const jwksCache = new Map<string, { keys: ProviderJwk[]; at: number }>();
 
 type ProviderJwk = JsonWebKey & { kid?: string };
 
@@ -37,12 +37,9 @@ export function decodeJwtPayload(
 
 async function fetchJwks(jwksUri: string): Promise<ProviderJwk[] | null> {
     const now = Date.now();
-    if (
-        jwksCache &&
-        jwksCache.uri === jwksUri &&
-        now - jwksCache.at < JWKS_TTL_MS
-    ) {
-        return jwksCache.keys;
+    const cached = jwksCache.get(jwksUri);
+    if (cached && now - cached.at < JWKS_TTL_MS) {
+        return cached.keys;
     }
 
     let res: Response;
@@ -64,7 +61,7 @@ async function fetchJwks(jwksUri: string): Promise<ProviderJwk[] | null> {
     }
     if (!Array.isArray(body.keys)) return null;
 
-    jwksCache = { uri: jwksUri, keys: body.keys, at: now };
+    jwksCache.set(jwksUri, { keys: body.keys, at: now });
     return body.keys;
 }
 
@@ -130,7 +127,7 @@ export async function validateIdToken(
 
     // Unknown kid may mean the key set rotated; refetch once, bypassing cache.
     if (!jwk && header.kid) {
-        jwksCache = null;
+        jwksCache.delete(endpoints.jwksUri);
         keys = await fetchJwks(endpoints.jwksUri);
         jwk = keys?.find((k) => k.kid === header.kid);
     }

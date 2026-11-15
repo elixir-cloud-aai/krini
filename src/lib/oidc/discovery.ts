@@ -2,11 +2,10 @@ import type { LoginProvider, OidcEndpoints } from "./types";
 
 const DISCOVERY_TTL_MS = 60 * 60 * 1000;
 
-let discoveryCache: {
-    issuer: string;
-    doc: DiscoveryCacheEntry;
-    at: number;
-} | null = null;
+const discoveryCache = new Map<
+    string,
+    { doc: DiscoveryCacheEntry; at: number }
+>();
 
 type DiscoveryCacheEntry = {
     authorization_endpoint?: string;
@@ -22,12 +21,9 @@ export async function getEndpoints(
     provider: LoginProvider,
 ): Promise<OidcEndpoints | null> {
     const now = Date.now();
-    if (
-        discoveryCache &&
-        discoveryCache.issuer === provider.issuer &&
-        now - discoveryCache.at < DISCOVERY_TTL_MS
-    ) {
-        return toEndpoints(discoveryCache.doc);
+    const cached = discoveryCache.get(provider.issuer);
+    if (cached && now - cached.at < DISCOVERY_TTL_MS) {
+        return toEndpoints(cached.doc);
     }
 
     const url = `${provider.issuer}/.well-known/openid-configuration`;
@@ -55,7 +51,7 @@ export async function getEndpoints(
         return null;
     }
 
-    discoveryCache = { issuer: provider.issuer, doc, at: now };
+    discoveryCache.set(provider.issuer, { doc, at: now });
     return toEndpoints(doc);
 }
 
