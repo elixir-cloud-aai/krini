@@ -40,6 +40,7 @@ export async function getUserSession(
                     Accept: "application/json",
                 },
                 cache: "no-store",
+                signal: AbortSignal.timeout(10_000),
             });
         } catch {
             return null;

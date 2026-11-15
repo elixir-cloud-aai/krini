@@ -47,6 +47,7 @@ async function fetchJwks(jwksUri: string): Promise<ProviderJwk[] | null> {
         res = await fetch(jwksUri, {
             headers: { Accept: "application/json" },
             cache: "no-store",
+            signal: AbortSignal.timeout(10_000),
         });
     } catch {
         return null;

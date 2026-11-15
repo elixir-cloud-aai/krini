@@ -32,6 +32,7 @@ export async function getEndpoints(
         res = await fetch(url, {
             headers: { Accept: "application/json" },
             cache: "no-store",
+            signal: AbortSignal.timeout(10_000),
         });
     } catch {
         return null;
