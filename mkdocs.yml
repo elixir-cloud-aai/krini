@@ -78,3 +78,5 @@ nav:
   - Development:
       - development/index.md
       - Releasing: development/releasing.md
+  - Releases:
+      - "0.1.0": releases/0.1.0.md
