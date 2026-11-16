@@ -103,6 +103,26 @@ calls real services.
     tests in the Playwright image, as CI does (see the `e2e` job in
     `.github/workflows/ci.yml`).
 
+    To run them against a Docker image instead of the build of the
+    checkout, set `E2E_IMAGE` to the image. Playwright then starts it as it
+    is deployed: as the image's non-root user, with a read-only root file
+    system, a writable `/tmp` and all settings at start. A difference
+    between the two, such as a file missing from the standalone output or a
+    setting read at build time, then fails the tests. This needs Docker with
+    the host network (Linux) and a free container name `krini-e2e`. CI does
+    this in Chromium for every image it builds (`End-to-end tests (image)`),
+    and the release workflow for every release image
+    (`End-to-end tests (release image)`):
+
+    ```bash
+    docker build -t krini:local .
+    E2E_IMAGE=krini:local bun run test:e2e --project chromium
+    ```
+
+    The container is removed when the tests end. If a run was killed and
+    left it behind, the next run fails at once, as the name is taken:
+    remove it with `docker rm -f krini-e2e`.
+
 ## Documentation
 
 The documentation is built with [MkDocs](https://www.mkdocs.org/) and the
