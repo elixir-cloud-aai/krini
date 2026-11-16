@@ -146,10 +146,11 @@ deploys the release's image by default (`appVersion` is its tag).
     (`Prepare release`); builds
     and pushes the image by digest (`Push release image`, needs approval);
     scans exactly that digest (`Scan release image`) and runs the smoke test
-    of CI on it (`Smoke test`, `scripts/check-image.sh`); attests and signs
-    it, attests and signs the chart, and only then tags the image `X.Y.Z`
-    (and `latest` for the highest stable version), so that a failure before
-    leaves the image untagged
+    of CI on it (`Smoke test`, `scripts/check-image.sh`, and the
+    end-to-end tests of CI, `End-to-end tests (release image)`); attests
+    and signs it, attests and signs the chart, and only then tags the
+    image `X.Y.Z` (and `latest` for the highest stable version), so that a
+    failure before leaves the image untagged
     (`Release image`, needs approval); and then, without another approval,
     creates the GitHub release (`Publish release`): the curated notes of the
     tagged commit, then GitHub's generated notes under `## Commits` (without

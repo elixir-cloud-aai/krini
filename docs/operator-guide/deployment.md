@@ -46,10 +46,11 @@ reserved for releases. Deployments pull these images and update themselves
 (e.g. with their own CD); the repository doesn't deploy anywhere itself.
 
 Before CI tags an image, the commit passes lint, unit tests, type check,
-build, a dependency audit and the end-to-end tests, and exactly the
-pushed digest passes a smoke test (non-root, read-only root file system)
-and a scan for known vulnerabilities (Trivy, failing on fixable critical
-and high findings). CI then attests its build provenance and signs it
+build, a dependency audit and the end-to-end tests on its build, and
+exactly the pushed digest passes a smoke test (non-root, read-only root
+file system), the end-to-end tests again, now on the image started as it
+is deployed (against mock services), and a scan for known
+vulnerabilities (Trivy, failing on fixable critical and high findings). CI then attests its build provenance and signs it
 with Sigstore keyless signing. The image also carries an SBOM and
 BuildKit provenance. The release workflow builds release images afresh from
 the tagged commit, which must have passed CI on `dev`, and checks, scans,
@@ -127,8 +128,8 @@ To publish images from a fork or for another organization, the
 repository needs:
 
 - the variable `DOCKERHUB_ORG`, the Docker Hub namespace (by default
-  `elixircloud`), with a public repository `krini` in it, as the scan and
-  the smoke test pull the pushed digest without login;
+  `elixircloud`), with a public repository `krini` in it, as the scan, the
+  smoke test and the end-to-end tests pull the pushed digest without login;
 - the environment `dev-images`, limited to the branch `dev`, with the
   secrets `DOCKERHUB_LOGIN` and `DOCKERHUB_TOKEN` (a token
   that can push to that repository). The name is kept from when only `dev`

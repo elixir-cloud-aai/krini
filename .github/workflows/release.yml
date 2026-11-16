@@ -7,10 +7,11 @@
 # push the Docker image (with SBOM and provenance attestations) by digest,
 # untagged (`push`); scan exactly that digest for vulnerabilities in a job
 # of its own, without the release credentials and signing identity
-# (`scan`), and smoke-test it as CI does (`smoke`); and only then attest
-# its build provenance and sign it (Sigstore keyless signing), attest and
-# sign the chart, checked against its recorded name and SHA-256, and last
-# tag the image (`release-image`; see "Verifying images" in
+# (`scan`), smoke-test it and run the end-to-end tests on it as CI does
+# (`smoke`, `e2e`); and only then attest its build provenance, sign it
+# (Sigstore keyless signing), attest and sign the chart, checked against
+# its recorded name and SHA-256, and last tag the image
+# (`release-image`; see "Verifying images" in
 # `docs/operator-guide/deployment.md` and "Verifying the chart" in
 # `docs/operator-guide/helm-chart.md`). Last, create the GitHub release
 # with the curated notes followed by GitHub's generated notes, with the
@@ -340,10 +341,57 @@ jobs:
           DIGEST: ${{ needs.push.outputs.digest }}
         run: scripts/check-image.sh "${IMAGE_NAME}@${DIGEST}"
 
+  # Runs the end-to-end tests of CI's `e2e-image` job (Chromium, mock
+  # services of `e2e/mock/`) on exactly the pushed digest (public, so
+  # pulling it needs no login), in a job without credentials, so that the
+  # released image is the tested one. On Ubuntu 24.04, as `e2e-image`
+  e2e:
+    name: End-to-end tests (release image)
+    needs: [prepare, push]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      # The tests of the commit checked by `prepare`
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.prepare.outputs.sha }}
+      - name: Pull the pushed image
+        env:
+          DIGEST: ${{ needs.push.outputs.digest }}
+        run: |
+          if [[ ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Invalid image digest '${DIGEST}'"
+            exit 1
+          fi
+          docker pull "${IMAGE_NAME}@${DIGEST}"
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run end-to-end tests on the image
+        run: npx playwright test --project chromium
+        env:
+          E2E_IMAGE: ${{ env.IMAGE_NAME }}@${{ needs.push.outputs.digest }}
+      - name: Upload the test report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-release
+          path: playwright-report/
+          retention-days: 7
+
   # Attests, signs and tags the scanned digest
   release-image:
     name: Release image
-    needs: [prepare, push, smoke, scan]
+    needs: [prepare, push, smoke, e2e, scan]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: release
