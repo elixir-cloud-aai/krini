@@ -111,10 +111,9 @@ calls real services.
     setting read at build time, then fails the tests. This needs a built
     image, Docker with the host network (Linux) and a free container name
     `krini-e2e`, and Playwright on the host: not in the Playwright image,
-    which has no Docker. CI does
-    this in Chromium for every image it builds (`End-to-end tests (image)`),
-    and the release workflow for every release image
-    (`End-to-end tests (release image)`):
+    which has no Docker. CI does this in Chromium for every image it builds
+    (`End-to-end tests (image)`), and the release workflow for every
+    release image (`End-to-end tests (release image)`):
 
     ```bash
     docker build -t krini:local .

@@ -49,8 +49,8 @@ Before CI tags an image, the commit passes lint, unit tests, type check,
 build, a dependency audit and the end-to-end tests on its build, and
 exactly the pushed digest passes a smoke test (non-root, read-only root
 file system), the end-to-end tests again, now on the image started as it
-is deployed (against mock services), and a scan for known vulnerabilities (Trivy, failing on fixable critical
-and high findings). CI then attests its build provenance and signs it
+is deployed (against mock services), and a scan for known
+vulnerabilities (Trivy, failing on fixable critical and high findings). CI then attests its build provenance and signs it
 with Sigstore keyless signing. The image also carries an SBOM and
 BuildKit provenance. The release workflow builds release images afresh from
 the tagged commit, which must have passed CI on `dev`, and checks, scans,
