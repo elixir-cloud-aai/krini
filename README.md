@@ -54,6 +54,34 @@ docker run --rm -p 3000:3000 --read-only --tmpfs /tmp \
     --env-file ~/krini/settings.env docker.io/elixircloud/krini:<version>
 ```
 
+On Kubernetes or OpenShift, write the login providers to
+`login-providers.json`, a JSON array with Krini's OpenID Connect client
+at each provider (more fields in the [Helm chart][docs-helm-chart] docs):
+
+```json
+[{"id": "example", "issuer": "https://login.example.org/oidc",
+  "clientId": "my-client-id", "clientSecret": "my-client-secret"}]
+```
+
+Then install the Helm chart in
+[`deployment/`](deployment/), with the login providers in a Secret
+of your own and the settings in a values file (see [Helm
+chart][docs-helm-chart] for all steps and values), e.g. from a checkout of
+the release's tag:
+
+```bash
+kubectl create secret generic krini-login-providers -n <namespace> \
+    --from-file=login-providers=login-providers.json
+helm install krini deployment -n <namespace> \
+    --set hostName=krini.example.org \
+    --set config.cloudRegistryUrl=https://registry.example.org \
+    --set loginProviders.existingSecret=krini-login-providers \
+    --set krini.tag=<version>
+```
+
+On OpenShift, add `--set krini.ingress.enabled=false`, so that the chart
+creates a Route with TLS instead of an Ingress.
+
 The [operator guide][docs-operator-guide] describes the image tags, how to
 verify an image, and what the login provider and the TES and WES services
 need.
@@ -94,6 +122,7 @@ material that it contains or builds on is listed in [`NOTICE`](NOTICE).
 [docs]: <https://krini.readthedocs.io/en/latest/>
 [docs-configuration]: <https://krini.readthedocs.io/en/latest/operator-guide/configuration/>
 [docs-development]: <https://krini.readthedocs.io/en/latest/development/>
+[docs-helm-chart]: <https://krini.readthedocs.io/en/latest/operator-guide/helm-chart/>
 [docs-operator-guide]: <https://krini.readthedocs.io/en/latest/operator-guide/>
 [docs-user-guide]: <https://krini.readthedocs.io/en/latest/user-guide/>
 [releases]: <https://github.com/elixir-cloud-aai/krini/releases>

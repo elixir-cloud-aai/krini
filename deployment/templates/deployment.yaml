@@ -1,0 +1,113 @@
+{{- $values := .Values.krini -}}
+{{- $preStop := int ($values.preStopSleepSeconds | default 0) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "krini.fullname" . | quote }}
+  labels:
+    {{- include "krini.labels" . | nindent 4 }}
+spec:
+  replicas: {{ $values.replicas }}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      {{- include "krini.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        {{- include "krini.labels" . | nindent 8 }}
+    spec:
+      # The pod doesn't call the Kubernetes API
+      automountServiceAccountToken: false
+      # No `<SERVICE>_PORT` etc. variables of the Services in the namespace
+      enableServiceLinks: false
+      securityContext:
+        {{- include "krini.securityContext" (dict "root" . "context" $values.podSecurityContext) | nindent 8 }}
+      # Time for the `preStop` delay, then 30 seconds to finish requests
+      terminationGracePeriodSeconds: {{ add $preStop 30 }}
+      containers:
+      - name: krini
+        image: {{ include "krini.image" . | quote }}
+        imagePullPolicy: {{ $values.imagePullPolicy | default "Always" }}
+        env:
+        {{- include "krini.env" . | trim | nindent 8 }}
+        {{- with include "krini.extraEnv" . }}
+        {{- . | nindent 8 }}
+        {{- end }}
+        ports:
+        - name: http
+          containerPort: {{ include "krini.port" . }}
+          protocol: TCP
+        # Probes request `krini.probePath` (the privacy notice: no login, no
+        # requests to other services), unless replaced. Up to 5 minutes are
+        # allowed for the start before liveness checks
+        startupProbe:
+        {{- with $values.startupProbe }}
+          {{- toYaml . | nindent 10 }}
+        {{- else }}
+          httpGet:
+            path: {{ $values.probePath | quote }}
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+        {{- end }}
+        readinessProbe:
+        {{- with $values.readinessProbe }}
+          {{- toYaml . | nindent 10 }}
+        {{- else }}
+          httpGet:
+            path: {{ $values.probePath | quote }}
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        {{- end }}
+        livenessProbe:
+        {{- with $values.livenessProbe }}
+          {{- toYaml . | nindent 10 }}
+        {{- else }}
+          httpGet:
+            path: {{ $values.probePath | quote }}
+            port: http
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        {{- end }}
+        {{- if gt $preStop 0 }}
+        # Keep serving until the ingress controller and Service have removed
+        # the pod from their endpoints
+        lifecycle:
+          preStop:
+            exec:
+              command: ["sleep", {{ $preStop | toString | quote }}]
+        {{- end }}
+        resources:
+          {{- toYaml ($values.resources | default dict) | nindent 10 }}
+        securityContext:
+          {{- include "krini.securityContext" (dict "root" . "context" $values.securityContext) | nindent 10 }}
+        volumeMounts:
+        # Writable, as the root file system is read-only: Next.js's cache
+        # (`/tmp/next-cache`), up to `krini.tmpSizeLimit`
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        {{- include "krini.emptyDir" $values.tmpSizeLimit | nindent 8 }}
+      {{- with $values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,15 @@
+apiVersion: v2
+name: krini
+description: >-
+  Krini, a virtual research environment for running and managing life
+  science analyses on GA4GH TES and WES services, by ELIXIR On-Cloud
+type: application
+# Placeholders: the chart isn't released yet, so `version` stays `0.0.0`.
+# `appVersion` is the default image tag, so the chart in the repository
+# deploys the `dev` image unless `krini.tag` is set (see
+# docs/operator-guide/helm-chart.md, Image)
+version: 0.0.0
+appVersion: "dev"
+home: https://krini.readthedocs.io/
+sources:
+  - https://github.com/elixir-cloud-aai/krini

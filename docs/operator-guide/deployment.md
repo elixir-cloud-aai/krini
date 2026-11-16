@@ -1,7 +1,8 @@
 # Deployment
 
 How to run the container image of Krini, pass it its settings, and prepare
-the login provider and the TES and WES services for it.
+the login provider and the TES and WES services for it. On Kubernetes or
+OpenShift, install Krini with the [Helm chart](helm-chart.md).
 
 ## Container image
 
@@ -244,7 +245,7 @@ its build takes no settings. Pass the settings of
 environment variables, for example:
 
 - Docker: `docker run --env-file krini.env ...`, with `krini.env` kept outside the repository and the build context. Docker reads plain `KEY=value` lines and doesn't strip quotes, so write `PRIVACY_CONTROLLER=Example Institute, Example City`, not `PRIVACY_CONTROLLER="..."`.
-- Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `LOGIN_PROVIDERS` (it contains each provider's `clientSecret`), referenced with `envFrom` or `env[].valueFrom` in the deployment.
+- Kubernetes or OpenShift: install the [Helm chart](helm-chart.md), which passes the settings of its values to the container and `LOGIN_PROVIDERS` (it contains each provider's `clientSecret`) from a `Secret` of your own. Without the chart, use a `ConfigMap` for the non-secret settings and a `Secret` for `LOGIN_PROVIDERS`, referenced with `envFrom` or `env[].valueFrom` in the deployment.
 
 Changing a setting needs a restart, not a new image; which settings reach
 the browser is described in [Configuration](configuration.md#settings).
