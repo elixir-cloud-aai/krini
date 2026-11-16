@@ -68,8 +68,9 @@ krini:
   # (e.g., `docker.io/elixircloud/krini:0.1.0`); fully qualified, as some
   # runtimes (e.g., CRI-O, Podman) refuse short names
   image: docker.io/elixircloud/krini
-  # Image tag; the chart's `appVersion` (`dev`) if empty. Deploy a release
-  # (`X.Y.Z`) or a commit (`sha-<commit>`) instead (see
+  # Image tag; the chart's `appVersion` if empty: the release version in the
+  # chart attached to a release, `dev` in the repository. Set it to deploy
+  # another release (`X.Y.Z`) or a commit (`sha-<commit>`) (see
   # docs/operator-guide/helm-chart.md, Image)
   tag: ""
   # Pull policy of the image (`Always`, `IfNotPresent` or `Never`); `Always`,
