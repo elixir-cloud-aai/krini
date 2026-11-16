@@ -166,8 +166,14 @@ deploys the release's image by default (`appVersion` is its tag).
     exists, `prepare` fails; a re-run of `Publish release` passes without
     changes if an earlier attempt created the release after all. `prepare`
     can't see draft releases and `Publish release` fails on them, so delete
-    any draft of the tag before you push the tag. If `prepare` fails because
-    CI hasn't finished for the commit, re-run the workflow once it passed.
+    any draft of the tag before you push the tag. If `Publish release` was
+    cancelled (or lost its runner) after it created the draft, the draft
+    stays, and a re-run fails on it: delete the draft
+    (`gh release delete v<version> --repo elixir-cloud-aai/krini`, without
+    `--cleanup-tag`, which would delete the tag) and re-run the failed jobs.
+    A draft isn't a release, so deleting it is safe. If `prepare` fails
+    because CI hasn't finished for the commit, re-run the workflow once it
+    passed.
 
 ## Repository Settings
 
