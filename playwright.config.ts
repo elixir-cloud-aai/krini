@@ -27,17 +27,18 @@ const image = process.env.E2E_IMAGE || undefined;
 
 // The image and the certificate directory (where the mock services write
 // it: relative to this file, the web servers' working directory) are part
-// of a shell command: only the characters of image references and of plain
-// paths, without quotes, spaces or `$`
+// of a shell command: the image only with the characters of image
+// references, the path in single quotes, so without single quotes, line
+// breaks or `:` (the separator of `--volume`)
 const certPath = resolve(__dirname, certDir);
 if (image !== undefined && !/^\w[\w.:/@-]*$/.test(image)) {
     throw new Error(
         `E2E_IMAGE has characters of no image reference: '${image}'`,
     );
 }
-if (image !== undefined && !/^[\w./-]+$/.test(certPath)) {
+if (image !== undefined && /['\n\r:]/.test(certPath)) {
     throw new Error(
-        `Run the tests with E2E_IMAGE from a plain path, not '${certPath}'`,
+        `Run the tests with E2E_IMAGE from a path without single quotes, line breaks or ':', not '${certPath}'`,
     );
 }
 
@@ -76,7 +77,7 @@ const app = image
           command: [
               "docker run --rm --init --name krini-e2e --network host",
               "--read-only --tmpfs /tmp",
-              `--volume ${certPath}:/certs:ro`,
+              `--volume '${certPath}:/certs:ro'`,
               "--env PORT --env NODE_EXTRA_CA_CERTS",
               ...Object.keys(appEnv).map((name) => `--env ${name}`),
               image,
