@@ -74,8 +74,8 @@ deploys the release's image by default (`appVersion` is its tag).
     (keep these commands in sync with the `prepare` job of
     `.github/workflows/release.yml`), in Bash, with `git`, `jq`, `yq`
     ([mikefarah/yq](https://github.com/mikefarah/yq) v4), `curl`, Python 3,
-    `bun`, `tar`, [Helm](https://helm.sh/) 3.22.1 (the version of
-    `release.yml`) and the [GitHub CLI](https://cli.github.com/). Run them
+    `bun`, `tar`, `sha256sum`, [Helm](https://helm.sh/) 3.22.1 (the version
+    of `release.yml`) and the [GitHub CLI](https://cli.github.com/). Run them
     before tagging: tags can't be moved or deleted, and the release workflow
     checks the tagged commit, so a check that fails after the tag is pushed
     (other than a CI run that hasn't finished yet) fails again on re-runs,
