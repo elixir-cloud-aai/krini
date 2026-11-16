@@ -1,26 +1,26 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useTESStore } from "@/stores/tes";
+import { useTESProvider } from "@/hooks";
 
-const ECCClientGa4ghTesCreateRuns = dynamic(
+const ECCClientGa4ghTesRunCreate = dynamic(
     () =>
-        import("@elixir-cloud/tes/dist/react").then(
-            (mod) => mod.ECCCLientGa4ghTesCreateRun,
+        import("@elixir-cloud/tes/react").then(
+            (mod) => mod.ECCClientGa4ghTesRunCreate,
         ),
     {
         ssr: false,
         loading: () => (
             <div className="p-4 text-sm text-muted-foreground">
-                Loading task runs...
+                Loading task form...
             </div>
         ),
     },
 );
 
 export function ECCClientGa4ghTesCreateRunsClient() {
-    const selectedServer = useTESStore((state) => state.selectedServer);
+    const provider = useTESProvider();
 
-    if (!selectedServer) {
+    if (!provider) {
         return (
             <div className="p-4 text-sm text-muted-foreground text-center">
                 Select a TES instance to create task runs.
@@ -28,7 +28,5 @@ export function ECCClientGa4ghTesCreateRunsClient() {
         );
     }
 
-    const baseURL = `${selectedServer.replace(/\/+$/, "")}/ga4gh/tes/v1`;
-
-    return <ECCClientGa4ghTesCreateRuns baseURL={baseURL} />;
+    return <ECCClientGa4ghTesRunCreate provider={provider} />;
 }

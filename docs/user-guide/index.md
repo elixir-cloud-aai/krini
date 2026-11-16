@@ -9,27 +9,30 @@ that its operator has configured.
 ## Browsing without login
 
 Opening Krini takes you to the dashboard. Without login, the **Tasks** and
-**Workflows** pages list the TES and WES services of the registry (WES
-services only if they are served over `https`), and the service info page
+**Workflows** pages list the TES and WES services of the registry that are
+served over `https`, and the service info page
 shows what a WES service supports (e.g. workflow languages and versions).
 
 ## Logging in
 
-Use **Login** to log in with one of the deployment's login providers (LS
-Login for the ELIXIR On-Cloud deployment). Krini then sends your access
-token
-to the WES services you use, so that they know who you are; services that
-require login accept it only if they trust the deployment's client (see the
+Use **Login** to log in with LS Login. Krini then sends your access token
+to the TES and WES services you use, so that they know who you are;
+services that require login accept it only if they trust the deployment's
+client (see the
 [Operator guide](../operator-guide/deployment.md#service-configuration)).
-Requests to TES services don't carry your token yet
-([krini#44](https://github.com/elixir-cloud-aai/krini/issues/44)).
 Your name in the sidebar opens a menu with your e-mail address and
 **Logout**.
 
 ## Running tasks and workflows
 
 - **Tasks**: choose a TES service, then create a task (container image,
-  command, inputs and outputs) and follow the tasks you submitted.
+  command, inputs and outputs) and follow the tasks you submitted. **View
+  Details** shows a task's state and logs; **Cancel** stops a task that
+  hasn't finished. The details page always shows the task on the service
+  you listed it from, so you can reload or bookmark it; a link without a
+  service uses the selected service, or asks you to choose one. Which
+  tasks the list shows depends on the service: a gateway such as proTES
+  shows only your own tasks.
 - **Workflows**: choose a WES service, then submit a workflow run (workflow
   URL, type and version, parameters) and follow your runs.
 
