@@ -143,11 +143,23 @@ To verify such images, use the fork's repository in the
 
 ## Service configuration
 
-For Krini to authenticate with WES services, the login provider and the
-services need the following configuration. Krini doesn't send tokens to
-TES services yet
-([krini#44](https://github.com/elixir-cloud-aai/krini/issues/44)); the same
-requirements will apply to them then.
+Krini sends the user's access token to the TES and WES services from the
+browser, and lists only services whose registry entry has an `https` URL.
+That URL must be the base URL of the API, as in the GA4GH service registry,
+e.g. `https://tes.example.org/ga4gh/tes/v1`: Krini appends the API paths
+(e.g. `/tasks`) to it.
+
+!!! warning "Only trusted services in the registry"
+    Krini sends the token to every TES and WES service of the registry that
+    a user selects. Use a registry in which only administrators can
+    register services (in the Cloud Registry, remove the
+    `register-services` policy for regular users), so that nobody can add
+    a service that collects tokens. Filtering the list to verified
+    services in Krini is planned
+    ([krini#40](https://github.com/elixir-cloud-aai/krini/issues/40)).
+
+For the services to accept the token, the login provider and the services
+need the following configuration.
 
 ### Scopes
 

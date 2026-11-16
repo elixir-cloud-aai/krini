@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
 import {
+    getAppOrigin,
     getEndpoints,
     getProviderById,
     getRedirectUri,
@@ -10,9 +11,29 @@ import {
 } from "@/lib/oidc";
 import { applySessionCookies } from "@/lib/session-cookies";
 
+function appUrl(path: string, request: NextRequest) {
+    const appOrigin = process.env.APP_ORIGIN;
+    if (appOrigin) {
+        try {
+            const { origin, protocol } = new URL(appOrigin);
+            if (protocol === "http:" || protocol === "https:") {
+                return new URL(path, origin);
+            }
+        } catch {}
+        console.error(
+            "OIDC callback error: APP_ORIGIN isn't a valid http(s) origin; redirecting to the origin of the request",
+        );
+    } else {
+        console.error(
+            "OIDC callback error: APP_ORIGIN isn't set; redirecting to the origin of the request",
+        );
+    }
+    return new URL(path, request.url);
+}
+
 function redirectError(request: NextRequest, type: string, state?: string) {
     const response = NextResponse.redirect(
-        new URL(`/auth/error?type=${type}`, request.url),
+        appUrl(`/auth/error?type=${type}`, request),
     );
     if (state) expireLoginArtifacts(response, state);
     return response;
@@ -64,6 +85,20 @@ export async function GET(request: NextRequest) {
     const redirectUri = getRedirectUri();
     if (!redirectUri) {
         return redirectError(request, "internal");
+    }
+
+    const appOrigin = getAppOrigin();
+    if (appOrigin) {
+        try {
+            if (new URL(redirectUri).origin !== new URL(appOrigin).origin) {
+                console.error(
+                    "OIDC callback error: category=origin_mismatch, callback and app origins differ",
+                );
+                return redirectError(request, "internal");
+            }
+        } catch {
+            return redirectError(request, "internal");
+        }
     }
 
     const cookieStore = await cookies();
@@ -143,7 +178,7 @@ export async function GET(request: NextRequest) {
         }
 
         const responseRedirect = NextResponse.redirect(
-            new URL("/dashboard", request.url),
+            appUrl("/dashboard", request),
         );
         applySessionCookies(responseRedirect, response.data, provider.id);
         expireLoginArtifacts(responseRedirect, state);

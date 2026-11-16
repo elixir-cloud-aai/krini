@@ -1,10 +1,12 @@
 "use client";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { useTESProvider } from "@/hooks";
 import { useTESStore } from "@/stores/tes";
 
 const ECCClientGa4ghTesRuns = dynamic(
     () =>
-        import("@elixir-cloud/tes/dist/react").then(
+        import("@elixir-cloud/tes/react").then(
             (mod) => mod.ECCClientGa4ghTesRuns,
         ),
     {
@@ -18,9 +20,16 @@ const ECCClientGa4ghTesRuns = dynamic(
 );
 
 export function ECCClientGa4ghTesRunsClient() {
+    const router = useRouter();
     const selectedServer = useTESStore((state) => state.selectedServer);
+    const servers = useTESStore((state) => state.servers);
+    const provider = useTESProvider();
+    // the details link names the service, so the task is looked up there
+    const serviceId = servers.find(
+        (server) => server.url === selectedServer,
+    )?.id;
 
-    if (!selectedServer) {
+    if (!provider) {
         return (
             <div className="p-4 text-sm text-muted-foreground text-center">
                 Select a TES instance to view task runs.
@@ -28,9 +37,19 @@ export function ECCClientGa4ghTesRunsClient() {
         );
     }
 
-    const baseURL = `${selectedServer.replace(/\/+$/, "")}/ga4gh/tes/v1`;
-
     return (
-        <ECCClientGa4ghTesRuns key={baseURL} baseURL={baseURL} pageSize={10} />
+        <ECCClientGa4ghTesRuns
+            key={selectedServer}
+            provider={provider}
+            pageSize={10}
+            onEccRunsSelected={(event) =>
+                router.push(
+                    `/dashboard/tasks/details?${new URLSearchParams({
+                        id: event.detail.runId,
+                        ...(serviceId ? { service: serviceId } : {}),
+                    })}`,
+                )
+            }
+        />
     );
 }

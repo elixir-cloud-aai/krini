@@ -107,7 +107,10 @@ export function getAppOrigin(): string | null {
     const origin = process.env.APP_ORIGIN;
     if (!origin) return null;
     try {
-        return new URL(origin).origin;
+        const url = new URL(origin);
+        return url.protocol === "http:" || url.protocol === "https:"
+            ? url.origin
+            : null;
     } catch {
         return null;
     }
