@@ -1,0 +1,185 @@
+# Default values of the Krini chart; see docs/operator-guide/helm-chart.md
+# for all of them. The chart has no defaults for a deployment: set at least
+# `hostName` (or `config.appOrigin`), `config.cloudRegistryUrl` and
+# `loginProviders.existingSecret`, in a values file of the deployment kept
+# outside this repository; rendering fails without them.
+
+# Resource names are derived from the release name: `<release>-krini` (or
+# `<release>` if it contains `krini`); `nameOverride` replaces the chart
+# name, `fullnameOverride` the derived name. Set them at installation only:
+# changing them later changes the pod selector, which can't be upgraded
+nameOverride: ""
+fullnameOverride: ""
+
+# Public host name of Krini (of the Ingress, HTTPRoute or Route); also sets
+# `APP_ORIGIN` to `https://<hostName>`, unless `config.appOrigin` is set
+hostName: ""
+
+# Settings of Krini, passed to its container as environment variables (see
+# docs/operator-guide/configuration.md); empty values aren't passed, so that
+# Krini's defaults apply. All of them are public: they must not contain
+# secrets
+config:
+  # Base URL of the Cloud Registry (`CLOUD_REGISTRY_URL`); required
+  cloudRegistryUrl: ""
+  # Origin of Krini as browsers see it (`APP_ORIGIN`): `https://`, host
+  # and optional port, without path or trailing slash (e.g.,
+  # `https://krini.example.org`); `https://<hostName>` if empty
+  appOrigin: ""
+  # Callback URL of the login (`OIDC_REDIRECT_URI`); Krini uses
+  # `<APP_ORIGIN>/auth/api/callback` if empty
+  oidcRedirectUri: ""
+  # URL where users request access to compute services
+  # (`COMPUTE_ACCESS_REQUEST_URL`), if any
+  computeAccessRequestUrl: ""
+  # Who is responsible for the deployment, for the privacy notice at
+  # `/privacy` (`PRIVACY_*`; see docs/operator-guide/configuration.md,
+  # Privacy notice)
+  privacy:
+    # Name and address of the controller (`PRIVACY_CONTROLLER`)
+    controller: ""
+    # Email address or `https` URL for privacy questions (`PRIVACY_CONTACT`)
+    contact: ""
+    # `https` URL of the deployment's full privacy notice
+    # (`PRIVACY_NOTICE_URL`)
+    noticeUrl: ""
+    # `https` URL of the login provider's privacy notice
+    # (`PRIVACY_LOGIN_NOTICE_URL`)
+    loginNoticeUrl: ""
+
+# The login providers (`LOGIN_PROVIDERS`, a JSON array with each provider's
+# `clientSecret`), from a key of an existing Secret: the chart never holds
+# them. Changing the Secret needs a restart of the pods (`kubectl rollout
+# restart`)
+loginProviders:
+  # Name of the Secret; required
+  existingSecret: ""
+  # Key of the Secret with the JSON array
+  secretKey: login-providers
+
+# Further environment variables of Krini's container (Kubernetes `EnvVar`s,
+# e.g., `LISTEN_HOSTNAME` or values from Secrets of your own); rendering
+# fails for those that the chart sets (see
+# docs/operator-guide/helm-chart.md, Configuration)
+extraEnv: []
+
+krini:
+  # Image repository; may include a tag or digest instead of setting `tag`
+  # (e.g., `docker.io/elixircloud/krini:0.1.0`); fully qualified, as some
+  # runtimes (e.g., CRI-O, Podman) refuse short names
+  image: docker.io/elixircloud/krini
+  # Image tag; the chart's `appVersion` (`dev`) if empty. Deploy a release
+  # (`X.Y.Z`) or a commit (`sha-<commit>`) instead (see
+  # docs/operator-guide/helm-chart.md, Image)
+  tag: ""
+  # Pull policy of the image (`Always`, `IfNotPresent` or `Never`); `Always`,
+  # so that moving tags such as `dev` deploy their latest image
+  imagePullPolicy: Always
+  # Path of the startup, readiness and liveness probes: the privacy notice,
+  # served without login and without requests to other services
+  probePath: /privacy
+  # Probes of the container (Kubernetes probe specs); if set, one replaces
+  # the default on `probePath` entirely
+  startupProbe: {}
+  readinessProbe: {}
+  livenessProbe: {}
+  # Number of pods. Sessions are in cookies, but each pod remembers the
+  # refresh tokens it just used only in memory: with more than one pod,
+  # concurrent token refreshes of a session (e.g., two tabs) that reach
+  # different pods can log the user out, unless the ingress keeps each
+  # browser on one pod (sticky sessions; see
+  # docs/operator-guide/helm-chart.md, Pods)
+  replicas: 1
+  # PodDisruptionBudget, so that voluntary disruptions (e.g., node drains)
+  # evict at most `maxUnavailable` pods at once (1 if neither it nor
+  # `minAvailable` is set), or keep at least `minAvailable` (a number or a
+  # percentage, e.g., `50%`; set at most one of them). Only rendered with
+  # more than one replica, as no budget keeps a single pod available
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: null
+    maxUnavailable: null
+  # Krini is exposed for `hostName` via one of: an Ingress (`ingress`), a
+  # Gateway API HTTPRoute (`httpRoute`; disable the Ingress to enable it)
+  # or, if neither is enabled and the cluster serves Routes, an OpenShift
+  # Route (`route`); see docs/operator-guide/helm-chart.md, Exposing Krini
+  ingress:
+    enabled: true
+    # Ingress class (`spec.ingressClassName`); the cluster's default class
+    # if empty
+    className: ""
+    # Annotations of the Ingress, e.g., for the ingress controller; they
+    # take precedence over those set by the chart for `https`, and `null`
+    # removes one of these
+    annotations: {}
+    https:
+      # Request a certificate from cert-manager (via `issuer`, the name of
+      # a ClusterIssuer of the cluster; required if enabled) and serve HTTPS
+      enabled: false
+      issuer: ""
+  # Gateway API HTTPRoute (`gateway.networking.k8s.io/v1`) for `hostName`,
+  # attached to an existing Gateway, whose listener terminates TLS;
+  # requires `ingress.enabled: false`
+  httpRoute:
+    enabled: false
+    # Annotations of the HTTPRoute
+    annotations: {}
+    # Gateways (or listeners, via `sectionName` or `port`) to attach to;
+    # required if enabled, e.g.,
+    # `[{name: gateway, namespace: gateway-system, sectionName: https}]`
+    parentRefs: []
+  # OpenShift Route for all paths (TLS at the router, which redirects HTTP
+  # to HTTPS)
+  route:
+    # Create the Route if neither the Ingress nor the HTTPRoute is enabled
+    # and the cluster serves Routes; false, e.g., for a Route of your own
+    enabled: true
+    # Annotations of the Route, e.g., for the router's timeouts or rate
+    # limits
+    annotations: {}
+  # NetworkPolicy allowing connections to Krini only from `ingressFrom`
+  # (and the kubelet's probes); clusters without NetworkPolicy support
+  # ignore it. Disabled by default: to enable it, set `ingressFrom` to the
+  # pods of the cluster's ingress controller or Gateway
+  networkPolicy:
+    enabled: false
+    # NetworkPolicy peers (`spec.ingress[].from`) allowed to connect;
+    # rendering fails if the policy is enabled without any (which would
+    # allow all sources)
+    ingressFrom: []
+  # Security contexts of the pod and the container. The image runs as the
+  # user `bun` (UID 1000), set here as a number so that Kubernetes can check
+  # `runAsNonRoot`, with a read-only root file system; temporary files go to
+  # an `emptyDir` at `/tmp`. On OpenShift, `runAsUser`, `runAsGroup`,
+  # `fsGroup` and `seccompProfile` are omitted, as OpenShift assigns them
+  # (and some clusters, such as CSC Rahti, reject `RuntimeDefault`)
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    readOnlyRootFilesystem: true
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  # Size limit of the `emptyDir` at `/tmp`, which holds Next.js's cache
+  # (e.g., optimized images; the pod is evicted if it is exceeded): a
+  # quantity (e.g., `256Mi`) or a number of bytes; `null` for none
+  tmpSizeLimit: 256Mi
+  # Seconds that Krini keeps serving after its pod is deleted, before it
+  # shuts down (`preStop` hook), so that the ingress controller and Service
+  # stop sending requests to it first; 0: no delay (no hook)
+  preStopSleepSeconds: 5
+  # Further settings of the pod
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

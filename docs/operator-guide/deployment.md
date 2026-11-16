@@ -1,7 +1,8 @@
 # Deployment
 
 How to run the container image of Krini, pass it its settings, and prepare
-the login provider and the TES and WES services for it.
+the login provider and the TES and WES services for it. On Kubernetes or
+OpenShift, install Krini with the [Helm chart](helm-chart.md).
 
 ## Container image
 
@@ -142,11 +143,23 @@ To verify such images, use the fork's repository in the
 
 ## Service configuration
 
-For Krini to authenticate with WES services, the login provider and the
-services need the following configuration. Krini doesn't send tokens to
-TES services yet
-([krini#44](https://github.com/elixir-cloud-aai/krini/issues/44)); the same
-requirements will apply to them then.
+Krini sends the user's access token to the TES and WES services from the
+browser, and lists only services whose registry entry has an `https` URL.
+That URL must be the base URL of the API, as in the GA4GH service registry,
+e.g. `https://tes.example.org/ga4gh/tes/v1`: Krini appends the API paths
+(e.g. `/tasks`) to it.
+
+!!! warning "Only trusted services in the registry"
+    Krini sends the token to every TES and WES service of the registry that
+    a user selects. Use a registry in which only administrators can
+    register services (in the Cloud Registry, remove the
+    `register-services` policy for regular users), so that nobody can add
+    a service that collects tokens. Filtering the list to verified
+    services in Krini is planned
+    ([krini#40](https://github.com/elixir-cloud-aai/krini/issues/40)).
+
+For the services to accept the token, the login provider and the services
+need the following configuration.
 
 ### Scopes
 
@@ -244,7 +257,7 @@ its build takes no settings. Pass the settings of
 environment variables, for example:
 
 - Docker: `docker run --env-file krini.env ...`, with `krini.env` kept outside the repository and the build context. Docker reads plain `KEY=value` lines and doesn't strip quotes, so write `PRIVACY_CONTROLLER=Example Institute, Example City`, not `PRIVACY_CONTROLLER="..."`.
-- Kubernetes or OpenShift: a `ConfigMap` for the non-secret settings and a `Secret` for `LOGIN_PROVIDERS` (it contains each provider's `clientSecret`), referenced with `envFrom` or `env[].valueFrom` in the deployment.
+- Kubernetes or OpenShift: install the [Helm chart](helm-chart.md), which passes the settings of its values to the container and `LOGIN_PROVIDERS` (it contains each provider's `clientSecret`) from a `Secret` of your own. Without the chart, use a `ConfigMap` for the non-secret settings and a `Secret` for `LOGIN_PROVIDERS`, referenced with `envFrom` or `env[].valueFrom` in the deployment.
 
 Changing a setting needs a restart, not a new image; which settings reach
 the browser is described in [Configuration](configuration.md#settings).

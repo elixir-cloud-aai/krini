@@ -1,0 +1,2 @@
+{{- /* Checks of the values (see `krini.validate`); renders no object */ -}}
+{{- include "krini.validate" . -}}

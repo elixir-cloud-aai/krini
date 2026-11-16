@@ -1,0 +1,41 @@
+{{- $fullname := include "krini.fullname" . -}}
+{{- $origin := include "krini.appOrigin" . -}}
+{{- $ingress := .Values.krini.ingress.enabled -}}
+{{- $httpRoute := .Values.krini.httpRoute.enabled -}}
+{{- $exposed := or $ingress $httpRoute (include "krini.routeEnabled" .) -}}
+Krini is being deployed as release {{ .Release.Name }} in namespace {{ .Release.Namespace }},
+with the image {{ include "krini.image" . }}.
+{{- if and $ingress (.Capabilities.APIVersions.Has "route.openshift.io/v1") }}
+
+WARNING: This cluster serves OpenShift Routes, but the chart created an
+Ingress, which OpenShift serves without TLS. Set krini.ingress.enabled to
+false to get a Route with TLS instead.
+{{- else if and $ingress (not .Values.krini.ingress.https.enabled) }}
+
+NOTE: The Ingress has no TLS (krini.ingress.https.enabled is false), so TLS
+must be terminated in front of the cluster: Krini sets secure cookies and
+sends users back to {{ $origin }} after the login.
+{{- end }}
+{{- if $httpRoute }}
+
+The HTTPRoute serves Krini via the Gateway in krini.httpRoute.parentRefs:
+make sure that its listener terminates TLS for {{ .Values.hostName }}, and
+check that the route is accepted with
+`kubectl get httproute {{ $fullname }} -n {{ .Release.Namespace }} -o yaml`.
+{{- end }}
+{{- if not $exposed }}
+
+WARNING: Neither an Ingress, an HTTPRoute nor an OpenShift Route was
+created, so Krini is only reachable within the cluster, unless resources
+outside the release expose it at {{ $origin }}.
+{{- end }}
+
+Check the rollout and test the release with:
+
+  kubectl rollout status deployment/{{ $fullname }} -n {{ .Release.Namespace }}
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+Then open {{ $origin }} in a browser. Register
+{{ .Values.config.oidcRedirectUri | default (printf "%s/auth/api/callback" (trimSuffix "/" $origin)) }}
+as a redirect URI of each login provider's client, and see "Service
+configuration" in the operator guide for what the TES and WES services need.

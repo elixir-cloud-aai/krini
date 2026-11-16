@@ -43,6 +43,18 @@ describe("GET /api/tasks/get-tes-servers", () => {
         expect(get).toHaveBeenCalledWith(`${registryUrl}/services`);
     });
 
+    it("lists only services over https", async () => {
+        const tes = service("tes", "tes");
+        const { response } = await tesServers([
+            tes,
+            { ...service("plain", "tes"), url: "http://plain.example.org" },
+            { ...service("bad", "tes-gateway"), url: "not a URL" },
+            { ...service("none", "tes"), url: undefined },
+        ]);
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual([tes]);
+    });
+
     it("ignores trailing slashes of the registry URL", async () => {
         setUp();
         vi.stubEnv("CLOUD_REGISTRY_URL", `${registryUrl}//`);

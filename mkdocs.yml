@@ -73,6 +73,7 @@ nav:
   - Operator guide:
       - operator-guide/index.md
       - Deployment: operator-guide/deployment.md
+      - Helm chart: operator-guide/helm-chart.md
       - Configuration: operator-guide/configuration.md
       - Upgrading: operator-guide/upgrading.md
   - Development:

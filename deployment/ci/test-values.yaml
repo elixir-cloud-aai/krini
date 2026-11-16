@@ -1,0 +1,8 @@
+# Values for rendering and installing the chart in CI (the `chart` and
+# `chart-install` jobs of `.github/workflows/ci.yml`); placeholders only.
+# The Secret `krini-login-providers` is created by the `chart-install` job
+hostName: krini.example.org
+config:
+  cloudRegistryUrl: https://registry.example.org
+loginProviders:
+  existingSecret: krini-login-providers

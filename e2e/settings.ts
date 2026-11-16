@@ -7,7 +7,7 @@
 const appPort = 3210;
 /** Port of the mock login provider and registry */
 const mockHttpPort = 8291;
-/** Port of the mock WES service */
+/** Port of the mock WES and TES services */
 const mockHttpsPort = 8444;
 
 const appURL = `http://localhost:${appPort}`;
@@ -33,6 +33,15 @@ type WesRequest = {
     fields?: Record<string, string>;
 };
 
+/** A request that the mock TES service received */
+type TesRequest = {
+    method: string;
+    path: string;
+    authorization: string | null;
+    /** Body of a task request */
+    body?: unknown;
+};
+
 export {
     appPort,
     appURL,
@@ -41,5 +50,6 @@ export {
     mockHttpsPort,
     mockURL,
     privacy,
+    type TesRequest,
     type WesRequest,
 };
