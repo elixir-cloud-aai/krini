@@ -406,7 +406,9 @@ jobs:
   # The Helm chart in `deployment/` (see
   # `docs/operator-guide/helm-chart.md`): lint with the CI values, and the
   # chart tests (`deployment/tests/test-chart.sh`), which render it with
-  # other values and check the objects and the errors of invalid values
+  # other values and check the objects and the errors of invalid values, and
+  # the packaging for releases (`deployment/tests/test-package.sh`, which
+  # runs `scripts/package-chart.sh` as `release.yml` does)
   chart:
     name: Chart
     runs-on: ubuntu-latest
@@ -426,6 +428,9 @@ jobs:
       # yq and jq of the runner image
       - name: Test chart
         run: deployment/tests/test-chart.sh
+      # Same Helm version as the `prepare` job of `release.yml`
+      - name: Test chart packaging
+        run: deployment/tests/test-package.sh
 
   # Installs the chart on a kind cluster with the image built from the
   # commit, runs `helm test` and upgrades the release
@@ -731,7 +736,7 @@ jobs:
       - name: Check versions and release notes
         env:
           SHA: ${{ github.sha }}
-          CHECKER: https://raw.githubusercontent.com/elixir-cloud-aai/.github/31f22fccc1f3c597ed7c1d1f75b2f85522155348/actions/publish-release/publish.py
+          CHECKER: https://raw.githubusercontent.com/elixir-cloud-aai/.github/bf3840c9c072aaf37d6cafe199aaa1994087d1ef/actions/publish-release/publish.py
         run: |
           if [[ ! -f CITATION.cff ]]; then
             echo "::error::CITATION.cff is missing"
