@@ -147,5 +147,31 @@ assert_fails "short image name" "image" 0.1.0 elixircloud/krini "${work}/a"
 assert_fails "upper-case image" "image" 0.1.0 docker.io/ElixirCloud/krini "${work}/a"
 assert_fails "non-empty output" "not empty" 0.1.0 "${image}" "${work}/release"
 
+# --- A package that fails the checks of the script ---
+# A `helm` that packages with another `appVersion` than asked for (and is
+# the real one otherwise), so that the check of the package must fail
+fake="${work}/fake-helm"
+mkdir -p "${fake}"
+cat > "${fake}/helm" <<EOF
+#!/usr/bin/env bash
+if [[ "\$1" == package ]]; then
+  args=()
+  while [[ \$# -gt 0 ]]; do
+    if [[ "\$1" == --app-version ]]; then
+      args+=("\$1" 9.9.9)
+      shift 2
+    else
+      args+=("\$1")
+      shift
+    fi
+  done
+  exec "$(command -v helm)" "\${args[@]}"
+fi
+exec "$(command -v helm)" "\$@"
+EOF
+chmod +x "${fake}/helm"
+PATH="${fake}:${PATH}" assert_fails "wrong appVersion in the package" \
+  "appVersion is '9.9.9', expected '0.1.0'" 0.1.0 "${image}" "${work}/wrong-app-version"
+
 echo "${tests} tests, ${failures} failures"
 [[ "${failures}" -eq 0 ]]
