@@ -22,7 +22,8 @@ const port = appPort;
 const baseURL = appURL;
 const mockHttp = mockURL;
 const certDir = "e2e/.certs";
-const image = process.env.E2E_IMAGE;
+// empty counts as unset
+const image = process.env.E2E_IMAGE || undefined;
 
 // The image and the certificate directory (where the mock services write
 // it: relative to this file, the web servers' working directory) are part

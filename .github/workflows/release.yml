@@ -6,8 +6,9 @@
 # attestations) by digest, untagged (`push`); scan exactly that digest for
 # vulnerabilities in a job of its own, without the release credentials and
 # signing identity (`scan`), smoke-test it and run the end-to-end tests on
-# it as CI does (`smoke`, `e2e`); and only then attest its build provenance, sign it (Sigstore keyless signing)
-# and tag it (`release-image`; see "Verifying images" in
+# it as CI does (`smoke`, `e2e`); and only then attest its build
+# provenance, sign it (Sigstore keyless signing) and tag it
+# (`release-image`; see "Verifying images" in
 # `docs/operator-guide/deployment.md`). Last, create the GitHub release
 # with the curated notes followed by GitHub's generated notes (`publish`,
 # shared action

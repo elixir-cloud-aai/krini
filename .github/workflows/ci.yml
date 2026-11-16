@@ -4,7 +4,8 @@
 # an audit of the production dependencies, the Docker image (a smoke test
 # with a read-only root file system) and its scan for known vulnerabilities
 # (Trivy), the end-to-end tests against mock services (`e2e/mock/`) on the
-# build of the checkout and, separately, on the image, the Helm chart (lint and tests, and an installation on a kind cluster), the
+# build of the checkout and, separately, on the image, the Helm chart
+# (lint and tests, and an installation on a kind cluster), the
 # documentation (strict MkDocs build), the release readiness, and, on
 # pushes, push the image by digest (with SBOM and provenance attestations),
 # scan exactly that digest, then attest, sign (Sigstore) and tag it with
@@ -366,17 +367,22 @@ jobs:
       - name: Load the image
         if: ${{ github.event_name != 'push' }}
         run: docker load -i "${RUNNER_TEMP}/image.tar"
-      - name: Pull the pushed image
-        if: ${{ github.event_name == 'push' }}
+      - name: Determine image
+        id: image
         env:
+          EVENT_NAME: ${{ github.event_name }}
           DIGEST: ${{ needs.push.outputs.digest }}
         run: |
+          if [[ "${EVENT_NAME}" != "push" ]]; then
+            echo "image=${IMAGE_NAME}:scan" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [[ ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
             echo "::error::Invalid image digest '${DIGEST}'"
             exit 1
           fi
           docker pull "${IMAGE_NAME}@${DIGEST}"
-          docker tag "${IMAGE_NAME}@${DIGEST}" "${IMAGE_NAME}:scan"
+          echo "image=${IMAGE_NAME}@${DIGEST}" >> "$GITHUB_OUTPUT"
       - name: Set up Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -388,7 +394,7 @@ jobs:
       - name: Run end-to-end tests on the image
         run: npx playwright test --project chromium
         env:
-          E2E_IMAGE: ${{ env.IMAGE_NAME }}:scan
+          E2E_IMAGE: ${{ steps.image.outputs.image }}
       - name: Upload the test report
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

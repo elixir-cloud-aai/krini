@@ -108,8 +108,10 @@ calls real services.
     is deployed: as the image's non-root user, with a read-only root file
     system, a writable `/tmp` and all settings at start. A difference
     between the two, such as a file missing from the standalone output or a
-    setting read at build time, then fails the tests. This needs Docker with
-    the host network (Linux) and a free container name `krini-e2e`. CI does
+    setting read at build time, then fails the tests. This needs a built
+    image, Docker with the host network (Linux) and a free container name
+    `krini-e2e`, and Playwright on the host: not in the Playwright image,
+    which has no Docker. CI does
     this in Chromium for every image it builds (`End-to-end tests (image)`),
     and the release workflow for every release image
     (`End-to-end tests (release image)`):
