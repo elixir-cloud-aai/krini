@@ -1,0 +1,53 @@
+{{- /*
+Ingress for `hostName`, for any ingress controller: the chart sets no
+controller-specific annotations, which `krini.ingress.annotations` add. These
+take precedence over the annotation requesting a certificate from
+cert-manager (`krini.ingress.https`); `null` removes it.
+*/ -}}
+{{- $ingress := .Values.krini.ingress -}}
+{{- if $ingress.enabled -}}
+{{- $hostName := required "hostName must be set if krini.ingress.enabled" .Values.hostName -}}
+{{- $https := $ingress.https | default dict -}}
+{{- $annotations := dict -}}
+{{- if $https.enabled -}}
+{{- $_ := set $annotations "cert-manager.io/cluster-issuer" (required "krini.ingress.https.issuer must be set if krini.ingress.https.enabled" $https.issuer) -}}
+{{- end -}}
+{{- range $name, $value := $ingress.annotations | default dict -}}
+{{- if kindIs "invalid" $value -}}
+{{- $_ := unset $annotations $name -}}
+{{- else -}}
+{{- $_ := set $annotations $name $value -}}
+{{- end -}}
+{{- end -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "krini.fullname" . | quote }}
+  labels:
+    {{- include "krini.labels" . | nindent 4 }}
+  {{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $ingress.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  rules:
+  - host: {{ $hostName | quote }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "krini.fullname" . | quote }}
+            port:
+              name: http
+  {{- if $https.enabled }}
+  tls:
+  - hosts:
+    - {{ $hostName | quote }}
+    secretName: {{ printf "%s-tls" (include "krini.fullname" .) | quote }}
+  {{- end }}
+{{- end }}

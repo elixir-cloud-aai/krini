@@ -1,0 +1,31 @@
+{{- /*
+PodDisruptionBudget, if `krini.podDisruptionBudget.enabled` and Krini has
+more than one pod: voluntary disruptions (e.g., node drains) evict at most
+`maxUnavailable` pods at once (1 if neither it nor `minAvailable` is set),
+or keep at least `minAvailable`. With one pod, no budget is rendered: the
+default one would let a drain evict it anyway, and one with `minAvailable`
+would block the drain.
+*/ -}}
+{{- $budget := .Values.krini.podDisruptionBudget | default dict -}}
+{{- if and $budget.enabled (gt (int .Values.krini.replicas) 1) -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "krini.fullname" . | quote }}
+  labels:
+    {{- include "krini.labels" . | nindent 4 }}
+spec:
+  {{- if not (kindIs "invalid" $budget.minAvailable) }}
+  minAvailable: {{ toJson $budget.minAvailable }}
+  {{- else if not (kindIs "invalid" $budget.maxUnavailable) }}
+  maxUnavailable: {{ toJson $budget.maxUnavailable }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "krini.selectorLabels" . | nindent 6 }}
+  # Pods that aren't ready (e.g., crash-looping after a bad upgrade) can
+  # always be evicted, so that they don't block node drains
+  unhealthyPodEvictionPolicy: AlwaysAllow
+{{- end }}

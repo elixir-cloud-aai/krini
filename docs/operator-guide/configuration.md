@@ -15,12 +15,16 @@ keeps quotes as part of the value (see
 [Deployment](deployment.md#environment-variables)):
 
 ```env
-# LS Login / OpenID Connect
-LS_LOGIN_URL=https://login.elixir-europe.org
-OIDC_CLIENT_ID=your-client-id
-OIDC_CLIENT_SECRET=your-client-secret
+# Login providers: a JSON array; each entry configures one OIDC provider
+# (endpoints are discovered via <issuer>/.well-known/openid-configuration)
+# One line only: env files can't carry a multiline value
+LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/icon.jpg","issuer":"issuer-url","clientId":"your-client-id","clientSecret":"your-client-secret","scopes":["openid","profile","email","eduperson_entitlement", "offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["your-compute-group"],"adminGroups":["your-admin-group"]}]
+
+# Optional override of the callback URL (default: <APP_ORIGIN>/auth/api/callback)
 OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
-OIDC_SCOPE=openid profile email offline_access
+
+# Where users without compute access can request it (shown in the UI)
+COMPUTE_ACCESS_REQUEST_URL=
 
 # Cloud Registry
 CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev
@@ -35,33 +39,44 @@ PRIVACY_NOTICE_URL=https://example.org/privacy
 PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
 ```
 
-- `LS_LOGIN_URL`: Base URL of the LS Login identity provider.
-- `OIDC_CLIENT_ID`: Client ID registered with LS Login.
-- `OIDC_CLIENT_SECRET`: Client secret associated with the OIDC client. Keep
-  this private.
-- `OIDC_REDIRECT_URI`: Callback URL registered with your LS Login client. It
-  must match the redirect URI configured with the identity provider.
-- `OIDC_SCOPE`: OAuth 2.0 scopes to request from the identity provider. Must
-  include `offline_access` for refresh token support. Default:
-  `openid profile email offline_access`.
+- `LOGIN_PROVIDERS`: JSON array of login provider configurations; Krini
+  offers one login button per entry on `/auth/login`. Required fields per
+  entry: `id` (unique), `issuer` (the provider's issuer URL; endpoints are
+  discovered from its `/.well-known/openid-configuration`), `clientId` and
+  `clientSecret`. Optional fields: `name` (button label, defaults to `id`),
+  `logo` (image path for the button), `scopes` (default
+  `openid profile email offline_access`; keep `offline_access` for refresh
+  tokens), `groupsClaim`, `groupsFromUserinfo` (default `true`),
+  `computeGroups`, `adminGroups`, `groupSubgroupSeparator`. Group membership
+  derives the access tier: `adminGroups` → admin, `computeGroups` → compute,
+  otherwise user; compute actions are limited to compute and admin tiers.
+- `OIDC_REDIRECT_URI`: Callback URL registered with the identity provider.
+  Must match a redirect URI configured there, and must use the same origin
+  as `APP_ORIGIN` — the session cookies are set for that origin, so a
+  cross-origin callback is rejected. Defaults to
+  `<APP_ORIGIN>/auth/api/callback`.
+- `COMPUTE_ACCESS_REQUEST_URL`: Optional URL shown to logged-in users
+  without compute access ("Request compute access").
 - `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API.
 - `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000`
-  for local development or your production URL).
+  for local development or your production URL), as users' browsers reach
+  it. The login sends users back to it, and the logout accepts requests
+  only from it.
 
-Make sure the OIDC client has the redirect URI of `OIDC_REDIRECT_URI`
+Make sure each OIDC client has the redirect URI of `OIDC_REDIRECT_URI`
 registered, e.g. for local development:
 
 ```text
 http://localhost:3000/auth/api/callback
 ```
 
-Never expose `OIDC_CLIENT_SECRET` to client-side code: Krini uses no
+Never expose `clientSecret` values to client-side code: Krini uses no
 `NEXT_PUBLIC_*` variables, so no setting is built into the JavaScript that
 the browser loads; never put a secret into one. Some settings are public by
-design and do reach the browser: the login redirect carries
-`OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI` and `OIDC_SCOPE`, and the privacy
-notice shows the `PRIVACY_*` values. `OIDC_CLIENT_SECRET` is only sent from
-Krini's server to the login provider.
+design and do reach the browser: the login page shows each provider's `id`,
+`name` and `logo`, and the login redirect carries `clientId`, the redirect
+URI and scopes, and the privacy notice shows the `PRIVACY_*` values.
+`clientSecret` is only sent from Krini's server to the login provider.
 
 ## Privacy notice
 

@@ -19,3 +19,5 @@ playwright.config.ts
 npm-debug.log*
 Dockerfile
 .dockerignore
+# The Helm chart, which the image doesn't need
+deployment

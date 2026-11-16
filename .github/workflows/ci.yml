@@ -4,6 +4,7 @@
 # an audit of the production dependencies, the Docker image (a smoke test
 # with a read-only root file system) and its scan for known vulnerabilities
 # (Trivy), the end-to-end tests against mock services (`e2e/mock/`), the
+# Helm chart (lint and tests, and an installation on a kind cluster), the
 # documentation (strict MkDocs build), the release readiness, and, on
 # pushes, push the image by digest (with SBOM and provenance attestations),
 # scan exactly that digest, then attest, sign (Sigstore) and tag it with
@@ -329,6 +330,60 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  # The Helm chart in `deployment/` (see
+  # `docs/operator-guide/helm-chart.md`): lint with the CI values, and the
+  # chart tests (`deployment/tests/test-chart.sh`), which render it with
+  # other values and check the objects and the errors of invalid values
+  chart:
+    name: Chart
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Same Helm version as in `chart-install`
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v3.22.1
+      - name: Lint chart
+        run: helm lint deployment --strict -f deployment/ci/test-values.yaml
+      # yq and jq of the runner image
+      - name: Test chart
+        run: deployment/tests/test-chart.sh
+
+  # Installs the chart on a kind cluster with the image built from the
+  # commit, runs `helm test` and upgrades the release
+  # (`deployment/tests/install-chart.sh`)
+  chart-install:
+    name: Chart install
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Same Helm version as in `chart`
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v3.22.1
+      - name: Create kind cluster
+        uses: helm/kind-action@ea822c7bf1874f08e5a491df991c228edffc3376 # v1.15.2
+        with:
+          version: v0.33.0
+          cluster_name: krini
+      # As `docker build` builds it, without settings
+      - name: Build and load the image
+        run: |
+          docker build -t krini:chart-ci .
+          kind load docker-image krini:chart-ci --name krini
+      - name: Install chart
+        run: deployment/tests/install-chart.sh krini:chart-ci
+
   # On pushes, builds the image once and pushes it by digest only (untagged,
   # with SBOM and provenance attestations, `mode=max`), for `image` to check,
   # `scan` to scan and `publish` to sign and tag. Runs alongside the
@@ -458,7 +513,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ github.event_name == 'push' }}
-    needs: [lint, test, build, audit, e2e, docs, readiness, image, push, scan]
+    needs: [lint, test, build, audit, e2e, chart, chart-install, docs, readiness, image, push, scan]
     # Docker Hub secrets; the environment only allows the branch `dev`
     environment: dev-images
     permissions:
@@ -655,7 +710,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [title, lint, test, build, audit, e2e, docs, readiness, image, push, scan, publish]
+    needs: [title, lint, test, build, audit, e2e, chart, chart-install, docs, readiness, image, push, scan, publish]
     permissions: {}
     steps:
       - name: Check results of all jobs
