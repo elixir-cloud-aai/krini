@@ -1,8 +1,9 @@
 # Deployment
 
-How to run the container image of Krini, pass it its settings, and prepare
-the login provider and the TES and WES services for it. On Kubernetes or
-OpenShift, install Krini with the [Helm chart](helm-chart.md).
+How to run the container image of Krini, pass it its settings, check it,
+and prepare the Cloud Registry and the TES and WES services for it. On
+Kubernetes or OpenShift, install Krini with the [Helm chart](helm-chart.md);
+for the login provider, see [Login](login.md).
 
 ## Container image
 
@@ -26,8 +27,13 @@ workflow for releases:
 | `dev` | The newest commit that passed CI while it was the head of `dev` |
 | `sha-<commit>` | That commit (full commit SHA) |
 
-For deployments, prefer a release (`X.Y.Z`); `dev` follows the
-development branch.
+For deployments, use a release (`X.Y.Z`), and to be sure that the image
+doesn't change under you, pin it by its digest, e.g.
+`docker.io/elixircloud/krini:0.1.0@sha256:<digest>`; `docker buildx
+imagetools inspect docker.io/elixircloud/krini:0.1.0` prints the digest.
+`latest` moves with each release, so deployments that pull it may get
+breaking changes without warning. `dev` and `sha-<commit>` images follow
+the development branch: use them for testing only.
 
 Images built before the rename carry the tag `staging`, which is no
 longer updated: deployments that pull `krini:staging` must switch to
@@ -66,8 +72,26 @@ so that one image serves any deployment. For example:
 docker run --rm -p 3000:3000 \
     --read-only --tmpfs /tmp \
     --env-file krini.env \
-    docker.io/elixircloud/krini:dev
+    docker.io/elixircloud/krini:0.1.0
 ```
+
+`krini.env` holds the settings, outside the repository, e.g. for a
+deployment at `https://krini.example.org` behind a reverse proxy that
+terminates TLS and forwards to port 3000 (see [Login](login.md) for the
+login providers):
+
+```env
+APP_ORIGIN=https://krini.example.org
+CLOUD_REGISTRY_URL=https://registry.example.org/ga4gh/registry/v1
+LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/ls-login-grey-wide.jpg","issuer":"https://login.aai.lifescience-ri.eu/oidc/","clientId":"<client ID>","clientSecret":"<client secret>","scopes":["openid","profile","email","eduperson_entitlement","offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["<compute group>"]}]
+PRIVACY_CONTROLLER=Example Institute, Example Street 1, Example City
+PRIVACY_CONTACT=privacy@example.org
+```
+
+Krini must be served over HTTPS at `APP_ORIGIN`: production builds, such
+as the image, set `Secure` cookies, which browsers don't store over plain
+HTTP (except for `localhost`). Krini doesn't terminate TLS itself; put a
+reverse proxy, an ingress or a load balancer in front of it.
 
 - The server listens on port `3000` (`PORT`) on all IPv4 interfaces; set
   `LISTEN_HOSTNAME` (e.g. `::` for IPv6) to change the interface.
@@ -109,6 +133,39 @@ cosign verify "${image}" \
 gh attestation verify "oci://${image}" --repo elixir-cloud-aai/krini
 ```
 
+### Checking a deployment
+
+After starting Krini, or changing its settings, open these pages at
+`APP_ORIGIN`; each one checks a part of the configuration:
+
+1. `/privacy`: the privacy notice names the controller and contact of
+   `PRIVACY_*`. The page needs no login and no other service; the Helm
+   chart's probes use it.
+2. `/auth/login`: one button per login provider. No buttons means that
+   `LOGIN_PROVIDERS` is missing or isn't a valid JSON array, and a missing
+   button that its provider lacks a required field (see [Login
+   providers](login.md#login-providers)).
+3. Log in: the provider asks for consent and sends you back to Krini. An
+   error of the provider about the redirect URI means that the URI isn't
+   registered (see [Registering Krini with LS
+   Login](login.md#registering-krini-with-ls-login)). Krini's error page
+   after the login means that `APP_ORIGIN` or `OIDC_REDIRECT_URI` don't
+   match the address that you opened, or that the provider's discovery
+   document, token response or ID token failed Krini's checks.
+4. The user menu in the sidebar shows your tier: "Compute" or "Admin" if
+   your groups are among `computeGroups` or `adminGroups` (see [Access
+   tiers](login.md#access-tiers)).
+5. **Tasks** and **Workflows** list the TES and WES services of the
+   registry. An error means that `CLOUD_REGISTRY_URL` is wrong or that the
+   registry can't be reached from Krini's server; a missing service means
+   that its entry doesn't meet the conditions of [Cloud
+   Registry](#cloud-registry).
+6. Select a service and list its tasks or runs: an error in the browser's console
+   that mentions CORS means that the service doesn't allow Krini's origin
+   (see [CORS configuration](#cors-configuration)), and `401` or `403`
+   that it doesn't accept the token (see [TES and WES
+   services](#tes-and-wes-services)).
+
 ### Building the image
 
 To build the image yourself:
@@ -144,11 +201,38 @@ To verify such images, use the fork's repository in the
 
 ## Service configuration
 
-Krini sends the user's access token to the TES and WES services from the
-browser, and lists only services whose registry entry has an `https` URL.
-That URL must be the base URL of the API, as in the GA4GH service registry,
-e.g. `https://tes.example.org/ga4gh/tes/v1`: Krini appends the API paths
-(e.g. `/tasks`) to it.
+Krini's server and the users' browsers contact different services; only
+the TES and WES services get the user's token, and only they need CORS
+settings for Krini:
+
+| Service | Contacted by | Requests | Token | CORS for Krini |
+| --- | --- | --- | --- | --- |
+| Login provider | Browser (redirects) and Krini's server (discovery, keys, token, user info) | See [Login](login.md#how-the-login-works) | — | No |
+| Cloud Registry | Krini's server | `GET /services` | No | No |
+| WES services and gateways | Krini's server | `GET /service-info`, to list and check them | No | No |
+| WES services and gateways | Browser | Service info and runs: list, submit, status, cancel | Yes | Yes |
+| TES services and gateways | Browser | Service info and tasks: list, create, get, cancel | Yes | Yes |
+
+### Cloud Registry
+
+Krini only reads the registry's list of services, without a token, so the
+registry needs no client settings and no CORS settings for Krini. From
+that list, Krini offers:
+
+- **TES:** the entries of type `tes` and `tes-gateway` (the `artifact` of
+  their `type`) with an `https` URL.
+- **WES:** the entries of type `wes` and `wes-gateway` with an `https`
+  URL whose service info (`GET <url>/service-info`) Krini's server can
+  read without a token and without redirects. Entries whose service info
+  isn't a JSON object, or that answer with a client error, aren't listed;
+  entries that don't answer, or answer with a server error, are listed as
+  unreachable. Krini keeps the list for a minute. The page with a
+  service's info accepts only URLs without a port and with a path that
+  ends with `/ga4gh/wes/v1`, e.g. `https://wes.example.org/ga4gh/wes/v1`.
+
+The URL of an entry must be the base URL of the API, as in the GA4GH
+service registry, e.g. `https://tes.example.org/ga4gh/tes/v1`: Krini
+appends the API paths (e.g. `/tasks`) to it.
 
 !!! warning "Only trusted services in the registry"
     Krini sends the token to every TES and WES service of the registry that
@@ -159,96 +243,128 @@ e.g. `https://tes.example.org/ga4gh/tes/v1`: Krini appends the API paths
     services in Krini is planned
     ([krini#40](https://github.com/elixir-cloud-aai/krini/issues/40)).
 
-For the services to accept the token, the login provider and the services
-need the following configuration.
+### TES and WES services
 
-### Scopes
+The browser sends the user's access token to the selected service, in an
+`Authorization: Bearer` header. For the services to accept it:
 
-Ensure your OIDC provider is configured to support the following scopes:
-
-- `openid`: Required for OpenID Connect authentication
-- `profile`: Access to user profile information
-- `email`: Access to user email
-- `offline_access`: Required for refresh token support
-
-### Token type
-
-The OIDC provider must issue access tokens as JWT (JSON Web Tokens) per
-[RFC 9068](https://datatracker.ietf.org/doc/html/rfc9068), not opaque
-tokens: TES and WES services expect JWT access tokens for authentication.
-
-### Client allowlisting
-
-TES and WES services must allowlist Krini's `clientId` of each `LOGIN_PROVIDERS` in their
-authorization configuration: only allowlisted clients can use their access
-tokens to authenticate with these services.
+- The login provider must issue access tokens as JWTs ([RFC
+  9068](https://datatracker.ietf.org/doc/html/rfc9068)), not opaque
+  tokens, and the services must trust the provider's issuer.
+- The services must accept tokens issued to Krini's `clientId` of each
+  login provider, e.g. by adding it to the clients or audiences that their
+  authorization settings allow. Give the client IDs to the operators of
+  the services; they aren't secret.
+- If the services authorize by group, the token or the user info must
+  carry the groups, e.g. `eduperson_entitlement` of LS Login (see
+  [Registering Krini with LS
+  Login](login.md#registering-krini-with-ls-login)).
 
 ## CORS configuration
 
-Krini makes direct requests to WES (Workflow Execution Service) and TES (Task Execution Service) endpoints from the browser. You must configure CORS on your WES and TES services to allow requests from Krini's origin.
+The browser calls the TES and WES services, and their gateways, directly
+from Krini's pages, so each of them must allow Krini's origin
+(`APP_ORIGIN`) in its CORS settings. The Cloud Registry and the login
+providers don't need to (see [Service
+configuration](#service-configuration)).
 
 ### Required CORS headers
 
-Your WES and TES services must return the following CORS headers for requests from Krini:
+The requests carry the token in the `Authorization` header and, when
+creating a TES task, a JSON body (`Content-Type: application/json`), so
+browsers send a preflight request (`OPTIONS`) first. They send no cookies
+to the services. Krini's requests use only `GET` and `POST`:
 
-```
-Access-Control-Allow-Origin: https://your-krini-domain.com
-Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+- TES: `GET /service-info`, `GET /tasks`, `GET /tasks/{id}`, `POST /tasks`,
+  `POST /tasks/{id}:cancel`
+- WES: `GET /service-info`, `GET /runs`, `GET /runs/{id}`,
+  `GET /runs/{id}/status`, `POST /runs` (multipart form data),
+  `POST /runs/{id}/cancel`
+
+The services must answer the preflight requests with these headers, and
+all other responses, errors such as `401` included, at least with
+`Access-Control-Allow-Origin`:
+
+```text
+Access-Control-Allow-Origin: https://krini.example.org
+Access-Control-Allow-Methods: GET, POST, OPTIONS
 Access-Control-Allow-Headers: Authorization, Content-Type
-Access-Control-Allow-Credentials: true
 ```
+
+Use Krini's exact origin, without a trailing slash. Krini doesn't need
+`Access-Control-Allow-Credentials`, as it sends no cookies to the
+services. Without `Access-Control-Allow-Origin` on an error response, the
+browser hides the error, and Krini can only report a failed request.
 
 ### Configuration example
 
-For Nginx reverse proxy configurations:
+For an Nginx reverse proxy in front of a service that sets no CORS headers
+itself:
 
 ```nginx
 location / {
-    add_header 'Access-Control-Allow-Origin' 'https://your-krini-domain.com' always;
-    add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
-    add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type' always;
-    add_header 'Access-Control-Allow-Credentials' 'true' always;
-
     if ($request_method = 'OPTIONS') {
+        add_header 'Access-Control-Allow-Origin' 'https://krini.example.org' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type' always;
+        add_header 'Access-Control-Max-Age' '600' always;
         return 204;
     }
+    add_header 'Access-Control-Allow-Origin' 'https://krini.example.org' always;
 
     proxy_pass http://backend;
 }
 ```
 
-For application-level CORS configuration (e.g., Express.js):
+If the service sets CORS headers itself, configure them there instead of
+in the proxy: browsers reject responses with two
+`Access-Control-Allow-Origin` headers. For services built with Flask and
+[Flask-CORS](https://flask-cors.readthedocs.io/), the same settings are:
 
-```javascript
-app.use(cors({
-    origin: 'https://your-krini-domain.com',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Authorization', 'Content-Type'],
-    credentials: true
-}));
+```python
+CORS(
+    app,
+    origins=["https://krini.example.org"],
+    methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 ```
 
 ### Multiple origins
 
-If you need to support multiple Krini deployments (e.g., staging and production), configure your CORS to allow specific origins:
+To allow several Krini deployments (e.g. a test and a production
+deployment), list all their origins in the service's CORS settings. The
+header holds only one origin, so the service (or the proxy) must answer
+with the origin of the request if it is in the list, together with
+`Vary: Origin`. In Nginx, e.g. with a `map` in the `http` block:
 
-```javascript
-const allowedOrigins = [
-    'https://krini-staging.example.com',
-    'https://krini.example.com'
-];
-
-app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true
-}));
+```nginx
+map $http_origin $krini_cors_origin {
+    default "";
+    "https://krini.example.org" $http_origin;
+    "https://krini-test.example.org" $http_origin;
+}
 ```
+
+Then use `$krini_cors_origin` instead of the fixed origin in the example
+above, and add `add_header 'Vary' 'Origin' always;` next to it.
+
+## Network access
+
+Krini's server needs outgoing HTTPS connections to:
+
+- the Cloud Registry (`CLOUD_REGISTRY_URL`);
+- each login provider's issuer and the endpoints of its discovery document
+  (token, user info, keys);
+- the WES services and gateways of the registry (service info);
+- its own public origin (`APP_ORIGIN`), for the page with a WES service's
+  info. Where the server can't reach its own public address (e.g. a
+  cluster without hairpin routing), that page shows an error; the rest of
+  Krini works.
+
+The users' browsers need to reach Krini, the login providers, the TES and
+WES services, and `cdn.jsdelivr.net`, from which the code editor of the
+workflow form loads a helper script.
 
 ## Environment variables
 
