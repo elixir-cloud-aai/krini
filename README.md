@@ -23,9 +23,9 @@ Registry](https://cloud-registry.readthedocs.io/en/latest/), run tasks on
 [GA4GH Workflow Execution Service
 (WES)](https://github.com/ga4gh/workflow-execution-service-schemas) instances,
 and follow their runs. Deploy Krini with its container image for your own
-registry and services; see the
-[configuration guide](docs/operator-guide/configuration.md#settings) for the
-login providers.
+registry, login provider and services; see the [operator
+guide][docs-operator-guide] for the deployment, the [settings][docs-configuration]
+and the [login][docs-login].
 
 **Read the [documentation][docs]**: the [user guide][docs-user-guide], the
 [operator guide][docs-operator-guide] for the deployment, configuration and
@@ -85,8 +85,9 @@ On OpenShift, add `--set krini.ingress.enabled=false`, so that the chart
 creates a Route with TLS instead of an Ingress.
 
 The [operator guide][docs-operator-guide] describes the image tags, how to
-verify an image, and what the login provider and the TES and WES services
-need.
+verify an image and check a deployment, and what the login provider, the
+Cloud Registry and the TES and WES services need (client registration,
+CORS).
 
 ## Citation
 
@@ -125,6 +126,7 @@ material that it contains or builds on is listed in [`NOTICE`](NOTICE).
 [docs-configuration]: <https://krini.readthedocs.io/en/latest/operator-guide/configuration/>
 [docs-development]: <https://krini.readthedocs.io/en/latest/development/>
 [docs-helm-chart]: <https://krini.readthedocs.io/en/latest/operator-guide/helm-chart/>
+[docs-login]: <https://krini.readthedocs.io/en/latest/operator-guide/login/>
 [docs-operator-guide]: <https://krini.readthedocs.io/en/latest/operator-guide/>
 [docs-user-guide]: <https://krini.readthedocs.io/en/latest/user-guide/>
 [releases]: <https://github.com/elixir-cloud-aai/krini/releases>

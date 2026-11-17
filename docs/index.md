@@ -10,14 +10,14 @@ Registry](https://cloud-registry.readthedocs.io/en/latest/), run tasks on
 [GA4GH Workflow Execution Service
 (WES)](https://github.com/ga4gh/workflow-execution-service-schemas) instances,
 and follow their runs. Deploy Krini with its container image for your own
-registry and services; see
-[Configuration](operator-guide/configuration.md#settings) for the login
-providers.
+registry, login provider and services; see the
+[Operator guide](operator-guide/index.md#quick-start) for a quick start.
 
 - [User guide](user-guide/index.md): browsing services, logging in, running
   tasks and workflows, with [examples](user-guide/workflow-examples.md).
 - [Operator guide](operator-guide/index.md): [deployment](operator-guide/deployment.md),
-  [configuration](operator-guide/configuration.md) and
+  [configuration](operator-guide/configuration.md),
+  [login](operator-guide/login.md) and
   [upgrades](operator-guide/upgrading.md).
 - [Development](development/index.md): local setup, checks, tests, the
   documentation and [releases](development/releasing.md).
