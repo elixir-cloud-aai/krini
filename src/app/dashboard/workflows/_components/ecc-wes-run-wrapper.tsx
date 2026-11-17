@@ -41,6 +41,7 @@ export function ECCClientGa4ghWesRunsClient() {
 
     return (
         <ECCClientGa4ghWesRuns
+            key={selectedServer}
             provider={wesProvider}
             pageSize={10}
             onEccRunsSelected={(event) =>
