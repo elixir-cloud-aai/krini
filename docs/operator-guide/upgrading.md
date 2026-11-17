@@ -20,6 +20,13 @@ restarts it.
    values may have changed, too.
 4. Go through [Checking a deployment](deployment.md#checking-a-deployment).
 
+While the old and the new container run side by side (e.g. during the
+rolling update of the Helm chart), a user whose browser refreshes the
+same session from two tabs, and whose requests reach both containers, can
+be logged out (see [Pods](helm-chart.md#pods)); they only need to log in
+again. Upgrade when few users are active, or keep each browser on one pod
+(sticky sessions).
+
 ## From the branch images to 0.1.0
 
 Deployments that pull `krini:staging`, `krini:dev` or a `sha-<commit>`

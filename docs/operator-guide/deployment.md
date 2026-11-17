@@ -201,17 +201,18 @@ To verify such images, use the fork's repository in the
 
 ## Service configuration
 
-Krini's server and the users' browsers contact different services; only
-the TES and WES services get the user's token, and only they need CORS
-settings for Krini:
+Krini's server and the users' browsers contact different services. The
+user's access token goes only to the TES and WES services (from the
+browser) and to the login provider's user info endpoint (from Krini's
+server), and only the TES and WES services need CORS settings for Krini:
 
 | Service | Contacted by | Requests | Token | CORS for Krini |
 | --- | --- | --- | --- | --- |
-| Login provider | Browser (redirects) and Krini's server (discovery, keys, token, user info) | See [Login](login.md#how-the-login-works) | — | No |
+| Login provider | Browser (redirects) and Krini's server (discovery, keys, token, user info) | See [Login](login.md#how-the-login-works) | Yes, to the user info endpoint, from Krini's server | No |
 | Cloud Registry | Krini's server | `GET /services` | No | No |
 | WES services and gateways | Krini's server | `GET /service-info`, to list and check them | No | No |
-| WES services and gateways | Browser | Service info and runs: list, submit, status, cancel | Yes | Yes |
-| TES services and gateways | Browser | Service info and tasks: list, create, get, cancel | Yes | Yes |
+| WES services and gateways | Browser | Service info (for the workflow form) and runs: list, submit, status, cancel | Yes | Yes |
+| TES services and gateways | Browser | Tasks: list, create, get, cancel | Yes | Yes |
 
 ### Cloud Registry
 
@@ -275,7 +276,7 @@ creating a TES task, a JSON body (`Content-Type: application/json`), so
 browsers send a preflight request (`OPTIONS`) first. They send no cookies
 to the services. Krini's requests use only `GET` and `POST`:
 
-- TES: `GET /service-info`, `GET /tasks`, `GET /tasks/{id}`, `POST /tasks`,
+- TES: `GET /tasks`, `GET /tasks/{id}`, `POST /tasks`,
   `POST /tasks/{id}:cancel`
 - WES: `GET /service-info`, `GET /runs`, `GET /runs/{id}`,
   `GET /runs/{id}/status`, `POST /runs` (multipart form data),

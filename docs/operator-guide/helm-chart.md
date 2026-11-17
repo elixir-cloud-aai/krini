@@ -289,7 +289,9 @@ login providers and the WES services.
 
 ### Pods
 
-- `krini.replicas` (default 1): sessions are in cookies, but each pod
+- `krini.replicas` (default 1; during a rolling update, such as `helm
+  upgrade`, a new pod runs next to the old one for a short time, with the
+  same effect as two replicas): sessions are in cookies, but each pod
   remembers the refresh tokens it has just used only in memory, to tell a
   concurrent refresh of the same session (e.g. in two tabs) from a replay.
   With more than one pod, two such refreshes that reach different pods
