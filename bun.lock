@@ -41,8 +41,6 @@
     "sharp",
   ],
   "overrides": {
-    "@types/react": "19.3.0",
-    "@types/react-dom": "19.3.0",
     "body-parser": "^2.4.0",
     "systeminformation": "^5.33.16",
   },
