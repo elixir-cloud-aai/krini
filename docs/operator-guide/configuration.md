@@ -45,7 +45,7 @@ keeps quotes as part of the value (see
 # Login providers: a JSON array; each entry configures one OIDC provider
 # (endpoints are discovered via <issuer>/.well-known/openid-configuration)
 # One line only: env files can't carry a multiline value
-LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/icon.jpg","issuer":"issuer-url","clientId":"your-client-id","clientSecret":"your-client-secret","scopes":["openid","profile","email","eduperson_entitlement", "offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["your-compute-group"],"adminGroups":["your-admin-group"]}]
+LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/ls-login-grey-wide.jpg","issuer":"issuer-url","clientId":"your-client-id","clientSecret":"your-client-secret","scopes":["openid","profile","email","eduperson_entitlement", "offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["your-compute-group"],"adminGroups":["your-admin-group"]}]
 
 # Optional override of the callback URL (default: <APP_ORIGIN>/auth/api/callback)
 OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
