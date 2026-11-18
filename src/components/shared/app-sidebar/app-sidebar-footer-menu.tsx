@@ -105,7 +105,7 @@ function AppSidebarFooterMenu({ user, tier, accessRequestUrl }: Props) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={copyToken}>
                     <Copy />
-                    Copy token to Dashboard
+                    Copy access token
                 </DropdownMenuItem>
                 {tier === "user" && accessRequestUrl && (
                     <DropdownMenuItem
