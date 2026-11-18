@@ -23,16 +23,18 @@ default; use it for development and testing only.
   Gateway of the [Gateway API](https://gateway-api.sigs.k8s.io/), or
   OpenShift's router.
 - An OpenID Connect client at each login provider, with the redirect URI
-  `https://<host name>/auth/api/callback`, the scopes of
-  [Scopes](deployment.md#scopes), and the scope with which the provider
-  releases the claim with the user's groups (`groupsClaim`), if access
-  tiers are used: add it to the provider's `scopes` (see
-  [Login providers](#login-providers)).
+  `https://<host name>/auth/api/callback`, the post-logout redirect URI
+  `https://<host name>/` and the scopes of [Registering Krini with LS
+  Login](login.md#registering-krini-with-ls-login), including the scope
+  with which the provider releases the claim with the user's groups
+  (`groupsClaim`) for the [access tiers](login.md#access-tiers).
 - A Cloud Registry whose list of services (`GET /services`, without
   login) has the TES services and gateways (types `tes` and
-  `tes-gateway`) and WES services that Krini should offer; Krini lists
-  what the registry returns, so register only services that you have
-  checked. Krini only reads the registry.
+  `tes-gateway`) and WES services and gateways (types `wes` and
+  `wes-gateway`) that Krini should offer (see [Cloud
+  Registry](deployment.md#cloud-registry)); Krini lists what the registry
+  returns, so register only services that you have checked. Krini only
+  reads the registry.
 - TES services, gateways and WES services that accept access tokens
   issued to Krini's `clientId` of each login provider, and allow
   Krini's origin in their CORS settings: see [Service
@@ -169,24 +171,8 @@ pods with `kubectl rollout restart deployment/krini -n krini`.
 ### Login providers
 
 The key `loginProviders.secretKey` of the Secret `loginProviders.existingSecret`
-holds the JSON array of `LOGIN_PROVIDERS`. Each provider is an object with
-these fields; providers without one of the required fields, or with the
-`id` of an earlier one, are ignored:
-
-| Field | Required | Description |
-| --- | --- | --- |
-| `id` | yes | Identifier of the provider, unique in the array |
-| `issuer` | yes | OpenID Connect issuer URL (Krini reads its discovery document) |
-| `clientId` | yes | Client ID of Krini at the provider |
-| `clientSecret` | yes | Client secret of Krini at the provider |
-| `name` | no | Name on the login page; the `id` if not set |
-| `logo` | no | URL of a logo for the login page |
-| `scopes` | no | Scopes to request; `["openid", "profile", "email", "offline_access"]` if not set |
-| `groupsClaim` | no | Claim with the user's groups, for the access tiers |
-| `groupsFromUserinfo` | no | Whether to read the groups from the user info (default `true`) |
-| `computeGroups` | no | Groups whose members may run tasks and workflows |
-| `adminGroups` | no | Groups whose members are admins |
-| `groupSubgroupSeparator` | no | Separator of subgroups in group names (e.g. `:`), so that members of subgroups count too |
+holds the JSON array of `LOGIN_PROVIDERS`: one object per provider, with
+the fields of [Login providers](login.md#login-providers).
 
 ### Image
 
@@ -303,7 +289,9 @@ login providers and the WES services.
 
 ### Pods
 
-- `krini.replicas` (default 1): sessions are in cookies, but each pod
+- `krini.replicas` (default 1; during a rolling update, such as `helm
+  upgrade`, a new pod runs next to the old one for a short time, with the
+  same effect as two replicas): sessions are in cookies, but each pod
   remembers the refresh tokens it has just used only in memory, to tell a
   concurrent refresh of the same session (e.g. in two tabs) from a replay.
   With more than one pod, two such refreshes that reach different pods
