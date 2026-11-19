@@ -50,6 +50,17 @@ describe("contentSecurityPolicy", () => {
         expect(policy["connect-src"]).toEqual(["'self'", "https:"]);
     });
 
+    it("allows the logos of the login providers from https URLs", () => {
+        const policy = directives(contentSecurityPolicy("abc123"));
+
+        expect(policy["img-src"]).toEqual([
+            "'self'",
+            "https:",
+            "data:",
+            "blob:",
+        ]);
+    });
+
     it("allows eval only in development", () => {
         const policy = directives(contentSecurityPolicy("abc123", true));
 
@@ -75,7 +86,7 @@ describe("securityHeaders", () => {
     it("sets the headers of every response", () => {
         expect(
             Object.fromEntries(
-                securityHeaders.map(({ key, value }) => [key, value]),
+                securityHeaders(true).map(({ key, value }) => [key, value]),
             ),
         ).toEqual({
             "X-Content-Type-Options": "nosniff",
@@ -83,5 +94,11 @@ describe("securityHeaders", () => {
             "Referrer-Policy": "strict-origin-when-cross-origin",
             "Strict-Transport-Security": "max-age=63072000",
         });
+    });
+
+    it("sends no HSTS in development", () => {
+        expect(securityHeaders(false).map(({ key }) => key)).not.toContain(
+            "Strict-Transport-Security",
+        );
     });
 });

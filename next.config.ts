@@ -21,7 +21,10 @@ const nextConfig: NextConfig = {
     // comes from `src/proxy.ts` (see "Security headers" in
     // `docs/operator-guide/deployment.md`)
     async headers() {
-        return [{ source: "/:path*", headers: securityHeaders }];
+        // `NODE_ENV` is `production` in `next build` and `next start`,
+        // `development` in `next dev`
+        const production = process.env.NODE_ENV === "production";
+        return [{ source: "/:path*", headers: securityHeaders(production) }];
     },
 };
 

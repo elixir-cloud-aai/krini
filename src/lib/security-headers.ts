@@ -16,7 +16,8 @@
  * comes from another origin. Styles may be inline, as React, the Cloud
  * Components and their code editor (Ace) set them at runtime. The browser
  * calls the TES and WES services of the registry, whose origins are known
- * only at runtime, hence any `https:` origin for `connect-src`.
+ * only at runtime, hence any `https:` origin for `connect-src`; images may
+ * come from any `https:` origin, too, for the logos of the login providers.
  * @param nonce Nonce of the request, base64
  * @param development Whether the app runs with `next dev`, which needs
  * `eval` for its error overlay
@@ -30,7 +31,8 @@ function contentSecurityPolicy(nonce: string, development = false): string {
         "default-src 'self'",
         `script-src ${scriptSrc.join(" ")}`,
         "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob:",
+        // login providers' logos may be `https` URLs (`docs/operator-guide/login.md`)
+        "img-src 'self' https: data: blob:",
         "font-src 'self'",
         "connect-src 'self' https:",
         // the syntax checks of the code editor (`src/lib/ace-workers.ts`)
@@ -55,16 +57,29 @@ function createNonce(): string {
  * Headers of every response, in the format of `headers()` in
  * `next.config.ts`
  *
- * Browsers honour `Strict-Transport-Security` only over HTTPS, so it does no
- * harm over plain HTTP (e.g. in local development); it covers only Krini's
- * host, not its subdomains.
+ * `Strict-Transport-Security` only in production builds (`next build`), as
+ * it binds the whole host, on every port, to HTTPS, which would get in the
+ * way of `next dev --experimental-https`; browsers honour it only over
+ * HTTPS, and it covers only Krini's host, not its subdomains.
+ * @param production Whether the app is a production build
+ * @returns The headers
  */
-const securityHeaders: { key: string; value: string }[] = [
-    { key: "X-Content-Type-Options", value: "nosniff" },
-    // for browsers that don't know `frame-ancestors`
-    { key: "X-Frame-Options", value: "DENY" },
-    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-    { key: "Strict-Transport-Security", value: "max-age=63072000" },
-];
+function securityHeaders(
+    production: boolean,
+): { key: string; value: string }[] {
+    const headers = [
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        // for browsers that don't know `frame-ancestors`
+        { key: "X-Frame-Options", value: "DENY" },
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    ];
+    if (production) {
+        headers.push({
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000",
+        });
+    }
+    return headers;
+}
 
 export { contentSecurityPolicy, createNonce, securityHeaders };

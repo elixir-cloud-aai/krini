@@ -6,6 +6,7 @@
  * fixtures, in every test
  */
 import { expect, login, test } from "./fixtures";
+import { mockHttpsPort } from "./settings";
 
 /**
  * Split a policy into its directives
@@ -74,6 +75,24 @@ test("each page gets a new nonce, which its scripts carry", async ({
         );
     expect(scriptNonces.length).toBeGreaterThan(0);
     expect(new Set(scriptNonces)).toEqual(new Set([pageNonce]));
+});
+
+test("images may come from https URLs, such as provider logos", async ({
+    page,
+}) => {
+    await page.goto("/auth/login");
+    // the mock services' https origin; the fixtures fail the test on a
+    // policy violation
+    await page.evaluate(async (src) => {
+        const image = new Image();
+        const loaded = new Promise((resolve) => {
+            image.onload = resolve;
+            image.onerror = resolve;
+        });
+        image.src = src;
+        document.body.append(image);
+        await loaded;
+    }, `https://127.0.0.1:${mockHttpsPort}/logo.png`);
 });
 
 test("static files are sent with nosniff", async ({ request }) => {

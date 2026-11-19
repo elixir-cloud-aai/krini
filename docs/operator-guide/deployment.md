@@ -398,7 +398,7 @@ configuration:
 | `X-Frame-Options` | `DENY` | No other site may embed Krini in a frame (for browsers without `frame-ancestors`) |
 | `X-Content-Type-Options` | `nosniff` | Browsers use files only as their declared type |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Other origins (TES and WES services, login providers) see only Krini's origin, not the page's path |
-| `Strict-Transport-Security` | `max-age=63072000` | Browsers use only HTTPS for Krini's host for two years after a visit over HTTPS; ignored over plain HTTP |
+| `Strict-Transport-Security` | `max-age=63072000` | Browsers use only HTTPS for Krini's host, on every port, for two years after a visit over HTTPS; ignored over plain HTTP; not sent by `next dev` |
 
 Krini doesn't send `X-Powered-By`.
 
@@ -406,7 +406,7 @@ The Content Security Policy:
 
 ```text
 default-src 'self'; script-src 'self' 'nonce-<new for each response>' 'strict-dynamic';
-style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self';
+style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self';
 connect-src 'self' https:; worker-src 'self'; object-src 'none'; base-uri 'self';
 form-action 'self'; frame-ancestors 'none'
 ```
@@ -420,6 +420,9 @@ form-action 'self'; frame-ancestors 'none'
   built) come from Krini too.
 - **Connections** may go to any `https:` origin, as browsers call the TES
   and WES services of the registry, which are known only at runtime.
+- **Images** may come from any `https:` origin, for the logos of the
+  login providers (`logo` may be an `https` URL, see
+  [Login](login.md#login-providers)).
 - **Styles** may be inline, as React and the Cloud Components set them at
   runtime.
 - **Frames:** no site may embed Krini (`frame-ancestors 'none'`).
@@ -432,7 +435,9 @@ The headers come from the app: `src/proxy.ts` sends the policy, and
 front of Krini needs to add none of them, and must not replace the
 `Content-Security-Policy` header, whose nonce must match the page. If it
 sets its own `Strict-Transport-Security` (e.g. with `includeSubDomains`),
-make sure it doesn't send the header twice.
+make sure it doesn't send the header twice. Krini's HSTS header binds the
+whole host to HTTPS: don't serve Krini on a host that also serves other
+services over plain HTTP.
 
 ## Security recommendations
 
