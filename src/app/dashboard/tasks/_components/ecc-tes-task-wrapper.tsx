@@ -2,13 +2,14 @@
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { useTESProvider } from "@/hooks";
+import { withSelfHostedAce } from "@/lib/ace-workers";
 import { useTESStore } from "@/stores/tes";
 import { TESServerList } from "./tes-server-list";
 
 const ECCClientGa4ghTesRun = dynamic(
     () =>
         import("@elixir-cloud/tes/react").then(
-            (mod) => mod.ECCClientGa4ghTesRun,
+            (mod) => withSelfHostedAce(mod).ECCClientGa4ghTesRun,
         ),
     {
         ssr: false,

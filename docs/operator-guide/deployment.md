@@ -359,9 +359,9 @@ Krini's server needs outgoing HTTPS connections to:
   (token, user info, keys);
 - the WES services and gateways of the registry (service info).
 
-The users' browsers need to reach Krini, the login providers, the TES and
-WES services, and `cdn.jsdelivr.net`, from which the code editor of the
-workflow form loads a helper script.
+The users' browsers need to reach Krini, the login providers, and the TES
+and WES services. Krini serves all its scripts itself, including the
+workers of the code editor, so browsers need no CDN.
 
 ## Environment variables
 
@@ -385,7 +385,54 @@ the browser is described in [Configuration](configuration.md#settings).
 - Rotate credentials regularly
 - Set the `PRIVACY_*` variables (see [Privacy notice](configuration.md#privacy-notice)), so that the privacy notice at `/privacy` names who is responsible and how to reach them.
 - The notice's text is the same for every deployment. It describes what Krini itself does. Put anything specific to your deployment (purposes, legal basis, retention, rights) into your own notice and link it with `PRIVACY_NOTICE_URL`.
-- Krini sets no cookies for visitors, unless they start a login or change the sidebar. Its cookies are listed in the notice, with their lifetimes. All except the sidebar setting are strictly necessary. Krini has no analytics, so it needs no consent banner. Krini's server reads the registry and checks the registered WES services, without user data. Browsers contact the selected TES and WES services directly, and the code editor of the workflow form loads a helper script from cdn.jsdelivr.net (from the Cloud Components); the notice says so. If you add anything that sets other cookies or tracks users, update the notice and add consent.
+- Krini sets no cookies for visitors, unless they start a login or change the sidebar. Its cookies are listed in the notice, with their lifetimes. All except the sidebar setting are strictly necessary. Krini has no analytics, so it needs no consent banner. Krini's server reads the registry and checks the registered WES services, without user data. Browsers contact the selected TES and WES services directly; the notice says so. If you add anything that sets other cookies or tracks users, update the notice and add consent.
+
+## Security headers
+
+Krini sends these headers with its responses, so they need no
+configuration:
+
+| Header | Value | Effect |
+| --- | --- | --- |
+| `Content-Security-Policy` | see below; pages and API routes only | Limits where scripts, styles, workers and connections may come from |
+| `X-Frame-Options` | `DENY` | No other site may embed Krini in a frame (for browsers without `frame-ancestors`) |
+| `X-Content-Type-Options` | `nosniff` | Browsers use files only as their declared type |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Other origins (TES and WES services, login providers) see only Krini's origin, not the page's path |
+| `Strict-Transport-Security` | `max-age=63072000` | Browsers use only HTTPS for Krini's host for two years after a visit over HTTPS; ignored over plain HTTP |
+
+Krini doesn't send `X-Powered-By`.
+
+The Content Security Policy:
+
+```text
+default-src 'self'; script-src 'self' 'nonce-<new for each response>' 'strict-dynamic';
+style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self';
+connect-src 'self' https:; worker-src 'self'; object-src 'none'; base-uri 'self';
+form-action 'self'; frame-ancestors 'none'
+```
+
+- **Scripts** run only if they carry the response's nonce, which Next.js
+  adds to its own, or if such a script loads them. No script comes from
+  another origin, so neither an inline script injected into a page nor a
+  compromised CDN can run code that reads the access token from
+  `/auth/api/token`. The workers of the
+  code editor (from `ace-builds`, copied to `public/ace/` when the app is
+  built) come from Krini too.
+- **Connections** may go to any `https:` origin, as browsers call the TES
+  and WES services of the registry, which are known only at runtime.
+- **Styles** may be inline, as React and the Cloud Components set them at
+  runtime.
+- **Frames:** no site may embed Krini (`frame-ancestors 'none'`).
+
+As each response gets its own nonce, all pages are rendered when they are
+requested, none at build time.
+
+The headers come from the app: `src/proxy.ts` sends the policy, and
+`headers()` in `next.config.ts` the others. A reverse proxy or ingress in
+front of Krini needs to add none of them, and must not replace the
+`Content-Security-Policy` header, whose nonce must match the page. If it
+sets its own `Strict-Transport-Security` (e.g. with `includeSubDomains`),
+make sure it doesn't send the header twice.
 
 ## Security recommendations
 

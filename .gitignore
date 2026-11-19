@@ -18,6 +18,11 @@
 
 # next.js
 /.next/
+
+# workers of the code editor, copied when the app is built
+# (`scripts/copy-ace-workers.ts`)
+/public/ace/
+/.ace-test-*/
 /out/
 
 # production

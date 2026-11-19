@@ -182,14 +182,6 @@ async function PrivacyPage() {
                     </li>
                     <li>
                         <span className="font-medium">
-                            A content delivery network
-                        </span>{" "}
-                        (cdn.jsdelivr.net) serves a helper script of the code
-                        editor in the workflow form, so it sees your IP address
-                        and browser when you open the form.
-                    </li>
-                    <li>
-                        <span className="font-medium">
                             The service registry
                         </span>{" "}
                         tells Krini which services exist. Krini&apos;s server
