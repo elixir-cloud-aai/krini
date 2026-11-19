@@ -1,10 +1,16 @@
 /**
  * @description fixtures of the end-to-end tests: login through the mock
  * provider, the requests that the mock WES and TES services received, and a check
- * that no page throws or gets server errors from the app
+ * that no page throws, gets server errors from the app, breaks its Content
+ * Security Policy or loads anything from a CDN
  */
 import { test as base, expect, type Page } from "@playwright/test";
-import { mockURL, type TesRequest, type WesRequest } from "./settings";
+import {
+    mockURL,
+    type RefreshMode,
+    type TesRequest,
+    type WesRequest,
+} from "./settings";
 
 /** Base URL of the mock login provider and registry (`e2e/mock/server.ts`) */
 const mock = mockURL;
@@ -59,9 +65,50 @@ async function tesRequests(): Promise<TesRequest[]> {
     return response.json();
 }
 
+/**
+ * Set how the mock provider answers refresh token grants, until the next
+ * test
+ * @param mode Error status and `error`, and delay; empty: normally
+ */
+async function setRefreshMode(mode: RefreshMode) {
+    await fetch(`${mock}/mock/refresh`, {
+        method: "POST",
+        body: JSON.stringify(mode),
+    });
+}
+
+/**
+ * Make the page's session due for a refresh: its access token expires now,
+ * as far as the browser's refresh timer knows (`token_expires_at`)
+ * @param page Page of the app
+ */
+async function expireAccessToken(page: Page) {
+    await page.evaluate(() => {
+        // biome-ignore lint/suspicious/noDocumentCookie: sets the cookie as the app's page sees it, in every test browser
+        document.cookie = `token_expires_at=${Date.now()}; path=/`;
+    });
+}
+
+/**
+ * Drop problems that a test expects, e.g. server errors it provoked
+ * @param problems The test's `problems` fixture
+ * @param expected Whether a problem is expected
+ * @returns How many problems were dropped
+ */
+function forgiveProblems(
+    problems: string[],
+    expected: (problem: string) => boolean,
+) {
+    const kept = problems.filter((val) => !expected(val));
+    const dropped = problems.length - kept.length;
+    problems.splice(0, problems.length, ...kept);
+    return dropped;
+}
+
 type Fixtures = {
-    /** Problems in the browser, which fail the test: page errors and
-     * server errors of the app */
+    /** Problems in the browser, which fail the test: page errors, server
+     * errors of the app, violations of its Content Security Policy and
+     * requests to a CDN */
     problems: string[];
 };
 
@@ -72,6 +119,26 @@ const test = base.extend<Fixtures>({
             const app = new URL(baseURL as string).origin;
             page.on("pageerror", (err) => {
                 problems.push(`page error: ${err.message}`);
+            });
+            // the browser reports violations as events of the document; an
+            // init script isn't subject to the page's policy
+            await page.addInitScript(() => {
+                document.addEventListener(
+                    "securitypolicyviolation",
+                    (event) => {
+                        console.error(
+                            `CSP violation: ${event.effectiveDirective} ${event.blockedURI}`,
+                        );
+                    },
+                );
+            });
+            page.on("console", (message) => {
+                if (message.text().startsWith("CSP violation:"))
+                    problems.push(message.text());
+            });
+            page.on("request", (request) => {
+                if (new URL(request.url()).hostname === "cdn.jsdelivr.net")
+                    problems.push(`CDN request: ${request.url()}`);
             });
             page.on("response", (response) => {
                 if (
@@ -91,4 +158,15 @@ const test = base.extend<Fixtures>({
     ],
 });
 
-export { accessToken, expect, login, test, tesRequests, user, wesRequests };
+export {
+    accessToken,
+    expect,
+    expireAccessToken,
+    forgiveProblems,
+    login,
+    setRefreshMode,
+    test,
+    tesRequests,
+    user,
+    wesRequests,
+};

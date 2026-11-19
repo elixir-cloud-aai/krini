@@ -12,6 +12,7 @@ export default defineConfig({
         include: ["src/**/*.test.ts"],
         // settings come from `vi.stubEnv()` in each test, not from `.env`
         unstubEnvs: true,
+        unstubGlobals: true,
         restoreMocks: true,
         coverage: {
             provider: "v8",

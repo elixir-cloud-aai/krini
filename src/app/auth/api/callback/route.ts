@@ -9,7 +9,7 @@ import {
     getRedirectUri,
     validateIdToken,
 } from "@/lib/oidc";
-import { applySessionCookies } from "@/lib/session-cookies";
+import { applySessionCookies, LOGOUT_MARKER } from "@/lib/session-cookies";
 
 function appUrl(path: string, request: NextRequest) {
     const appOrigin = process.env.APP_ORIGIN;
@@ -35,13 +35,16 @@ function redirectError(request: NextRequest, type: string, state?: string) {
     const response = NextResponse.redirect(
         appUrl(`/auth/error?type=${type}`, request),
     );
-    if (state) expireLoginArtifacts(response, state);
+    // a failed login keeps the logout marker: it still voids session
+    // cookies that a refresh overtaken by the logout may have set
+    if (state) response.cookies.delete(`authState-${state}`);
     return response;
 }
 
+/** Ends the login transaction; the new session replaces the marker */
 function expireLoginArtifacts(response: NextResponse, state: string) {
     response.cookies.delete(`authState-${state}`);
-    response.cookies.delete("logout_marker");
+    response.cookies.delete(LOGOUT_MARKER);
 }
 
 /** Logs only the HTTP status and the provider's `error` field — never codes, secrets or tokens. */

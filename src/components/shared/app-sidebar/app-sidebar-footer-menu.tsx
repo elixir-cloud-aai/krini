@@ -10,6 +10,11 @@ import {
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useSidebar } from "@/components/ui/sidebar";
+import {
+    startTokenRefresh,
+    stopTokenRefresh,
+    withRefreshLock,
+} from "@/hooks/use-token-refresh";
 import type { UserTier } from "@/lib/oidc";
 
 type Props = {
@@ -51,11 +56,16 @@ function AppSidebarFooterMenu({ user, tier, accessRequestUrl }: Props) {
     };
 
     const handleLogout = async () => {
+        // no refresh of this or another tab may answer after the logout
+        // and set the session's cookies again
+        await stopTokenRefresh();
         try {
-            const response = await fetch("/auth/api/logout", {
-                method: "POST",
-                credentials: "same-origin",
-            });
+            const response = await withRefreshLock(() =>
+                fetch("/auth/api/logout", {
+                    method: "POST",
+                    credentials: "same-origin",
+                }),
+            );
 
             if (!response.ok) {
                 throw new Error("Logout failed");
@@ -68,6 +78,7 @@ function AppSidebarFooterMenu({ user, tier, accessRequestUrl }: Props) {
             toast.success("Logged out successfully.");
             window.location.reload();
         } catch {
+            startTokenRefresh();
             toast.error("Unable to log out. Please try again.");
         }
     };

@@ -20,12 +20,14 @@ restarts it.
    values may have changed, too.
 4. Go through [Checking a deployment](deployment.md#checking-a-deployment).
 
-While the old and the new container run side by side (e.g. during the
-rolling update of the Helm chart), a user whose browser refreshes the
-same session from two tabs, and whose requests reach both containers, can
-be logged out (see [Pods](helm-chart.md#pods)); they only need to log in
-again. Upgrade when few users are active, or keep each browser on one pod
-(sticky sessions).
+Sessions survive an upgrade, as they are in cookies. While the old and
+the new container run side by side (e.g. during the rolling update of the
+Helm chart), the tabs of a browser still refresh a session one at a time;
+only in browsers without Web Locks (or in tabs loaded from images older
+than 0.1.0, which don't take turns) can two tabs whose refreshes reach
+both containers end the session, and send the user to the login page (see
+[Pods](helm-chart.md#pods)). Keep each browser on one pod (sticky
+sessions) to avoid even that.
 
 ## From the branch images to 0.1.0
 

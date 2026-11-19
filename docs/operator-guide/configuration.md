@@ -45,7 +45,7 @@ keeps quotes as part of the value (see
 # Login providers: a JSON array; each entry configures one OIDC provider
 # (endpoints are discovered via <issuer>/.well-known/openid-configuration)
 # One line only: env files can't carry a multiline value
-LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/ls-login-grey-wide.jpg","issuer":"issuer-url","clientId":"your-client-id","clientSecret":"your-client-secret","scopes":["openid","profile","email","eduperson_entitlement", "offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["your-compute-group"],"adminGroups":["your-admin-group"]}]
+LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/ls-login-grey-wide.jpg","issuer":"issuer-url","clientId":"your-client-id","clientSecret":"your-client-secret","scopes":["openid","profile","email","eduperson_entitlement","offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["your-compute-group"],"adminGroups":["your-admin-group"]}]
 
 # Optional override of the callback URL (default: <APP_ORIGIN>/auth/api/callback)
 OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
@@ -54,7 +54,7 @@ OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
 COMPUTE_ACCESS_REQUEST_URL=
 
 # Cloud Registry
-CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev
+CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev/ga4gh/registry/v1
 
 # Application
 APP_ORIGIN=http://localhost:3000
@@ -87,8 +87,8 @@ PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
   configuration](deployment.md#service-configuration)).
 - `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000`
   for local development or your production URL), as users' browsers reach
-  it. The login sends users back to it, and the logout accepts requests
-  only from it.
+  it. The login sends users back to it, and the session refresh and the
+  logout accept requests only from it.
 
 Make sure each OIDC client has the redirect URI of `OIDC_REDIRECT_URI`
 registered, e.g. for local development:

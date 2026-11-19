@@ -38,6 +38,13 @@ bun run dev
 
 Open `http://localhost:3000/` in your browser.
 
+`bun run dev` and `bun run build` first copy the workers of the code editor
+from `ace-builds` (the version that `@elixir-cloud/design` uses) to
+`public/ace/`, which git ignores (`scripts/copy-ace-workers.ts`); Krini
+serves them itself, as its Content Security Policy allows no scripts from
+other origins (see
+[Security headers](../operator-guide/deployment.md#security-headers)).
+
 !!! note
     Login fails if the app doesn't run on `http://localhost:3000/`. If you
     change the port, change `APP_ORIGIN` and `OIDC_REDIRECT_URI` in your

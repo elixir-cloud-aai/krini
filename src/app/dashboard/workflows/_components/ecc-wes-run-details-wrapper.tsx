@@ -2,13 +2,14 @@
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { useWESProvider } from "@/hooks";
+import { withSelfHostedAce } from "@/lib/ace-workers";
 import { useWESStore } from "@/stores/wes";
 import { WESServerList } from "./wes-server-list";
 
 const ECCClientGa4ghWesRun = dynamic(
     () =>
         import("@elixir-cloud/wes/react").then(
-            (mod) => mod.ECCClientGa4ghWesRun,
+            (mod) => withSelfHostedAce(mod).ECCClientGa4ghWesRun,
         ),
     {
         ssr: false,

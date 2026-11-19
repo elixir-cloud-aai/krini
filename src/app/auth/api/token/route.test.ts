@@ -23,4 +23,11 @@ describe("GET /auth/api/token", () => {
         expect(response.status).toBe(401);
         expect(await response.json()).toEqual({ error: "Not authenticated" });
     });
+
+    it("gives no token after a logout", async () => {
+        // e.g. a refresh that the logout overtook set the cookie again
+        setUp({ access_token: "access", logout_marker: "1" });
+        const response = await token();
+        expect(response.status).toBe(401);
+    });
 });

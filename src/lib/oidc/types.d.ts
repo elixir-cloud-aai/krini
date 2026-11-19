@@ -30,6 +30,8 @@ export type OidcEndpoints = {
     userinfoEndpoint?: string;
     jwksUri?: string;
     endSessionEndpoint?: string;
+    /** Token revocation (RFC 7009), if the provider advertises it */
+    revocationEndpoint?: string;
 };
 
 export type LoginTransaction = {

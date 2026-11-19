@@ -19,12 +19,13 @@ const COOKIES = [
     {
         name: "access_token",
         purpose: "your access token, which Krini passes to the services",
-        lifetime: "until the token expires, usually an hour",
+        lifetime: "until the token expires, usually an hour, at most 30 days",
     },
     {
         name: "id_token",
         purpose: "the login provider's confirmation of your login",
-        lifetime: "an hour",
+        lifetime:
+            "as long as your session, up to 30 days; deleted when you log out",
     },
     {
         name: "refresh_token",
@@ -39,13 +40,14 @@ const COOKIES = [
     {
         name: "token_expires_at",
         purpose: "when your access token needs to be renewed",
-        lifetime: "up to 30 days; deleted when you log out",
+        lifetime:
+            "as long as your session, up to 30 days; deleted when you log out",
     },
     {
         name: "logout_marker",
         purpose:
-            "keeps you logged out, so that no open page renews the session",
-        lifetime: "15 minutes after you log out, or until you log in again",
+            "records your logout, so that Krini refuses any session cookies that a renewal still in progress sets again",
+        lifetime: "30 days after you log out, or until you log in again",
     },
     {
         name: "sidebar_state",
@@ -179,14 +181,6 @@ async function PrivacyPage() {
                         services (TES) are called without your token for now.
                         Each service is listed with its organization, whose
                         terms apply.
-                    </li>
-                    <li>
-                        <span className="font-medium">
-                            A content delivery network
-                        </span>{" "}
-                        (cdn.jsdelivr.net) serves a helper script of the code
-                        editor in the workflow form, so it sees your IP address
-                        and browser when you open the form.
                     </li>
                     <li>
                         <span className="font-medium">

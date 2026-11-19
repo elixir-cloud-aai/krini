@@ -3,16 +3,20 @@
  *
  * - an OpenID Connect provider (`/.well-known/openid-configuration`,
  *   `/oidc/authorize`, `/oidc/token`, `/oidc/userinfo`, `/oidc/jwks`,
- *   `/oidc/logout`) that logs in the test user without a form; the app
- *   uses PKCE and validates the signed ID token against the JWKS, so the
- *   provider signs real RS256 JWTs;
+ *   `/oidc/logout`, `/oidc/revoke`) that logs in the test user without a
+ *   form; the app uses PKCE and validates the signed ID token against the
+ *   JWKS, so the provider signs real RS256 JWTs. Revoked refresh tokens
+ *   get 400 `invalid_grant`, as at a real provider;
  * - a service registry (`/ga4gh/registry/v1/services`);
  * - a WES service (`/ga4gh/wes/v1/...`) and a TES service
  *   (`/ga4gh/tes/v1/...`) over `https` with a self-signed certificate,
  *   which the browser calls directly, as with real services, and which
  *   allow the app's origin (CORS);
  * - `/mock/requests`, `/mock/tes-requests` and `/mock/reset` to inspect and
- *   clear the requests that the WES and TES services received.
+ *   clear the requests that the WES and TES services received;
+ * - `/mock/refresh` to set how the provider answers refresh token grants
+ *   (`RefreshMode` in `e2e/settings.ts`): an error status and `error`,
+ *   and a delay; `/mock/reset` restores normal answers.
  *
  * The registry and the login provider listen on `MOCK_HTTP_PORT`, the WES
  * and TES services on `MOCK_HTTPS_PORT`. The certificate goes to `MOCK_CERT_DIR`;
@@ -39,6 +43,7 @@ import {
     client,
     mockHttpPort,
     mockHttpsPort,
+    type RefreshMode,
     type TesRequest,
     type WesRequest,
 } from "../settings";
@@ -148,6 +153,10 @@ const codes = new Map<
 >();
 /** Access tokens that the provider issued */
 const accessTokens = new Set<string>();
+/** Refresh tokens that the app revoked at logout */
+const revokedRefreshTokens = new Set<string>();
+/** How the provider answers refresh token grants (`/mock/refresh`) */
+let refreshMode: RefreshMode = {};
 /** Runs that the WES service accepted */
 const runs: { run_id: string; state: string }[] = [];
 /** Requests that the WES service received, for the tests */
@@ -213,6 +222,7 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
             userinfo_endpoint: `${issuer}/oidc/userinfo`,
             jwks_uri: `${issuer}/oidc/jwks`,
             end_session_endpoint: `${issuer}/oidc/logout`,
+            revocation_endpoint: `${issuer}/oidc/revoke`,
         });
 
     if (req.method === "GET" && url.pathname === "/oidc/jwks")
@@ -275,8 +285,33 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
             }
             return send(res, 200, issueTokens(login.nonce));
         }
-        if (grant === "refresh_token") return send(res, 200, issueTokens());
+        if (grant === "refresh_token") {
+            const { delayMs, status, error } = refreshMode;
+            if (delayMs)
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+            if (status) return send(res, status, { error });
+            if (revokedRefreshTokens.has(form.get("refresh_token") ?? ""))
+                return send(res, 400, { error: "invalid_grant" });
+            return send(res, 200, issueTokens());
+        }
         return send(res, 400, { error: "unsupported_grant_type" });
+    }
+
+    // token revocation (RFC 7009): unknown tokens are no error
+    if (req.method === "POST" && url.pathname === "/oidc/revoke") {
+        const form = new URLSearchParams(await bodyOf(req));
+        if (
+            form.get("client_id") !== clientId ||
+            form.get("client_secret") !== clientSecret
+        )
+            return send(res, 401, { error: "invalid_client" });
+        revokedRefreshTokens.add(form.get("token") ?? "");
+        return send(res, 200);
+    }
+
+    if (req.method === "POST" && url.pathname === "/mock/refresh") {
+        refreshMode = JSON.parse((await bodyOf(req)) || "{}");
+        return send(res, 204);
     }
 
     if (req.method === "GET" && url.pathname === "/oidc/logout") {
@@ -317,6 +352,7 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
         runs.length = 0;
         tesRequests.length = 0;
         tasks.length = 0;
+        refreshMode = {};
         return send(res, 204);
     }
 

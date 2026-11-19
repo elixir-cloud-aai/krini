@@ -105,6 +105,27 @@ describe("GET /auth/api/user-info", () => {
         expect(await response.json()).toEqual({ error: true, user: null });
     });
 
+    it("rejects requests after a logout", async () => {
+        // e.g. a refresh that the logout overtook set the cookies again
+        const response = await userInfo({
+            access_token: "at",
+            id_token: idTokenCookie(),
+            logout_marker: "1",
+        });
+        expect(response.status).toBe(401);
+    });
+
+    it("knows the user after the session's ID token expired", async () => {
+        // the cookie lives as long as the session, and refreshes needn't
+        // bring a new ID token; its `sub` still names the user
+        const response = await userInfo({
+            access_token: "at",
+            id_token: idTokenCookie({ exp: Math.floor(now / 1000) - 7200 }),
+        });
+        expect(response.status).toBe(200);
+        expect((await response.json()).user).toMatchObject({ sub: "u1" });
+    });
+
     it("rejects a session of an unknown provider", async () => {
         setUp({ access_token: "at", oidc_provider: "missing" });
         vi.stubEnv(
