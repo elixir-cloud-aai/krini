@@ -132,7 +132,7 @@ Krini keeps the session in `httpOnly` cookies for as long as the provider's
 tokens are valid (`expires_in` and `refresh_expires_in` of the token
 response); in production builds, such as the image, the cookies are
 `Secure`, so Krini must be served over HTTPS. With a refresh token, Krini
-renews the access token shortly before it expires while one of its pages is
+renews the access token shortly before it expires (5 minutes, or half the token lifetime if shorter) while one of its pages is
 open, so the session can last as long as the provider's refresh token (at
 most 30 days); without one, users log in again when the access token
 expires. The ID token, whose `sub` names the user, is kept as long as the
@@ -148,8 +148,8 @@ How Krini handles the provider's answer to a refresh (RFC 6749, section
 
 | Answer of the token endpoint | Krini |
 | --- | --- |
-| `400` with `invalid_grant` (refresh token expired, revoked or reused), or `401` other than `invalid_client` | Ends the session: deletes its cookies and sends the user to the login page |
-| `invalid_client` (e.g. a rotated client secret), other errors, timeouts, an invalid token response | Keeps the session and logs the error (`OIDC refresh error: category=…, provider_error=…`); the page tries again with growing waits (5 seconds, doubling, at most 5 minutes) |
+| `400` with `invalid_grant` (refresh token expired, revoked or reused), or `401` other than `invalid_client` and `unauthorized_client` | Ends the session: deletes its cookies and sends the user to the login page |
+| `invalid_client` or `unauthorized_client` (e.g. a rotated client secret), other errors, timeouts, an invalid token response | Keeps the session and logs the error (`OIDC refresh error: category=…, provider_error=…`); the page tries again with growing waits (5 seconds, doubling, at most 5 minutes) |
 | An ID token for another `sub` or `iss` | Ends the session |
 
 Visitors without a session, or whose refresh token is gone, are never

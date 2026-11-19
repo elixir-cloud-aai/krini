@@ -9,7 +9,7 @@ import {
 } from "@/lib/token-refresh";
 
 /** Runs a function while holding the lock that refreshes hold */
-function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
+export function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
     return lockWith(globalThis.navigator?.locks)(fn);
 }
 
@@ -45,5 +45,3 @@ export function stopTokenRefresh(): Promise<void> {
 export function startTokenRefresh(): void {
     refresher.start();
 }
-
-export { withRefreshLock };

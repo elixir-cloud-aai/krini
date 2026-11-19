@@ -125,7 +125,7 @@ describe("POST /auth/api/refresh", () => {
         );
         const expiry = cookieOf(response, "token_expires_at");
         // the access token's real expiry, without a margin
-        expect(expiry?.value).toBe(String(now + 600 * 1000));
+        expect(expiry?.value).toBe(`${now + 600 * 1000}:${600 * 1000}`);
         expect(expiry?.attributes).toContain(`max-age=${thirtyDays}`);
         expect(expiry?.attributes).not.toContain("httponly");
     });
@@ -265,7 +265,7 @@ describe("POST /auth/api/refresh", () => {
         });
         expect(cookieOf(response, "refresh_token")).toBeUndefined();
         expect(cookieOf(response, "token_expires_at")?.value).toBe(
-            String(now + 60 * 60 * 1000),
+            `${now + 3600 * 1000}:${3600 * 1000}`,
         );
     });
 
@@ -301,10 +301,25 @@ describe("POST /auth/api/refresh", () => {
             error: "No refresh token available",
             code: "no_refresh_token",
         });
-        // a stale expiry no longer starts refreshes; nothing else changes
+        // a stale expiry no longer starts refreshes, and no cookie of the
+        // ended session (e.g. its ID token) outlives it
+        for (const name of sessionCookies)
+            expect(cookieOf(response, name)?.value).toBe("");
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    it("keeps an access token without a refresh token until it expires", async () => {
+        const { response } = await refresh({
+            access_token: "access-1",
+            token_expires_at: "1",
+        });
+        expect(response.status).toBe(401);
+        expect(await response.json()).toMatchObject({
+            code: "no_refresh_token",
+        });
+        // only the expiry goes, so that no further refresh starts
         expect(response.headers.getSetCookie()).toHaveLength(1);
         expect(cookieOf(response, "token_expires_at")?.value).toBe("");
-        expect(post).not.toHaveBeenCalled();
     });
 
     it("ends the session after a logout", async () => {
@@ -447,6 +462,10 @@ describe("POST /auth/api/refresh", () => {
     it.each([
         ["401 invalid_client", httpError(401, { error: "invalid_client" })],
         ["400 invalid_client", httpError(400, { error: "invalid_client" })],
+        [
+            "401 unauthorized_client",
+            httpError(401, { error: "unauthorized_client" }),
+        ],
         ["400 invalid_request", httpError(400, { error: "invalid_request" })],
         ["400 without an error field", httpError(400)],
         ["503", httpError(503)],

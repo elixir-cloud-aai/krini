@@ -88,6 +88,22 @@ async function expireAccessToken(page: Page) {
     });
 }
 
+/**
+ * Drop problems that a test expects, e.g. server errors it provoked
+ * @param problems The test's `problems` fixture
+ * @param expected Whether a problem is expected
+ * @returns How many problems were dropped
+ */
+function forgiveProblems(
+    problems: string[],
+    expected: (problem: string) => boolean,
+) {
+    const kept = problems.filter((val) => !expected(val));
+    const dropped = problems.length - kept.length;
+    problems.splice(0, problems.length, ...kept);
+    return dropped;
+}
+
 type Fixtures = {
     /** Problems in the browser, which fail the test: page errors and
      * server errors of the app */
@@ -124,6 +140,7 @@ export {
     accessToken,
     expect,
     expireAccessToken,
+    forgiveProblems,
     login,
     setRefreshMode,
     test,

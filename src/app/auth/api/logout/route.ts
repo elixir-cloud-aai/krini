@@ -10,7 +10,9 @@ import {
 } from "@/lib/oidc";
 import { rejectForeignOrigin } from "@/lib/request-origin";
 import {
+    baseCookieOptions,
     clearSessionCookies,
+    LOGOUT_MARKER,
     THIRTY_DAYS_SECONDS,
 } from "@/lib/session-cookies";
 
@@ -103,11 +105,8 @@ export async function POST(req: NextRequest) {
     // the session's cookies, in case a refresh that this logout overtook
     // sets them again; as long as the longest session, as such a refresh
     // may rotate the refresh token.
-    response.cookies.set("logout_marker", Date.now().toString(), {
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax" as const,
-        path: "/",
-        httpOnly: true,
+    response.cookies.set(LOGOUT_MARKER, Date.now().toString(), {
+        ...baseCookieOptions(),
         maxAge: THIRTY_DAYS_SECONDS,
     });
 

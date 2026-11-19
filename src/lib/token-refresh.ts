@@ -8,8 +8,13 @@
  * refreshes at a time, and a logout waits for a refresh in flight.
  */
 
-/** Refresh when the access token expires within this time */
+/** Refresh when the access token expires within this time, or within
+ * half its lifetime if that is shorter */
 export const REFRESH_MARGIN_MS = 5 * 60 * 1000;
+/** Longest wait between two checks (`setTimeout` overflows at 24.8 days) */
+export const MAX_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+/** Longest wait for an answer of the refresh route */
+export const REFRESH_TIMEOUT_MS = 30 * 1000;
 /** Shortest time between two checks */
 export const MIN_CHECK_INTERVAL_MS = 30 * 1000;
 /** First wait after a failed refresh; doubles with each further failure */
@@ -19,13 +24,16 @@ export const RETRY_MAX_MS = 5 * 60 * 1000;
 /** Name of the Web Lock that refreshes and logouts hold */
 export const REFRESH_LOCK = "krini-session-refresh";
 
+/** The access token's expiry and lifetime (null: unknown), in ms */
+export type Expiry = { at: number; lifetime: number | null };
+
 /** Outcome of a refresh request: HTTP status (0: no response) and `code` */
 export type RefreshResult = { status: number; code?: string };
 
 /** What the refresher needs from the browser; tests pass their own */
 export type RefresherDeps = {
-    /** The access token's expiry from `token_expires_at`, in ms, or null */
-    readExpiry: () => number | null;
+    /** The access token's expiry from `token_expires_at`, or null */
+    readExpiry: () => Expiry | null;
     /** Sends the refresh request */
     refresh: () => Promise<RefreshResult>;
     /** Leaves the ended session, e.g. to the login page */
@@ -35,13 +43,31 @@ export type RefresherDeps = {
 };
 
 /**
- * Parses the value of the `token_expires_at` cookie
+ * Parses the value of the `token_expires_at` cookie: the expiry in ms,
+ * then optionally `:` and the token's lifetime in ms
  * @param value The cookie's value
- * @returns The expiry in ms, or null if missing or no positive number
+ * @returns The expiry, or null if missing or no positive number
  */
-export function parseExpiry(value: string | undefined): number | null {
-    const expiry = Number(value);
-    return value && Number.isFinite(expiry) && expiry > 0 ? expiry : null;
+export function parseExpiry(value: string | undefined): Expiry | null {
+    const [at, lifetime] = (value || "-").split(":").map(Number);
+    if (!(Number.isFinite(at) && at > 0)) return null;
+    return {
+        at,
+        lifetime: Number.isFinite(lifetime) && lifetime > 0 ? lifetime : null,
+    };
+}
+
+/**
+ * How long before its expiry a token's refresh is due: at most half its
+ * lifetime, so that a short-lived token isn't due again right after its
+ * refresh
+ * @param expiry The token's expiry
+ * @returns The margin in ms
+ */
+function marginOf(expiry: Expiry): number {
+    return expiry.lifetime === null
+        ? REFRESH_MARGIN_MS
+        : Math.min(REFRESH_MARGIN_MS, expiry.lifetime / 2);
 }
 
 /**
@@ -57,6 +83,8 @@ export async function postRefresh(
         response = await fetchFn("/auth/api/refresh", {
             method: "POST",
             credentials: "same-origin",
+            // the lock is held meanwhile, and logouts wait for it
+            signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
         });
     } catch {
         return { status: 0 };
@@ -109,10 +137,11 @@ export function createTokenRefresher(deps: RefresherDeps) {
     function scheduleNext() {
         const expiry = deps.readExpiry();
         if (expiry === null) return;
+        const due = expiry.at - Date.now() - marginOf(expiry);
         schedule(
-            Math.max(
-                expiry - Date.now() - REFRESH_MARGIN_MS,
-                MIN_CHECK_INTERVAL_MS,
+            Math.min(
+                Math.max(due, MIN_CHECK_INTERVAL_MS),
+                MAX_CHECK_INTERVAL_MS,
             ),
         );
     }
@@ -122,7 +151,7 @@ export function createTokenRefresher(deps: RefresherDeps) {
         // another tab may have refreshed while this one waited for the lock
         const expiry = deps.readExpiry();
         if (expiry === null) return;
-        if (expiry - Date.now() > REFRESH_MARGIN_MS) {
+        if (expiry.at - Date.now() > marginOf(expiry)) {
             failures = 0;
             scheduleNext();
             return;

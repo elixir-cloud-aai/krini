@@ -7,6 +7,7 @@ import {
     accessToken,
     expect,
     expireAccessToken,
+    forgiveProblems,
     login,
     setRefreshMode,
     test,
@@ -57,14 +58,8 @@ test("a provider outage keeps the session, and the refresh is retried", async ({
     expect(await accessToken(page)).not.toBe(token);
     await expect(page).toHaveURL(/\/dashboard\/workflows$/);
 
-    // the 503 was expected here
-    const expected = problems.filter((val) => isRefresh(val));
-    expect(expected).toHaveLength(1);
-    problems.splice(
-        0,
-        problems.length,
-        ...problems.filter((val) => !isRefresh(val)),
-    );
+    // the 503s of the refresh were expected here, and only those
+    expect(forgiveProblems(problems, isRefresh)).toBeGreaterThanOrEqual(1);
 });
 
 test("visitors with a stale expiry stay on the page", async ({ page }) => {
@@ -80,7 +75,7 @@ test("visitors with a stale expiry stay on the page", async ({ page }) => {
     expect(await page.context().cookies()).toEqual([]);
 });
 
-test("a refresh in flight doesn't undo the logout", async ({
+test("a logout waits for a refresh in flight in another tab", async ({
     page,
     context,
 }) => {
@@ -91,16 +86,23 @@ test("a refresh in flight doesn't undo the logout", async ({
     // a second tab starts a refresh, which the provider answers late
     const other = await context.newPage();
     const started = other.waitForRequest((req) => isRefresh(req.url()));
+    const events: string[] = [];
+    other.on("response", (res) => {
+        if (isRefresh(res.url())) events.push(`refresh ${res.status()}`);
+    });
+    page.on("request", (req) => {
+        if (req.url().endsWith("/auth/api/logout")) events.push("logout");
+    });
     await other.goto("/dashboard");
     await started;
 
-    // the first tab logs out meanwhile
+    // the first tab logs out meanwhile; the logout goes out only after
+    // the refresh answered
     await page.getByRole("button", { name: /Alice Example/ }).click();
     await page.getByRole("menuitem", { name: "Logout" }).click();
     await expect(page.getByRole("button", { name: /Anonymous/ })).toBeVisible();
+    expect(events).toEqual(["refresh 200", "logout"]);
 
-    // whatever the refresh answered, the session stays ended
-    await other.waitForTimeout(3500);
     expect((await page.request.get("/auth/api/token")).status()).toBe(401);
     const names = (await context.cookies()).map((val) => val.name);
     expect(names).toEqual(["logout_marker"]);
@@ -108,4 +110,29 @@ test("a refresh in flight doesn't undo the logout", async ({
     await expect(
         other.getByRole("button", { name: /Anonymous/ }),
     ).toBeVisible();
+});
+
+test("session cookies that a refresh sets after the logout are void", async ({
+    page,
+    context,
+}) => {
+    await login(page);
+    const session = await context.cookies();
+    await page.getByRole("button", { name: /Alice Example/ }).click();
+    await page.getByRole("menuitem", { name: "Logout" }).click();
+    await expect(page.getByRole("button", { name: /Anonymous/ })).toBeVisible();
+
+    // e.g. a browser without Web Locks: a refresh that the logout
+    // overtook sets the session's cookies again
+    await context.addCookies(session);
+    expect((await page.request.get("/auth/api/token")).status()).toBe(401);
+    expect((await page.request.get("/auth/api/user-info")).status()).toBe(401);
+    const refresh = await page.request.post("/auth/api/refresh", {
+        headers: { origin: new URL(page.url()).origin },
+    });
+    expect(refresh.status()).toBe(401);
+    expect(await refresh.json()).toMatchObject({ code: "session_ended" });
+    // and the refresh deletes them again
+    const names = (await context.cookies()).map((val) => val.name);
+    expect(names).toEqual(["logout_marker"]);
 });

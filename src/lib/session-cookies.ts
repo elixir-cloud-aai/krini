@@ -20,6 +20,32 @@ export type SessionTokens = {
     refresh_expires_in?: unknown;
 };
 
+/** Set by the logout, deleted by the next login */
+export const LOGOUT_MARKER = "logout_marker";
+
+/** Options of Krini's httpOnly cookies */
+export function baseCookieOptions() {
+    return {
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax" as const,
+        path: "/",
+        httpOnly: true,
+    };
+}
+
+/**
+ * Whether the request's browser logged out since its last login: then its
+ * session cookies are void, even if a refresh that the logout overtook set
+ * them again
+ * @param cookieStore The request's cookies
+ * @returns True after a logout
+ */
+export function hasLoggedOut(cookieStore: {
+    get: (name: string) => { value: string } | undefined;
+}): boolean {
+    return Boolean(cookieStore.get(LOGOUT_MARKER)?.value);
+}
+
 /**
  * Deletes the session cookies on a response; `logout_marker` stays
  * @param response The response
@@ -31,7 +57,7 @@ export function clearSessionCookies(response: NextResponse): void {
 /**
  * Writes the Krini session cookies on a response. Token cookies are httpOnly;
  * `token_expires_at` is a non-sensitive timestamp (the access token's real
- * expiry, in ms) the client uses to schedule refreshes. `access_token` lives
+ * expiry and its lifetime, in ms) the client uses to schedule refreshes. `access_token` lives
  * as long as the provider's `expires_in`, `refresh_token` as long as
  * `refresh_expires_in` (at most 30 days). `id_token` and `token_expires_at`
  * live as long as the session: the refresh token's lifetime (30 days when a
@@ -49,12 +75,7 @@ export function applySessionCookies(
     providerId: string,
     options: { keepRefreshToken?: boolean } = {},
 ): void {
-    const cookieOptions = {
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax" as const,
-        path: "/",
-        httpOnly: true,
-    };
+    const cookieOptions = baseCookieOptions();
 
     const accessTokenMaxAge =
         typeof tokens.expires_in === "number" && tokens.expires_in > 0
@@ -102,10 +123,15 @@ export function applySessionCookies(
         maxAge: THIRTY_DAYS_SECONDS,
     });
 
-    const expiresAt = Date.now() + accessTokenMaxAge * 1000;
-    response.cookies.set("token_expires_at", String(expiresAt), {
-        ...cookieOptions,
-        httpOnly: false,
-        maxAge: sessionMaxAge,
-    });
+    // `<expiry>:<lifetime>`, in ms (see `parseExpiry()`)
+    const lifetime = accessTokenMaxAge * 1000;
+    response.cookies.set(
+        "token_expires_at",
+        `${Date.now() + lifetime}:${lifetime}`,
+        {
+            ...cookieOptions,
+            httpOnly: false,
+            maxAge: sessionMaxAge,
+        },
+    );
 }

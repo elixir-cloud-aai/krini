@@ -13,6 +13,7 @@ import { rejectForeignOrigin } from "@/lib/request-origin";
 import {
     applySessionCookies,
     clearSessionCookies,
+    hasLoggedOut,
 } from "@/lib/session-cookies";
 
 const REFRESH_SUCCESS_WINDOW_MS = 60 * 1000;
@@ -43,6 +44,13 @@ const FAILURE_STATUS: Record<RefreshFailure, number> = {
     unavailable: 503,
 };
 
+/**
+ * Builds the response of a failed refresh, with the cookie changes of its
+ * code
+ * @param code Why the refresh failed
+ * @param error Message for humans
+ * @returns The response
+ */
 function failure(code: RefreshFailure, error: string): NextResponse {
     const response = NextResponse.json(
         { error, code },
@@ -64,10 +72,12 @@ function failure(code: RefreshFailure, error: string): NextResponse {
  */
 const recentRefreshSuccess = new Map<string, number>();
 
+/** Key of a refresh token in `recentRefreshSuccess`: its SHA-256 hash */
 function refreshTokenKey(token: string): string {
     return createHash("sha256").update(token).digest("hex");
 }
 
+/** Records a successful refresh, and forgets those outside the window */
 function noteRefreshSuccess(refreshToken: string): void {
     const now = Date.now();
     for (const [key, at] of recentRefreshSuccess) {
@@ -78,6 +88,7 @@ function noteRefreshSuccess(refreshToken: string): void {
     recentRefreshSuccess.set(refreshTokenKey(refreshToken), now);
 }
 
+/** Whether a refresh with this token succeeded within the window */
 function refreshSucceededRecently(refreshToken: string): boolean {
     const at = recentRefreshSuccess.get(refreshTokenKey(refreshToken));
     return at !== undefined && at > Date.now() - REFRESH_SUCCESS_WINDOW_MS;
@@ -92,13 +103,18 @@ function providerErrorOf(err: AxiosError<{ error?: unknown }>) {
 /**
  * Whether the provider rejected the refresh token itself (RFC 6749 5.2):
  * 400 `invalid_grant` for an expired, revoked or reused refresh token, or
- * 401, which some providers answer instead. `invalid_client` means that
- * Krini's client credentials are wrong, which no session can fix.
+ * 401, which some providers answer instead. `invalid_client` and
+ * `unauthorized_client` mean that Krini's client credentials or settings
+ * are wrong, which no session can fix.
  */
 function refreshTokenRejected(err: unknown): boolean {
     if (!axios.isAxiosError(err) || !err.response) return false;
     const providerError = providerErrorOf(err);
-    if (providerError === "invalid_client") return false;
+    if (
+        providerError === "invalid_client" ||
+        providerError === "unauthorized_client"
+    )
+        return false;
     if (err.response.status === 400) return providerError === "invalid_grant";
     return err.response.status === 401;
 }
@@ -125,12 +141,20 @@ export async function POST(req: NextRequest) {
 
     // After a logout, session cookies can only come from a refresh that
     // the logout overtook: delete them again.
-    if (cookieStore.get("logout_marker")?.value) {
+    if (hasLoggedOut(cookieStore)) {
         return failure("session_ended", "Session terminated");
     }
 
     if (!refreshToken) {
-        return failure("no_refresh_token", "No refresh token available");
+        const response = failure(
+            "no_refresh_token",
+            "No refresh token available",
+        );
+        // without an access token either, the session is over: none of its
+        // cookies may outlive it
+        if (!cookieStore.get("access_token")?.value)
+            clearSessionCookies(response);
+        return response;
     }
 
     const idToken = cookieStore.get("id_token")?.value;

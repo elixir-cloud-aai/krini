@@ -117,7 +117,7 @@ describe("GET /auth/api/callback", () => {
         expect(cookieOf(response, "refresh_token")?.value).toBe("refresh");
         // the expiry is for the browser's refresh timer: the real one
         const expiry = cookieOf(response, "token_expires_at");
-        expect(expiry?.value).toBe(String(now + 60 * 60 * 1000));
+        expect(expiry?.value).toBe(`${now + 3600 * 1000}:${3600 * 1000}`);
         expect(expiry?.attributes).not.toContain("httponly");
     });
 
@@ -236,7 +236,7 @@ describe("GET /auth/api/callback", () => {
             "max-age=3600",
         );
         expect(cookieOf(response, "token_expires_at")?.value).toBe(
-            String(now + 60 * 60 * 1000),
+            `${now + 3600 * 1000}:${3600 * 1000}`,
         );
     });
 

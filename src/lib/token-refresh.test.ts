@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     createTokenRefresher,
     lockWith,
+    MAX_CHECK_INTERVAL_MS,
     MIN_CHECK_INTERVAL_MS,
     parseExpiry,
     postRefresh,
@@ -26,18 +27,25 @@ afterEach(() => {
  * A refresher with a fake cookie and refresh route
  * @param expiry The access token's expiry (null: no `token_expires_at`)
  * @param results Results of the refresh requests, in order; a successful
- * one sets the expiry an hour ahead
+ * one sets the expiry a token lifetime ahead
+ * @param lifetime The tokens' lifetime (null: unknown, as in old cookies)
  */
-function setUp(expiry: number | null, results: RefreshResult[] = []) {
+function setUp(
+    expiry: number | null,
+    results: RefreshResult[] = [],
+    lifetime: number | null = null,
+) {
     const state = { expiry };
     const refresh = vi.fn(async () => {
         const result = results.shift() ?? { status: 200 };
-        if (result.status === 200) state.expiry = Date.now() + 60 * minute;
+        if (result.status === 200)
+            state.expiry = Date.now() + (lifetime ?? 60 * minute);
         return result;
     });
     const onSessionEnded = vi.fn();
     const refresher = createTokenRefresher({
-        readExpiry: () => state.expiry,
+        readExpiry: () =>
+            state.expiry === null ? null : { at: state.expiry, lifetime },
         refresh,
         onSessionEnded,
         withLock: (fn) => fn(),
@@ -52,9 +60,14 @@ describe("parseExpiry", () => {
         ["abc", null],
         ["0", null],
         ["-5", null],
-        ["1794488400000", 1794488400000],
+        [":300000", null],
+        // written before 0.1.0: no lifetime
+        ["1794488400000", { at: 1794488400000, lifetime: null }],
+        ["1794488400000:300000", { at: 1794488400000, lifetime: 300000 }],
+        ["1794488400000:abc", { at: 1794488400000, lifetime: null }],
+        ["1794488400000:0", { at: 1794488400000, lifetime: null }],
     ])("parses %j as %j", (value, expected) => {
-        expect(parseExpiry(value)).toBe(expected);
+        expect(parseExpiry(value)).toEqual(expected);
     });
 });
 
@@ -73,6 +86,8 @@ describe("postRefresh", () => {
         expect(fetchFn).toHaveBeenCalledWith("/auth/api/refresh", {
             method: "POST",
             credentials: "same-origin",
+            // a stalled request must not hold the lock for long
+            signal: expect.any(AbortSignal),
         });
     });
 
@@ -239,7 +254,7 @@ describe("createTokenRefresher", () => {
             throw new Error("lock failed");
         });
         const refresher = createTokenRefresher({
-            readExpiry: () => Date.now(),
+            readExpiry: () => ({ at: Date.now(), lifetime: null }),
             refresh,
             onSessionEnded: vi.fn(),
             withLock,
@@ -285,7 +300,7 @@ describe("createTokenRefresher", () => {
         let release: () => void = () => {};
         const refresh = vi.fn(async () => ({ status: 200 }));
         const refresher = createTokenRefresher({
-            readExpiry: () => Date.now(),
+            readExpiry: () => ({ at: Date.now(), lifetime: null }),
             refresh,
             onSessionEnded: vi.fn(),
             // another tab holds the lock
@@ -322,7 +337,7 @@ describe("createTokenRefresher", () => {
                 }),
         );
         const refresher = createTokenRefresher({
-            readExpiry: () => Date.now(),
+            readExpiry: () => ({ at: Date.now(), lifetime: null }),
             refresh: vi.fn(),
             onSessionEnded: vi.fn(),
             withLock,
@@ -332,6 +347,36 @@ describe("createTokenRefresher", () => {
         fail();
         await stopping;
         expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("refreshes short-lived tokens at half their lifetime", async () => {
+        // e.g. 5 minutes, a common default: not due again right after
+        const lifetime = 5 * minute;
+        const { refresh, refresher } = setUp(Date.now(), [], lifetime);
+        refresher.start();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(refresh).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(lifetime / 2 - 1);
+        expect(refresh).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(refresh).toHaveBeenCalledTimes(2);
+        await refresher.stop();
+    });
+
+    it("checks at least daily, as long timers overflow", async () => {
+        const { refresh, refresher } = setUp(
+            Date.now() + 60 * 24 * 60 * minute,
+        );
+        refresher.start();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(vi.getTimerCount()).toBe(1);
+        await vi.advanceTimersByTimeAsync(MAX_CHECK_INTERVAL_MS - 1);
+        expect(vi.getTimerCount()).toBe(1);
+        await vi.advanceTimersByTimeAsync(1);
+        // checked, not refreshed, and waiting again
+        expect(refresh).not.toHaveBeenCalled();
+        expect(vi.getTimerCount()).toBe(1);
+        await refresher.stop();
     });
 
     it("keeps one timer when started again", async () => {
