@@ -1,8 +1,16 @@
 import type { NextResponse } from "next/server";
 
-const THIRTY_DAYS_SECONDS = 30 * 24 * 60 * 60;
+export const THIRTY_DAYS_SECONDS = 30 * 24 * 60 * 60;
 const DEFAULT_ACCESS_TOKEN_MAX_AGE = 3600;
-const REFRESH_MARGIN_MS = 5 * 60 * 1000;
+
+/** The cookies of a session, which end with it */
+export const SESSION_COOKIES = [
+    "access_token",
+    "id_token",
+    "refresh_token",
+    "token_expires_at",
+    "oidc_provider",
+] as const;
 
 export type SessionTokens = {
     access_token: string;
@@ -13,9 +21,21 @@ export type SessionTokens = {
 };
 
 /**
+ * Deletes the session cookies on a response; `logout_marker` stays
+ * @param response The response
+ */
+export function clearSessionCookies(response: NextResponse): void {
+    for (const name of SESSION_COOKIES) response.cookies.delete(name);
+}
+
+/**
  * Writes the Krini session cookies on a response. Token cookies are httpOnly;
- * `token_expires_at` is a non-sensitive timestamp the client uses to schedule
- * refreshes. Lifetimes follow the provider's `expires_in`/`refresh_expires_in`.
+ * `token_expires_at` is a non-sensitive timestamp (the access token's real
+ * expiry, in ms) the client uses to schedule refreshes. `access_token` lives
+ * as long as the provider's `expires_in`, `refresh_token` as long as
+ * `refresh_expires_in` (at most 30 days). `id_token` and `token_expires_at`
+ * live as long as the session: the refresh token's lifetime (30 days when a
+ * refresh doesn't rotate it), or the access token's without a refresh token.
  *
  * When the token response omits `refresh_token`, the cookie is deleted —
  * a new session must not inherit a credential from a previous login, which
@@ -46,24 +66,35 @@ export function applySessionCookies(
         maxAge: accessTokenMaxAge,
     });
 
+    let sessionMaxAge = accessTokenMaxAge;
+    if (typeof tokens.refresh_token === "string") {
+        sessionMaxAge =
+            typeof tokens.refresh_expires_in === "number" &&
+            tokens.refresh_expires_in > 0
+                ? Math.min(
+                      Math.floor(tokens.refresh_expires_in),
+                      THIRTY_DAYS_SECONDS,
+                  )
+                : THIRTY_DAYS_SECONDS;
+        response.cookies.set("refresh_token", tokens.refresh_token, {
+            ...cookieOptions,
+            maxAge: sessionMaxAge,
+        });
+    } else if (options.keepRefreshToken) {
+        // not rotated: the refresh token's remaining lifetime is unknown
+        sessionMaxAge = THIRTY_DAYS_SECONDS;
+    } else {
+        response.cookies.delete("refresh_token");
+    }
+
+    // The ID token holds the session's `sub`, so it must live as long as
+    // the session: providers needn't send a new one on refresh (OpenID
+    // Connect Core 12.2).
     if (typeof tokens.id_token === "string") {
         response.cookies.set("id_token", tokens.id_token, {
             ...cookieOptions,
-            maxAge: accessTokenMaxAge,
+            maxAge: sessionMaxAge,
         });
-    }
-
-    if (typeof tokens.refresh_token === "string") {
-        response.cookies.set("refresh_token", tokens.refresh_token, {
-            ...cookieOptions,
-            maxAge:
-                typeof tokens.refresh_expires_in === "number" &&
-                tokens.refresh_expires_in > 0
-                    ? Math.floor(tokens.refresh_expires_in)
-                    : THIRTY_DAYS_SECONDS,
-        });
-    } else if (!options.keepRefreshToken) {
-        response.cookies.delete("refresh_token");
     }
 
     response.cookies.set("oidc_provider", providerId, {
@@ -71,10 +102,10 @@ export function applySessionCookies(
         maxAge: THIRTY_DAYS_SECONDS,
     });
 
-    const expiresAt = Date.now() + accessTokenMaxAge * 1000 - REFRESH_MARGIN_MS;
+    const expiresAt = Date.now() + accessTokenMaxAge * 1000;
     response.cookies.set("token_expires_at", String(expiresAt), {
         ...cookieOptions,
         httpOnly: false,
-        maxAge: THIRTY_DAYS_SECONDS,
+        maxAge: sessionMaxAge,
     });
 }

@@ -115,9 +115,9 @@ describe("GET /auth/api/callback", () => {
             attributes: expect.arrayContaining(["max-age=3600"]),
         });
         expect(cookieOf(response, "refresh_token")?.value).toBe("refresh");
-        // the expiry is for the browser's refresh timer, 5 min early
+        // the expiry is for the browser's refresh timer: the real one
         const expiry = cookieOf(response, "token_expires_at");
-        expect(expiry?.value).toBe(String(now + 55 * 60 * 1000));
+        expect(expiry?.value).toBe(String(now + 60 * 60 * 1000));
         expect(expiry?.attributes).not.toContain("httponly");
     });
 
@@ -205,14 +205,26 @@ describe("GET /auth/api/callback", () => {
         );
     });
 
-    it("honours refresh_expires_in for the refresh cookie", async () => {
+    it("honours refresh_expires_in for the refresh cookie and the session", async () => {
         const { response } = await callback("?code=c1&state=s1", {
             ...tokens(),
             refresh_expires_in: 7200,
         });
-        expect(cookieOf(response, "refresh_token")?.attributes).toContain(
-            "max-age=7200",
-        );
+        // the ID token and the expiry live as long as the session
+        for (const name of ["refresh_token", "id_token", "token_expires_at"])
+            expect(cookieOf(response, name)?.attributes).toContain(
+                "max-age=7200",
+            );
+    });
+
+    it("ends the session with the access token without a refresh token", async () => {
+        const { refresh_token: _, ...reply } = tokens();
+        const { response } = await callback("?code=c1&state=s1", reply);
+        expect(cookieOf(response, "refresh_token")?.value).toBe("");
+        for (const name of ["id_token", "token_expires_at"])
+            expect(cookieOf(response, name)?.attributes).toContain(
+                "max-age=3600",
+            );
     });
 
     it("assumes an hour without a valid expiry", async () => {
@@ -224,7 +236,7 @@ describe("GET /auth/api/callback", () => {
             "max-age=3600",
         );
         expect(cookieOf(response, "token_expires_at")?.value).toBe(
-            String(now + 55 * 60 * 1000),
+            String(now + 60 * 60 * 1000),
         );
     });
 

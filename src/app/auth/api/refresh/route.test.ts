@@ -1,6 +1,8 @@
+import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { issuer, mockOidcProvider, signIdToken } from "@/test/oidc";
 import {
+    appOrigin,
     cookieOf,
     cookieStore,
     http,
@@ -13,15 +15,20 @@ import {
 vi.mock("next/headers", () => ({ cookies: async () => cookieStore }));
 
 const now = new Date("2026-11-12T12:00:00Z").getTime();
+const thirtyDays = 30 * 24 * 60 * 60;
 
-const tokens = () => ({
-    access_token: "access-2",
-    id_token: signIdToken({
+const idToken = (claims: Record<string, unknown> = {}) =>
+    signIdToken({
         iss: issuer,
         aud: "client",
         exp: Math.floor(now / 1000) + 3600,
         sub: "u1",
-    }),
+        ...claims,
+    });
+
+const tokens = () => ({
+    access_token: "access-2",
+    id_token: idToken(),
     refresh_token: "refresh-2",
     expires_in: 600,
 });
@@ -33,6 +40,18 @@ beforeEach(() => {
 afterEach(() => {
     vi.useRealTimers();
 });
+
+/**
+ * Build a refresh request from Krini's own pages
+ * @param origin The request's `Origin` (null: none)
+ * @returns The request
+ */
+function request(origin: string | null = appOrigin) {
+    return new NextRequest(`${appOrigin}/auth/api/refresh`, {
+        method: "POST",
+        headers: origin === null ? {} : { origin },
+    });
+}
 
 /**
  * Run the refresh with the given session cookies
@@ -52,7 +71,7 @@ async function refresh(
     else post.mockResolvedValue({ status: 200, data: reply });
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { POST } = await import("./route");
-    const response = await POST();
+    const response = await POST(request());
     return { response, post, error };
 }
 
@@ -61,7 +80,18 @@ const sessionCookies = [
     "id_token",
     "refresh_token",
     "token_expires_at",
+    "oidc_provider",
 ];
+
+/** Expect a response that ends the session, and its cookies */
+async function expectSessionEnded(response: Response, error: string) {
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error, code: "session_ended" });
+    for (const name of sessionCookies)
+        expect(cookieOf(response, name)?.value).toBe("");
+    // the logout marker stays
+    expect(cookieOf(response, "logout_marker")).toBeUndefined();
+}
 
 describe("POST /auth/api/refresh", () => {
     it("renews the tokens with the refresh token", async () => {
@@ -84,45 +114,80 @@ describe("POST /auth/api/refresh", () => {
             value: "access-2",
             attributes: expect.arrayContaining(["httponly", "max-age=600"]),
         });
-        expect(cookieOf(response, "id_token")).toBeDefined();
         // rotated refresh tokens replace the old one
-        expect(cookieOf(response, "refresh_token")?.value).toBe("refresh-2");
+        expect(cookieOf(response, "refresh_token")).toMatchObject({
+            value: "refresh-2",
+            attributes: expect.arrayContaining([`max-age=${thirtyDays}`]),
+        });
+        // the ID token and the expiry live as long as the session
+        expect(cookieOf(response, "id_token")?.attributes).toContain(
+            `max-age=${thirtyDays}`,
+        );
         const expiry = cookieOf(response, "token_expires_at");
-        expect(expiry?.value).toBe(String(now + 5 * 60 * 1000));
+        // the access token's real expiry, without a margin
+        expect(expiry?.value).toBe(String(now + 600 * 1000));
+        expect(expiry?.attributes).toContain(`max-age=${thirtyDays}`);
         expect(expiry?.attributes).not.toContain("httponly");
     });
 
-    it("does not clear cookies when a concurrent refresh already succeeded", async () => {
+    it.each([
+        ["no Origin", null],
+        ["another Origin", "https://evil.example"],
+    ])("rejects a request with %s", async (_, origin) => {
+        setUp({ refresh_token: "rt-SECRET-1" });
+        mockOidcProvider();
+        const post = vi.spyOn(await http(), "post");
+        const { POST } = await import("./route");
+        const response = await POST(request(origin));
+        expect(response.status).toBe(403);
+        expect(response.headers.getSetCookie()).toEqual([]);
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    it("fails without APP_ORIGIN", async () => {
+        setUp({ refresh_token: "rt-SECRET-1" });
+        vi.stubEnv("APP_ORIGIN", undefined);
+        const { POST } = await import("./route");
+        const response = await POST(request());
+        expect(response.status).toBe(500);
+    });
+
+    it("does not end the session when a concurrent refresh already succeeded", async () => {
         setUp({ refresh_token: "rt-SECRET-1" });
         mockOidcProvider();
         const post = vi.spyOn(await http(), "post");
         post.mockResolvedValueOnce({ status: 200, data: tokens() });
-        post.mockRejectedValueOnce(httpError(401));
+        post.mockRejectedValueOnce(httpError(400, { error: "invalid_grant" }));
+        vi.spyOn(console, "error").mockImplementation(() => {});
         const { POST } = await import("./route");
 
         // two tabs refresh the same session; the provider rotates the
         // refresh token, so the second request is a replay rejection
-        expect((await POST()).status).toBe(200);
-        const replay = await POST();
-        expect(replay.status).toBe(401);
+        expect((await POST(request())).status).toBe(200);
+        const replay = await POST(request());
+        expect(replay.status).toBe(409);
+        expect(await replay.json()).toMatchObject({
+            code: "concurrent_refresh",
+        });
         // the losing response must not undo the winner's session cookies
         expect(replay.headers.getSetCookie()).toEqual([]);
     });
 
-    it("still clears cookies once the success record expires", async () => {
+    it("still ends the session once the success record expires", async () => {
         setUp({ refresh_token: "rt-SECRET-1" });
         mockOidcProvider();
         const post = vi.spyOn(await http(), "post");
         post.mockResolvedValueOnce({ status: 200, data: tokens() });
+        vi.spyOn(console, "error").mockImplementation(() => {});
         const { POST } = await import("./route");
-        await POST();
+        await POST(request());
 
         vi.setSystemTime(now + 61 * 1000);
-        post.mockRejectedValueOnce(httpError(401));
-        const response = await POST();
-        expect(response.status).toBe(401);
-        expect(cookieOf(response, "access_token")?.value).toBe("");
-        expect(cookieOf(response, "refresh_token")?.value).toBe("");
+        post.mockRejectedValueOnce(httpError(400, { error: "invalid_grant" }));
+        await expectSessionEnded(
+            await POST(request()),
+            "Failed to refresh token",
+        );
     });
 
     it("keeps recent successes while sweeping expired ones", async () => {
@@ -131,16 +196,16 @@ describe("POST /auth/api/refresh", () => {
         const post = vi.spyOn(await http(), "post");
         post.mockResolvedValue({ status: 200, data: tokens() });
         const { POST } = await import("./route");
-        expect((await POST()).status).toBe(200);
+        expect((await POST(request())).status).toBe(200);
 
         // a second session's success inside the window is kept
         vi.setSystemTime(now + 30 * 1000);
         jar.set("refresh_token", { name: "refresh_token", value: "rt-2" });
-        expect((await POST()).status).toBe(200);
+        expect((await POST(request())).status).toBe(200);
 
         // later, the first session's expired entry is swept
         vi.setSystemTime(now + 61 * 1000);
-        expect((await POST()).status).toBe(200);
+        expect((await POST(request())).status).toBe(200);
     });
 
     it("keeps the refresh token when the response does not rotate it", async () => {
@@ -151,14 +216,26 @@ describe("POST /auth/api/refresh", () => {
         expect(cookieOf(response, "access_token")?.value).toBe("access-2");
     });
 
-    it("honours refresh_expires_in for the refresh cookie", async () => {
+    it("honours refresh_expires_in for the refresh cookie and the session", async () => {
         const { response } = await refresh(undefined, {
             ...tokens(),
             refresh_expires_in: 7200,
         });
-        expect(cookieOf(response, "refresh_token")?.attributes).toContain(
-            "max-age=7200",
-        );
+        for (const name of ["refresh_token", "id_token", "token_expires_at"])
+            expect(cookieOf(response, name)?.attributes).toContain(
+                "max-age=7200",
+            );
+    });
+
+    it("keeps the session cookies at most 30 days", async () => {
+        const { response } = await refresh(undefined, {
+            ...tokens(),
+            refresh_expires_in: 90 * 24 * 60 * 60,
+        });
+        for (const name of ["refresh_token", "id_token", "token_expires_at"])
+            expect(cookieOf(response, name)?.attributes).toContain(
+                `max-age=${thirtyDays}`,
+            );
     });
 
     it("sets secure cookies in production", async () => {
@@ -169,54 +246,74 @@ describe("POST /auth/api/refresh", () => {
         );
     });
 
-    it("keeps the ID and refresh tokens if the provider sends no new ones", async () => {
-        const { response } = await refresh(undefined, {
-            access_token: "access-2",
-            expires_in: 3600,
-        });
+    it("keeps the session's ID token if the provider sends no new one", async () => {
+        const sessionIdToken = idToken();
+        const { response } = await refresh(
+            { refresh_token: "rt-SECRET-1", id_token: sessionIdToken },
+            { access_token: "access-2", expires_in: 3600 },
+        );
         expect(response.status).toBe(200);
         expect(cookieOf(response, "access_token")).toMatchObject({
             value: "access-2",
             attributes: expect.arrayContaining(["max-age=3600"]),
         });
-        expect(cookieOf(response, "id_token")).toBeUndefined();
+        // set again with the session's lifetime, so that it doesn't expire
+        // with the first access token
+        expect(cookieOf(response, "id_token")).toMatchObject({
+            value: sessionIdToken,
+            attributes: expect.arrayContaining([`max-age=${thirtyDays}`]),
+        });
         expect(cookieOf(response, "refresh_token")).toBeUndefined();
         expect(cookieOf(response, "token_expires_at")?.value).toBe(
-            String(now + 55 * 60 * 1000),
+            String(now + 60 * 60 * 1000),
         );
     });
 
-    it("fails without a refresh token", async () => {
-        const { response, post } = await refresh({});
+    it("accepts a new ID token of a session without one", async () => {
+        const { response } = await refresh();
+        expect(response.status).toBe(200);
+    });
+
+    it.each([
+        ["another user", { sub: "u2" }],
+        // the same provider, but not the same `iss` string
+        ["another issuer", { iss: `${issuer}/` }],
+    ])("ends the session on an ID token of %s", async (_, claims) => {
+        const { response, error } = await refresh(
+            {
+                refresh_token: "rt-SECRET-1",
+                // decoded only: the session's ID token was validated at login
+                id_token: `h.${Buffer.from(JSON.stringify({ iss: issuer, sub: "u1", ...claims })).toString("base64url")}.s`,
+                oidc_provider: "test",
+            },
+            tokens(),
+        );
+        await expectSessionEnded(response, "Invalid token response");
+        expect(error.mock.calls[0][0]).toMatch(
+            /category=id_token_subject_mismatch/,
+        );
+    });
+
+    it("stops refreshes of visitors without a refresh token", async () => {
+        const { response, post } = await refresh({ token_expires_at: "1" });
         expect(response.status).toBe(401);
         expect(await response.json()).toEqual({
             error: "No refresh token available",
+            code: "no_refresh_token",
         });
+        // a stale expiry no longer starts refreshes; nothing else changes
+        expect(response.headers.getSetCookie()).toHaveLength(1);
+        expect(cookieOf(response, "token_expires_at")?.value).toBe("");
         expect(post).not.toHaveBeenCalled();
     });
 
-    it("fails after a logout", async () => {
+    it("ends the session after a logout", async () => {
         const { response, post } = await refresh({
             refresh_token: "rt-SECRET-1",
             logout_marker: "1",
         });
-        expect(response.status).toBe(401);
-        expect(await response.json()).toEqual({ error: "Session terminated" });
+        await expectSessionEnded(response, "Session terminated");
         expect(post).not.toHaveBeenCalled();
-    });
-
-    it("drops the new tokens after a logout during the refresh", async () => {
-        setUp({ refresh_token: "rt-SECRET-1" });
-        mockOidcProvider();
-        vi.spyOn(await http(), "post").mockImplementation(async () => {
-            jar.set("logout_marker", { name: "logout_marker", value: "1" });
-            return { status: 200, data: tokens() };
-        });
-        const { POST } = await import("./route");
-        const response = await POST();
-        expect(response.status).toBe(401);
-        expect(await response.json()).toEqual({ error: "Session terminated" });
-        expect(response.headers.getSetCookie()).toEqual([]);
     });
 
     it("resolves the session provider from the provider cookie and ID token", async () => {
@@ -248,47 +345,54 @@ describe("POST /auth/api/refresh", () => {
         );
         mockOidcProvider();
         const post = vi.spyOn(await http(), "post");
-        post.mockResolvedValue({ status: 200, data: tokens() });
+        // the session's ID token is a stub, so no new one to compare
+        const { id_token: _, ...reply } = tokens();
+        post.mockResolvedValue({ status: 200, data: reply });
         const { POST } = await import("./route");
-        const response = await POST();
+        const response = await POST(request());
         expect(response.status).toBe(200);
         expect(post).toHaveBeenCalled();
     });
 
-    it("fails when no login providers are configured", async () => {
+    it("ends the session when its login provider is gone", async () => {
         setUp({ refresh_token: "rt-SECRET-1" });
         mockOidcProvider();
         vi.stubEnv("LOGIN_PROVIDERS", "[]");
         const { POST } = await import("./route");
-        const response = await POST();
-        expect(response.status).toBe(401);
-        expect(await response.json()).toEqual({
-            error: "Unknown login provider",
-        });
+        await expectSessionEnded(
+            await POST(request()),
+            "Unknown login provider",
+        );
     });
 
-    it("fails when the provider cannot be discovered", async () => {
+    it("keeps the session when the provider cannot be discovered", async () => {
         setUp({ refresh_token: "rt-SECRET-1" });
         vi.stubGlobal(
             "fetch",
             vi.fn(async () => new Response("err", { status: 500 })),
         );
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
         const { POST } = await import("./route");
-        const response = await POST();
-        expect(response.status).toBe(500);
+        const response = await POST(request());
+        expect(response.status).toBe(503);
         expect(await response.json()).toEqual({
             error: "Could not discover the OIDC provider configuration",
+            code: "unavailable",
         });
+        expect(response.headers.getSetCookie()).toEqual([]);
+        expect(error.mock.calls[0][0]).toMatch(/category=discovery_failed/);
     });
 
     it("rejects a token response without an access token", async () => {
         const { response, error } = await refresh(undefined, {
             id_token: "x",
         });
-        expect(response.status).toBe(500);
+        expect(response.status).toBe(503);
         expect(await response.json()).toEqual({
             error: "Invalid token response",
+            code: "unavailable",
         });
+        expect(response.headers.getSetCookie()).toEqual([]);
         expect(error.mock.calls[0][0]).toMatch(/category=invalid_response/);
     });
 
@@ -297,9 +401,10 @@ describe("POST /auth/api/refresh", () => {
             access_token: "access-2",
             id_token: "not-a-jwt",
         });
-        expect(response.status).toBe(500);
+        expect(response.status).toBe(503);
         expect(await response.json()).toEqual({
             error: "Invalid token response",
+            code: "unavailable",
         });
         expect(error.mock.calls[0][0]).toMatch(
             /category=id_token_validation_failed/,
@@ -329,29 +434,45 @@ describe("POST /auth/api/refresh", () => {
         );
     });
 
-    it("ends the session when the provider rejects the refresh token", async () => {
-        const { response, error } = await refresh(undefined, httpError(401));
-        expect(response.status).toBe(401);
-        expect(await response.json()).toEqual({
-            error: "Failed to refresh token",
-        });
-        for (const name of [...sessionCookies, "logout_marker"])
-            expect(cookieOf(response, name)?.value).toBe("");
-        expect(error.mock.calls[0][0]).toContain("category=upstream_401");
+    it.each([
+        ["400 invalid_grant", httpError(400, { error: "invalid_grant" })],
+        ["401 without an error field", httpError(401)],
+        ["401 invalid_token", httpError(401, { error: "invalid_token" })],
+    ])("ends the session when the provider answers %s", async (_, reply) => {
+        const { response, error } = await refresh(undefined, reply);
+        await expectSessionEnded(response, "Failed to refresh token");
+        expect(error.mock.calls[0][0]).toMatch(/category=upstream_40[01]/);
     });
 
     it.each([
-        ["another error status", httpError(503), "upstream_503"],
-        ["a network error", networkError("ETIMEDOUT"), "network_ETIMEDOUT"],
-        ["an axios error without details", networkError(), "unknown"],
-        ["another error", new Error("boom"), "unexpected"],
-    ])("keeps the session on %s", async (_, reply, category) => {
+        ["401 invalid_client", httpError(401, { error: "invalid_client" })],
+        ["400 invalid_client", httpError(400, { error: "invalid_client" })],
+        ["400 invalid_request", httpError(400, { error: "invalid_request" })],
+        ["400 without an error field", httpError(400)],
+        ["503", httpError(503)],
+        ["a network error", networkError("ETIMEDOUT")],
+        ["an axios error without details", networkError()],
+        ["another error", new Error("boom")],
+    ])("keeps the session on %s", async (_, reply) => {
         const { response, error } = await refresh(undefined, reply);
-        expect(response.status).toBe(401);
+        expect(response.status).toBe(503);
+        expect(await response.json()).toEqual({
+            error: "Failed to refresh token",
+            code: "unavailable",
+        });
         expect(response.headers.getSetCookie()).toEqual([]);
-        expect(error.mock.calls[0][0]).toContain(`category=${category}`);
         // the log has no tokens or secrets
         expect(error.mock.calls[0][0]).not.toContain("rt-SECRET-1");
         expect(error.mock.calls[0][0]).not.toContain("client-secret");
+    });
+
+    it.each([
+        ["upstream_503", httpError(503)],
+        ["network_ETIMEDOUT", networkError("ETIMEDOUT")],
+        ["unknown", networkError()],
+        ["unexpected", new Error("boom")],
+    ])("logs the category %s", async (category, reply) => {
+        const { error } = await refresh(undefined, reply);
+        expect(error.mock.calls[0][0]).toContain(`category=${category}`);
     });
 });
