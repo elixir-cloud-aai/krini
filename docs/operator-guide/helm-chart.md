@@ -75,7 +75,7 @@ default; use it for development and testing only.
     ```yaml
     hostName: krini.example.org
     config:
-      cloudRegistryUrl: https://registry.example.org
+      cloudRegistryUrl: https://registry.example.org/ga4gh/registry/v1
       privacy:
         controller: Example Institute, Example Street 1, Example City
         contact: privacy@example.org
