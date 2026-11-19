@@ -9,7 +9,10 @@ import {
 
 export async function GET() {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("access_token")?.value;
+    // after a logout, cookies set again by a refresh it overtook are void
+    const accessToken = cookieStore.get("logout_marker")?.value
+        ? undefined
+        : cookieStore.get("access_token")?.value;
     const idToken = cookieStore.get("id_token")?.value;
 
     if (!accessToken) {

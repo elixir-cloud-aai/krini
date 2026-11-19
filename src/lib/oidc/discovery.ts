@@ -13,6 +13,7 @@ type DiscoveryCacheEntry = {
     userinfo_endpoint?: string;
     jwks_uri?: string;
     end_session_endpoint?: string;
+    revocation_endpoint?: string;
     issuer?: string;
 };
 
@@ -64,5 +65,6 @@ function toEndpoints(doc: DiscoveryCacheEntry): OidcEndpoints {
         userinfoEndpoint: doc.userinfo_endpoint,
         jwksUri: doc.jwks_uri,
         endSessionEndpoint: doc.end_session_endpoint,
+        revocationEndpoint: doc.revocation_endpoint,
     };
 }
