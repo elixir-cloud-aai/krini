@@ -5,7 +5,12 @@
  * Security Policy or loads anything from a CDN
  */
 import { test as base, expect, type Page } from "@playwright/test";
-import { mockURL, type TesRequest, type WesRequest } from "./settings";
+import {
+    mockURL,
+    type RefreshMode,
+    type TesRequest,
+    type WesRequest,
+} from "./settings";
 
 /** Base URL of the mock login provider and registry (`e2e/mock/server.ts`) */
 const mock = mockURL;
@@ -58,6 +63,46 @@ async function wesRequests(): Promise<WesRequest[]> {
 async function tesRequests(): Promise<TesRequest[]> {
     const response = await fetch(`${mock}/mock/tes-requests`);
     return response.json();
+}
+
+/**
+ * Set how the mock provider answers refresh token grants, until the next
+ * test
+ * @param mode Error status and `error`, and delay; empty: normally
+ */
+async function setRefreshMode(mode: RefreshMode) {
+    await fetch(`${mock}/mock/refresh`, {
+        method: "POST",
+        body: JSON.stringify(mode),
+    });
+}
+
+/**
+ * Make the page's session due for a refresh: its access token expires now,
+ * as far as the browser's refresh timer knows (`token_expires_at`)
+ * @param page Page of the app
+ */
+async function expireAccessToken(page: Page) {
+    await page.evaluate(() => {
+        // biome-ignore lint/suspicious/noDocumentCookie: sets the cookie as the app's page sees it, in every test browser
+        document.cookie = `token_expires_at=${Date.now()}; path=/`;
+    });
+}
+
+/**
+ * Drop problems that a test expects, e.g. server errors it provoked
+ * @param problems The test's `problems` fixture
+ * @param expected Whether a problem is expected
+ * @returns How many problems were dropped
+ */
+function forgiveProblems(
+    problems: string[],
+    expected: (problem: string) => boolean,
+) {
+    const kept = problems.filter((val) => !expected(val));
+    const dropped = problems.length - kept.length;
+    problems.splice(0, problems.length, ...kept);
+    return dropped;
 }
 
 type Fixtures = {
@@ -113,4 +158,15 @@ const test = base.extend<Fixtures>({
     ],
 });
 
-export { accessToken, expect, login, test, tesRequests, user, wesRequests };
+export {
+    accessToken,
+    expect,
+    expireAccessToken,
+    forgiveProblems,
+    login,
+    setRefreshMode,
+    test,
+    tesRequests,
+    user,
+    wesRequests,
+};

@@ -33,6 +33,16 @@ type WesRequest = {
     fields?: Record<string, string>;
 };
 
+/** How the mock provider answers refresh token grants; empty: normally */
+type RefreshMode = {
+    /** Error status to answer with, e.g. 400 */
+    status?: number;
+    /** `error` of the error answer, e.g. `invalid_grant` */
+    error?: string;
+    /** Wait before answering, in ms */
+    delayMs?: number;
+};
+
 /** A request that the mock TES service received */
 type TesRequest = {
     method: string;
@@ -50,6 +60,7 @@ export {
     mockHttpsPort,
     mockURL,
     privacy,
+    type RefreshMode,
     type TesRequest,
     type WesRequest,
 };

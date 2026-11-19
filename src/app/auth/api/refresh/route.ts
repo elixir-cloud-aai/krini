@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import axios from "axios";
+import axios, { type AxiosError, type AxiosResponse } from "axios";
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { axiosBase } from "@/lib/axios";
 import {
     decodeJwtPayload,
@@ -9,22 +9,77 @@ import {
     getSessionProvider,
     validateIdToken,
 } from "@/lib/oidc";
-import { applySessionCookies } from "@/lib/session-cookies";
+import { rejectForeignOrigin } from "@/lib/request-origin";
+import {
+    applySessionCookies,
+    clearSessionCookies,
+    hasLoggedOut,
+    type SessionTokens,
+    setRefreshTokenCookie,
+} from "@/lib/session-cookies";
 
 const REFRESH_SUCCESS_WINDOW_MS = 60 * 1000;
 
 /**
+ * Why a refresh failed, as `code` of the response, for the client
+ * (`src/lib/token-refresh.ts`):
+ *
+ * - `session_ended` (401): the session is over; its cookies are deleted;
+ * - `no_refresh_token` (401): nothing to renew; `token_expires_at` is
+ *   deleted, so the client stops trying, and the access token, if any,
+ *   stays until it expires;
+ * - `concurrent_refresh` (409): another refresh of the session just
+ *   succeeded, so the client tries again with its new cookies;
+ * - `unavailable` (503): the provider or Krini's settings failed; the
+ *   session stays, and the client tries again later.
+ */
+type RefreshFailure =
+    | "session_ended"
+    | "no_refresh_token"
+    | "concurrent_refresh"
+    | "unavailable";
+
+const FAILURE_STATUS: Record<RefreshFailure, number> = {
+    session_ended: 401,
+    no_refresh_token: 401,
+    concurrent_refresh: 409,
+    unavailable: 503,
+};
+
+/**
+ * Builds the response of a failed refresh, with the cookie changes of its
+ * code
+ * @param code Why the refresh failed
+ * @param error Message for humans
+ * @returns The response
+ */
+function failure(code: RefreshFailure, error: string): NextResponse {
+    const response = NextResponse.json(
+        { error, code },
+        { status: FAILURE_STATUS[code] },
+    );
+    if (code === "session_ended") clearSessionCookies(response);
+    if (code === "no_refresh_token")
+        response.cookies.delete("token_expires_at");
+    return response;
+}
+
+/**
  * Hashes of refresh tokens that a refresh succeeded with recently. When the
  * provider rotates refresh tokens, concurrent refreshes of the same session
- * race: one wins and sets new cookies, the loser gets a 401 replay rejection.
- * That 401 must not clear the cookies the winner just established.
+ * race: one wins and sets new cookies, the loser gets an `invalid_grant`
+ * replay rejection. That rejection must not clear the cookies the winner
+ * just established. The record is per process; the client's lock (one
+ * refresh per browser at a time) keeps refreshes from racing at all.
  */
 const recentRefreshSuccess = new Map<string, number>();
 
+/** Key of a refresh token in `recentRefreshSuccess`: its SHA-256 hash */
 function refreshTokenKey(token: string): string {
     return createHash("sha256").update(token).digest("hex");
 }
 
+/** Records a successful refresh, and forgets those outside the window */
 function noteRefreshSuccess(refreshToken: string): void {
     const now = Date.now();
     for (const [key, at] of recentRefreshSuccess) {
@@ -35,20 +90,42 @@ function noteRefreshSuccess(refreshToken: string): void {
     recentRefreshSuccess.set(refreshTokenKey(refreshToken), now);
 }
 
+/** Whether a refresh with this token succeeded within the window */
 function refreshSucceededRecently(refreshToken: string): boolean {
     const at = recentRefreshSuccess.get(refreshTokenKey(refreshToken));
     return at !== undefined && at > Date.now() - REFRESH_SUCCESS_WINDOW_MS;
 }
 
+/** The provider's `error` field of a failed token request, if any */
+function providerErrorOf(err: AxiosError<{ error?: unknown }>) {
+    const error = err.response?.data?.error;
+    return typeof error === "string" ? error : undefined;
+}
+
+/**
+ * Whether the provider rejected the refresh token itself (RFC 6749 5.2):
+ * 400 `invalid_grant` for an expired, revoked or reused refresh token, or
+ * 401, which some providers answer instead. `invalid_client` and
+ * `unauthorized_client` mean that Krini's client credentials or settings
+ * are wrong, which no session can fix.
+ */
+function refreshTokenRejected(err: unknown): boolean {
+    if (!axios.isAxiosError(err) || !err.response) return false;
+    const providerError = providerErrorOf(err);
+    if (
+        providerError === "invalid_client" ||
+        providerError === "unauthorized_client"
+    )
+        return false;
+    if (err.response.status === 400) return providerError === "invalid_grant";
+    return err.response.status === 401;
+}
+
 /** Logs only the HTTP status and the provider's `error` field — never codes, secrets or tokens. */
 function logTokenError(context: string, err: unknown, tokenEndpoint: string) {
     if (axios.isAxiosError(err)) {
-        const providerError =
-            typeof err.response?.data?.error === "string"
-                ? err.response.data.error
-                : undefined;
         console.error(
-            `${context}: category=${err.response ? `upstream_${err.response.status}` : err.code ? `network_${err.code}` : "unknown"}, endpoint=${tokenEndpoint}, provider_error=${providerError ?? "none"}`,
+            `${context}: category=${err.response ? `upstream_${err.response.status}` : err.code ? `network_${err.code}` : "unknown"}, endpoint=${tokenEndpoint}, provider_error=${providerErrorOf(err) ?? "none"}`,
         );
     } else {
         console.error(
@@ -57,47 +134,57 @@ function logTokenError(context: string, err: unknown, tokenEndpoint: string) {
     }
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+    const rejected = rejectForeignOrigin(req);
+    if (rejected) return rejected;
+
     const cookieStore = await cookies();
     const refreshToken = cookieStore.get("refresh_token")?.value;
-    const logoutMarker = cookieStore.get("logout_marker")?.value;
 
-    if (!refreshToken) {
-        return NextResponse.json(
-            { error: "No refresh token available" },
-            { status: 401 },
-        );
+    // After a logout, session cookies can only come from a refresh that
+    // the logout overtook: delete them again.
+    if (hasLoggedOut(cookieStore)) {
+        return failure("session_ended", "Session terminated");
     }
 
-    if (logoutMarker) {
-        return NextResponse.json(
-            { error: "Session terminated" },
-            { status: 401 },
+    if (!refreshToken) {
+        const response = failure(
+            "no_refresh_token",
+            "No refresh token available",
         );
+        // without an access token either, the session is over: none of its
+        // cookies may outlive it
+        if (!cookieStore.get("access_token")?.value)
+            clearSessionCookies(response);
+        return response;
     }
 
     const idToken = cookieStore.get("id_token")?.value;
+    const idTokenPayload = idToken ? decodeJwtPayload(idToken) : null;
     const provider = getSessionProvider(
         cookieStore.get("oidc_provider")?.value,
-        idToken ? decodeJwtPayload(idToken) : null,
+        idTokenPayload,
     );
     if (!provider) {
-        return NextResponse.json(
-            { error: "Unknown login provider" },
-            { status: 401 },
-        );
+        // e.g. the provider was removed from the settings: no refresh can
+        // renew this session
+        return failure("session_ended", "Unknown login provider");
     }
 
     const endpoints = await getEndpoints(provider);
     if (!endpoints) {
-        return NextResponse.json(
-            { error: "Could not discover the OIDC provider configuration" },
-            { status: 500 },
+        console.error(
+            `OIDC refresh error: category=discovery_failed, provider=${provider.id}`,
+        );
+        return failure(
+            "unavailable",
+            "Could not discover the OIDC provider configuration",
         );
     }
 
+    let response: AxiosResponse;
     try {
-        const response = await axiosBase.post(
+        response = await axiosBase.post(
             endpoints.tokenEndpoint,
             new URLSearchParams({
                 grant_type: "refresh_token",
@@ -112,76 +199,88 @@ export async function POST() {
                 validateStatus: (status: number) => status === 200,
             },
         );
-
-        const { access_token, id_token } = response.data;
-
-        if (typeof access_token !== "string") {
-            console.error(
-                `OIDC refresh error: category=invalid_response, endpoint=${endpoints.tokenEndpoint}`,
-            );
-            return NextResponse.json(
-                { error: "Invalid token response" },
-                { status: 500 },
-            );
-        }
-
-        // A refreshed ID token carries no nonce; signature, issuer,
-        // audience and expiry are still verified.
-        if (typeof id_token === "string") {
-            const payload = await validateIdToken(
-                id_token,
-                endpoints,
-                provider,
-                null,
-            );
-            if (!payload) {
-                console.error(
-                    `OIDC refresh error: category=id_token_validation_failed, endpoint=${endpoints.tokenEndpoint}`,
-                );
-                return NextResponse.json(
-                    { error: "Invalid token response" },
-                    { status: 500 },
-                );
-            }
-        }
-
-        const cookieStoreAfter = await cookies();
-        if (cookieStoreAfter.get("logout_marker")?.value) {
-            return NextResponse.json(
-                { error: "Session terminated" },
-                { status: 401 },
-            );
-        }
-
-        const jsonResponse = NextResponse.json({ success: true });
-        applySessionCookies(jsonResponse, response.data, provider.id, {
-            keepRefreshToken: true,
-        });
-        noteRefreshSuccess(refreshToken);
-
-        return jsonResponse;
     } catch (err) {
         logTokenError("OIDC refresh error", err, endpoints.tokenEndpoint);
-
-        const shouldClearCookies =
-            axios.isAxiosError(err) &&
-            err.response?.status === 401 &&
-            !refreshSucceededRecently(refreshToken);
-
-        const response = NextResponse.json(
-            { error: "Failed to refresh token" },
-            { status: 401 },
-        );
-
-        if (shouldClearCookies) {
-            response.cookies.delete("logout_marker");
-            response.cookies.delete("access_token");
-            response.cookies.delete("id_token");
-            response.cookies.delete("refresh_token");
-            response.cookies.delete("token_expires_at");
-            response.cookies.delete("oidc_provider");
+        if (!refreshTokenRejected(err)) {
+            return failure("unavailable", "Failed to refresh token");
         }
-
-        return response;
+        if (refreshSucceededRecently(refreshToken)) {
+            return failure("concurrent_refresh", "Failed to refresh token");
+        }
+        return failure("session_ended", "Failed to refresh token");
     }
+
+    const data: unknown = response.data;
+    if (typeof data !== "object" || data === null) {
+        console.error(
+            `OIDC refresh error: category=invalid_response, endpoint=${endpoints.tokenEndpoint}`,
+        );
+        return failure("unavailable", "Invalid token response");
+    }
+    const { access_token, id_token } = data as Record<string, unknown>;
+
+    /** A failure that keeps a rotated refresh token: the provider may have
+     * invalidated the old one already, so a retry needs the new one */
+    const unavailable = () => {
+        const failed = failure("unavailable", "Invalid token response");
+        setRefreshTokenCookie(failed, data as SessionTokens);
+        return failed;
+    };
+
+    if (typeof access_token !== "string") {
+        console.error(
+            `OIDC refresh error: category=invalid_response, endpoint=${endpoints.tokenEndpoint}`,
+        );
+        return unavailable();
+    }
+
+    // A refreshed ID token carries no nonce; signature, issuer, audience
+    // and expiry are still verified, and it must name the session's user
+    // (OpenID Connect Core 12.2).
+    if (typeof id_token === "string") {
+        const payload = await validateIdToken(
+            id_token,
+            endpoints,
+            provider,
+            null,
+        );
+        if (!payload) {
+            console.error(
+                `OIDC refresh error: category=id_token_validation_failed, endpoint=${endpoints.tokenEndpoint}`,
+            );
+            return unavailable();
+        }
+        if (
+            idTokenPayload &&
+            (payload.sub !== idTokenPayload.sub ||
+                payload.iss !== idTokenPayload.iss)
+        ) {
+            console.error(
+                `OIDC refresh error: category=id_token_subject_mismatch, endpoint=${endpoints.tokenEndpoint}`,
+            );
+            return failure("session_ended", "Invalid token response");
+        }
+    }
+
+    // without a new ID token, the session's stays, with the session's new
+    // lifetime; without either (e.g. a session of an older image whose ID
+    // token cookie expired), nothing names the user any more
+    const sessionIdToken = typeof id_token === "string" ? id_token : idToken;
+    if (!sessionIdToken) {
+        return failure("session_ended", "Session has no ID token");
+    }
+
+    const jsonResponse = NextResponse.json({ success: true });
+    applySessionCookies(
+        jsonResponse,
+        {
+            ...(data as SessionTokens),
+            id_token: sessionIdToken,
+        },
+        provider.id,
+        { keepRefreshToken: true },
+    );
+    noteRefreshSuccess(refreshToken);
+
+    return jsonResponse;
 }

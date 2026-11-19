@@ -1,9 +1,18 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 import { endSessionEndpoint, mockOidcProvider } from "@/test/oidc";
-import { appOrigin, cookieOf, cookieStore, setUp } from "@/test/routes";
+import {
+    appOrigin,
+    cookieOf,
+    cookieStore,
+    http,
+    httpError,
+    setUp,
+} from "@/test/routes";
 
 vi.mock("next/headers", () => ({ cookies: async () => cookieStore }));
+
+const revocation = "https://idp.example.org/revoke";
 
 async function logout(origin?: string) {
     const { POST } = await import("./route");
@@ -20,6 +29,7 @@ const sessionCookies = [
     "id_token",
     "refresh_token",
     "token_expires_at",
+    "oidc_provider",
 ];
 
 describe("POST /auth/api/logout", () => {
@@ -41,6 +51,49 @@ describe("POST /auth/api/logout", () => {
             expect.arrayContaining(["httponly", "samesite=lax", "path=/"]),
         );
         expect(marker?.attributes).not.toContain("secure");
+        // as long as the longest session, which an overtaken refresh may
+        // have renewed
+        expect(marker?.attributes).toContain(`max-age=${30 * 24 * 60 * 60}`);
+    });
+
+    it("revokes the refresh token when the provider supports it", async () => {
+        setUp({ refresh_token: "rt-1" });
+        mockOidcProvider({ discovery: { revocation_endpoint: revocation } });
+        const post = vi.spyOn(await http(), "post").mockResolvedValue({});
+        const response = await logout(appOrigin);
+        expect(response.status).toBe(200);
+        const [endpoint, body, options] = post.mock.calls[0];
+        expect(endpoint).toBe(revocation);
+        expect(Object.fromEntries(body as URLSearchParams)).toEqual({
+            token: "rt-1",
+            token_type_hint: "refresh_token",
+            client_id: "client",
+            client_secret: "client-secret",
+        });
+        expect(options?.timeout).toBe(5000);
+    });
+
+    it("still logs out when the revocation fails", async () => {
+        setUp({ refresh_token: "rt-1" });
+        mockOidcProvider({ discovery: { revocation_endpoint: revocation } });
+        vi.spyOn(await http(), "post").mockRejectedValue(httpError(503));
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        const response = await logout(appOrigin);
+        expect(response.status).toBe(200);
+        expect(cookieOf(response, "refresh_token")?.value).toBe("");
+        expect(error.mock.calls[0][0]).toMatch(/category=revocation_failed/);
+        expect(error.mock.calls[0][0]).not.toContain("rt-1");
+    });
+
+    it.each([
+        ["without a refresh token", {}, { revocation_endpoint: revocation }],
+        ["without a revocation endpoint", { refresh_token: "rt-1" }, {}],
+    ])("revokes nothing %s", async (_, cookies, discovery) => {
+        setUp(cookies);
+        mockOidcProvider({ discovery });
+        const post = vi.spyOn(await http(), "post");
+        expect((await logout(appOrigin)).status).toBe(200);
+        expect(post).not.toHaveBeenCalled();
     });
 
     it("returns the provider's end-session URL with the ID token hint", async () => {

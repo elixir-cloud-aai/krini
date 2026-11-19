@@ -130,19 +130,45 @@ configuration](deployment.md#service-configuration)).
 
 Krini keeps the session in `httpOnly` cookies for as long as the provider's
 tokens are valid (`expires_in` and `refresh_expires_in` of the token
-response); in production builds, such as the image, the cookies are
+response, at most 30 days); in production builds, such as the image, the cookies are
 `Secure`, so Krini must be served over HTTPS. With a refresh token, Krini
-renews the access token shortly before it expires while one of its pages is
-open, so the session can last as long as the provider's refresh token;
-without one, users log in again when the access token expires. Each Krini server remembers the refresh tokens
-it has just used in memory (see [Pods](helm-chart.md#pods) for more than one
-replica).
+renews the access token shortly before it expires (5 minutes before, or
+at half its lifetime if that is shorter) while one of its pages is open,
+so the session can last as long as the provider's refresh token (at
+most 30 days); without one, users log in again when the access token
+expires. The ID token, whose `sub` names the user, is kept as long as the
+session, as providers needn't send a new one on refresh; a new one must
+name the same user and issuer (OpenID Connect Core 12.2). The tabs of a
+browser take turns, so only one of them refreshes at a time (Web Locks;
+see [Pods](helm-chart.md#pods) for more than one replica). Refreshes are
+`POST` requests to `/auth/api/refresh`, which Krini, like the logout,
+accepts only with the `Origin` of `APP_ORIGIN`.
+
+How Krini handles the provider's answer to a refresh (RFC 6749, section
+5.2):
+
+| Answer of the token endpoint | Krini |
+| --- | --- |
+| `400` with `invalid_grant` (refresh token expired, revoked or reused), or `401` other than `invalid_client` and `unauthorized_client` | Ends the session: deletes its cookies and sends the user to the login page |
+| `invalid_client` or `unauthorized_client` (e.g. a rotated client secret), other errors, timeouts, an invalid token response | Keeps the session and logs the error (`OIDC refresh error: category=…, provider_error=…`); the page tries again with growing waits (5 seconds, doubling, at most 5 minutes). A new refresh token in an invalid token response is kept, as the provider may have revoked the old one |
+| An ID token for another `sub` or `iss` | Ends the session |
+| No ID token, while the session has none either (e.g. its cookie expired) | Ends the session, as nothing names the user any more |
+
+Visitors without a session, or whose refresh token is gone, are never
+sent anywhere; without a refresh token, the access token is used until it
+expires. A provider outage doesn't log users out, but once the access
+token has expired, the services reject it until the provider is back.
 
 Logging out is a `POST` to `/auth/api/logout` from Krini's own pages: Krini
 accepts it only with the `Origin` of `APP_ORIGIN`, so serve Krini at that
-address. It deletes Krini's cookies and, if the provider's discovery
-document has an `end_session_endpoint` (OpenID Connect RP-Initiated
-Logout), sends the browser there, with the ID token, the client ID and
-`<APP_ORIGIN>/` as `post_logout_redirect_uri`; register that URI with the
-provider (see above). Krini doesn't revoke tokens: an access token stays
-valid until it expires.
+address. The page first waits for a refresh in flight in any of its tabs.
+Krini then revokes the refresh token if the provider's discovery
+document has a `revocation_endpoint` (RFC 7009), deletes Krini's cookies,
+and sets `logout_marker`, which makes Krini refuse the session's cookies
+until the next successful login (or 30 days, as long as any session
+cookie lives), should a refresh have set them again anyway. If the discovery document has an `end_session_endpoint` (OpenID
+Connect RP-Initiated Logout), Krini sends the browser there, with the ID
+token, the client ID and `<APP_ORIGIN>/` as `post_logout_redirect_uri`;
+register that URI with the provider (see above). An access token that was
+handed out before the logout (e.g. with "Copy access token") stays valid
+at the services until it expires.

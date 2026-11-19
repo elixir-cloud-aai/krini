@@ -87,8 +87,8 @@ PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
   configuration](deployment.md#service-configuration)).
 - `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000`
   for local development or your production URL), as users' browsers reach
-  it. The login sends users back to it, and the logout accepts requests
-  only from it.
+  it. The login sends users back to it, and the session refresh and the
+  logout accept requests only from it.
 
 Make sure each OIDC client has the redirect URI of `OIDC_REDIRECT_URI`
 registered, e.g. for local development:
