@@ -357,11 +357,7 @@ Krini's server needs outgoing HTTPS connections to:
 - the Cloud Registry (`CLOUD_REGISTRY_URL`);
 - each login provider's issuer and the endpoints of its discovery document
   (token, user info, keys);
-- the WES services and gateways of the registry (service info);
-- its own public origin (`APP_ORIGIN`), for the page with a WES service's
-  info. Where the server can't reach its own public address (e.g. a
-  cluster without hairpin routing), that page shows an error; the rest of
-  Krini works.
+- the WES services and gateways of the registry (service info).
 
 The users' browsers need to reach Krini, the login providers, the TES and
 WES services, and `cdn.jsdelivr.net`, from which the code editor of the

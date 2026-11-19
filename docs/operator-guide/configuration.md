@@ -87,12 +87,8 @@ PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
   configuration](deployment.md#service-configuration)).
 - `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000`
   for local development or your production URL), as users' browsers reach
-  it. The login sends users back to it, the logout accepts requests
-  only from it, and the page with the service info of a WES service
-  (`/dashboard/workflows/service-info`) is rendered by Krini's server
-  with a request to `<APP_ORIGIN>/api/workflows/get-service-info`, so
-  Krini's server must be able to reach its own public origin (see
-  [Network access](deployment.md#network-access)).
+  it. The login sends users back to it, and the logout accepts requests
+  only from it.
 
 Make sure each OIDC client has the redirect URI of `OIDC_REDIRECT_URI`
 registered, e.g. for local development:
