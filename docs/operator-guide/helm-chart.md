@@ -8,8 +8,13 @@ Route. It has no defaults for any deployment: you set the host name, the
 Cloud Registry and the login providers, and the login providers' secrets
 come only from a Kubernetes Secret of your own.
 
-The chart isn't published to a chart repository yet: install it from a
-checkout of the repository, at the tag of the release that you deploy.
+Each [release](https://github.com/elixir-cloud-aai/krini/releases), from
+0.1.0 on, has the chart attached, packaged with the release's version
+(`krini-X.Y.Z.tgz`), which deploys that release's image by default. The
+chart isn't published to a chart repository: install it from that file,
+after [verifying it](#verifying-the-chart). The chart in the repository
+(version `0.0.0`) deploys the image of the newest commit on `dev` by
+default; use it for development and testing only.
 
 ## Prerequisites
 
@@ -18,16 +23,18 @@ checkout of the repository, at the tag of the release that you deploy.
   Gateway of the [Gateway API](https://gateway-api.sigs.k8s.io/), or
   OpenShift's router.
 - An OpenID Connect client at each login provider, with the redirect URI
-  `https://<host name>/auth/api/callback`, the scopes of
-  [Scopes](deployment.md#scopes), and the scope with which the provider
-  releases the claim with the user's groups (`groupsClaim`), if access
-  tiers are used: add it to the provider's `scopes` (see
-  [Login providers](#login-providers)).
+  `https://<host name>/auth/api/callback`, the post-logout redirect URI
+  `https://<host name>/` and the scopes of [Registering Krini with LS
+  Login](login.md#registering-krini-with-ls-login), including the scope
+  with which the provider releases the claim with the user's groups
+  (`groupsClaim`) for the [access tiers](login.md#access-tiers).
 - A Cloud Registry whose list of services (`GET /services`, without
   login) has the TES services and gateways (types `tes` and
-  `tes-gateway`) and WES services that Krini should offer; Krini lists
-  what the registry returns, so register only services that you have
-  checked. Krini only reads the registry.
+  `tes-gateway`) and WES services and gateways (types `wes` and
+  `wes-gateway`) that Krini should offer (see [Cloud
+  Registry](deployment.md#cloud-registry)); Krini lists what the registry
+  returns, so register only services that you have checked. Krini only
+  reads the registry.
 - TES services, gateways and WES services that accept access tokens
   issued to Krini's `clientId` of each login provider, and allow
   Krini's origin in their CORS settings: see [Service
@@ -63,7 +70,7 @@ checkout of the repository, at the tag of the release that you deploy.
     ```
 
 3. Write the values of the deployment to a file outside the repository, e.g.
-   `values-prod.yaml`, with the release to deploy (see [Image](#image)):
+   `values-prod.yaml`:
 
     ```yaml
     hostName: krini.example.org
@@ -74,19 +81,24 @@ checkout of the repository, at the tag of the release that you deploy.
         contact: privacy@example.org
     loginProviders:
       existingSecret: krini-login-providers
-    krini:
-      tag: "0.1.0"
     ```
 
-    On OpenShift, add `ingress: {enabled: false}` under `krini`, so that
+    The chart of a release deploys the image of that release (see
+    [Image](#image)), so the values need no image tag.
+    On OpenShift, add `krini: {ingress: {enabled: false}}`, so that
     the chart creates a Route with TLS instead of an Ingress (see
     [Exposing Krini](#exposing-krini)).
 
-4. Install the chart from a checkout of the release's tag:
+4. Download the chart of the release that you deploy (here 0.1.0) from its
+   GitHub release, with the [GitHub CLI](https://cli.github.com/) (or from
+   the release page), [verify it](#verifying-the-chart), and install it:
 
     ```bash
-    git clone --depth 1 --branch v0.1.0 https://github.com/elixir-cloud-aai/krini.git
-    helm install krini krini/deployment -n krini -f values-prod.yaml
+    version=0.1.0
+    gh release download "v${version}" --repo elixir-cloud-aai/krini \
+        --pattern "krini-${version}.tgz*"
+    # verify it (see "Verifying the chart"), then:
+    helm install krini "krini-${version}.tgz" -n krini -f values-prod.yaml
     ```
 
     `krini` is the name of the release, which upgrades and `helm uninstall`
@@ -159,34 +171,20 @@ pods with `kubectl rollout restart deployment/krini -n krini`.
 ### Login providers
 
 The key `loginProviders.secretKey` of the Secret `loginProviders.existingSecret`
-holds the JSON array of `LOGIN_PROVIDERS`. Each provider is an object with
-these fields; providers without one of the required fields, or with the
-`id` of an earlier one, are ignored:
-
-| Field | Required | Description |
-| --- | --- | --- |
-| `id` | yes | Identifier of the provider, unique in the array |
-| `issuer` | yes | OpenID Connect issuer URL (Krini reads its discovery document) |
-| `clientId` | yes | Client ID of Krini at the provider |
-| `clientSecret` | yes | Client secret of Krini at the provider |
-| `name` | no | Name on the login page; the `id` if not set |
-| `logo` | no | URL of a logo for the login page |
-| `scopes` | no | Scopes to request; `["openid", "profile", "email", "offline_access"]` if not set |
-| `groupsClaim` | no | Claim with the user's groups, for the access tiers |
-| `groupsFromUserinfo` | no | Whether to read the groups from the user info (default `true`) |
-| `computeGroups` | no | Groups whose members may run tasks and workflows |
-| `adminGroups` | no | Groups whose members are admins |
-| `groupSubgroupSeparator` | no | Separator of subgroups in group names (e.g. `:`), so that members of subgroups count too |
+holds the JSON array of `LOGIN_PROVIDERS`: one object per provider, with
+the fields of [Login providers](login.md#login-providers).
 
 ### Image
 
 The image is `krini.image` (default `docker.io/elixircloud/krini`, fully
 qualified, as some container runtimes refuse short names) with the tag
-`krini.tag`. Without a tag, the chart deploys its `appVersion`, `dev`: the
-image of the newest commit on the branch `dev`, which changes with every
-commit. In production, set the tag of a release (`X.Y.Z`), or include a
-digest in `krini.image` (e.g. `docker.io/elixircloud/krini@sha256:...`;
-`krini.tag` must then be empty); see [Container
+`krini.tag`. Without a tag, the chart deploys its `appVersion`: in the chart
+of a release (`krini-X.Y.Z.tgz`), the image of that release (`X.Y.Z`); in
+the chart in the repository, `dev`, the image of the newest commit on the
+branch `dev`, which changes with every commit. Set `krini.tag` only to
+deploy another image than the chart's, or include a digest in
+`krini.image` (e.g. `docker.io/elixircloud/krini@sha256:...`; `krini.tag`
+must then be empty) to pin the image; see [Container
 image](deployment.md#container-image) for the tags and how to verify an
 image.
 
@@ -291,7 +289,9 @@ login providers and the WES services.
 
 ### Pods
 
-- `krini.replicas` (default 1): sessions are in cookies, but each pod
+- `krini.replicas` (default 1; during a rolling update, such as `helm
+  upgrade`, a new pod runs next to the old one for a short time, with the
+  same effect as two replicas): sessions are in cookies, but each pod
   remembers the refresh tokens it has just used only in memory, to tell a
   concurrent refresh of the same session (e.g. in two tabs) from a replay.
   With more than one pod, two such refreshes that reach different pods
@@ -329,16 +329,49 @@ kubectl get pods -n krini -l app.kubernetes.io/instance=krini
 
 ## Upgrades
 
-Read the release notes (see [Upgrading](upgrading.md)), then upgrade from a
-checkout of the new release's tag, with its tag in the values file:
+Read the release notes (see [Upgrading](upgrading.md)), then download and
+[verify](#verifying-the-chart) the chart of the new release, and upgrade
+with it (if your values file sets `krini.tag`, set the new version there,
+or remove it):
 
 ```bash
-helm upgrade krini krini/deployment -n krini -f values-prod.yaml
+version=0.2.0
+gh release download "v${version}" --repo elixir-cloud-aai/krini \
+    --pattern "krini-${version}.tgz*"
+helm upgrade krini "krini-${version}.tgz" -n krini -f values-prod.yaml
 ```
 
 Upgrade with the complete values file rather than `--reuse-values`, so that
 new values of the chart get their defaults. The Deployment replaces its pods
 one after the other (rolling update).
+
+## Verifying the chart
+
+The chart of a release is packaged, attested and signed by the release
+workflow (`.github/workflows/release.yml`), like the image: it has a
+[GitHub artifact
+attestation](https://docs.github.com/en/actions/concepts/security/artifact-attestations)
+of its provenance and a keyless [Sigstore](https://www.sigstore.dev/)
+signature, in the bundle `krini-X.Y.Z.tgz.sigstore.json` attached to the
+release next to it. Check both before installing it, with the [GitHub
+CLI](https://cli.github.com/) and
+[cosign](https://docs.sigstore.dev/cosign/system_config/installation/) 3 or
+later (`gh release download` above fetches both files), e.g. for 0.1.0:
+
+```bash
+version=0.1.0
+gh attestation verify "krini-${version}.tgz" --repo elixir-cloud-aai/krini \
+    --signer-workflow elixir-cloud-aai/krini/.github/workflows/release.yml \
+    --source-ref "refs/tags/v${version}"
+cosign verify-blob "krini-${version}.tgz" \
+    --bundle "krini-${version}.tgz.sigstore.json" \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    --certificate-identity "https://github.com/elixir-cloud-aai/krini/.github/workflows/release.yml@refs/tags/v${version}"
+```
+
+`--source-ref` and the ref in `--certificate-identity` check that the
+workflow ran for the release's tag. The chart deploys the release's image,
+which you can [verify](deployment.md#verifying-images) too.
 
 ## Uninstallation
 
@@ -358,12 +391,15 @@ CI lints the chart (`helm lint --strict`) and runs its tests
 (`deployment/tests/test-chart.sh`, which renders it with `helm template` and
 checks the objects and the errors of invalid values), and installs it on a
 kind cluster with the image built from the commit
-(`deployment/tests/install-chart.sh`). To run them locally, with Helm 3,
+(`deployment/tests/install-chart.sh`). It also packages the chart as the
+release workflow does (`scripts/package-chart.sh`, tested by
+`deployment/tests/test-package.sh`). To run them locally, with Helm 3,
 yq, jq and, for the installation, Docker, kind and kubectl:
 
 ```bash
 helm lint deployment --strict -f deployment/ci/test-values.yaml
 deployment/tests/test-chart.sh
+deployment/tests/test-package.sh
 export KUBECONFIG="$PWD/kind-kubeconfig"   # leaves your kubeconfig alone
 kind create cluster --name krini
 docker build -t krini:chart-ci .

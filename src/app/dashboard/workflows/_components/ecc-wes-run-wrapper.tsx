@@ -1,5 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useWESProvider } from "@/hooks";
 import { useWESStore } from "@/stores/wes";
 
@@ -19,8 +20,13 @@ const ECCClientGa4ghWesRuns = dynamic(
 );
 
 export function ECCClientGa4ghWesRunsClient() {
+    const router = useRouter();
     const { wesProvider } = useWESProvider();
     const selectedServer = useWESStore((state) => state.selectedServer);
+    const servers = useWESStore((state) => state.servers);
+    const serviceId = servers.find(
+        (server) => server.url === selectedServer,
+    )?.id;
 
     if (
         selectedServer === null ||
@@ -33,5 +39,19 @@ export function ECCClientGa4ghWesRunsClient() {
             </div>
         );
 
-    return <ECCClientGa4ghWesRuns provider={wesProvider} />;
+    return (
+        <ECCClientGa4ghWesRuns
+            key={selectedServer}
+            provider={wesProvider}
+            pageSize={10}
+            onEccRunsSelected={(event) =>
+                router.push(
+                    `/dashboard/workflows/details?${new URLSearchParams({
+                        id: event.detail.runId,
+                        ...(serviceId ? { service: serviceId } : {}),
+                    })}`,
+                )
+            }
+        />
+    );
 }

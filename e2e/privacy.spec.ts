@@ -51,7 +51,7 @@ test("the sidebar links the privacy notice", async ({ page }) => {
 
 test("visitors get no cookies", async ({ page }) => {
     await page.goto("/dashboard");
-    await page.getByRole("link", { name: "Workflows" }).click();
+    await page.getByRole("link", { name: "Workflows", exact: true }).click();
     await page.getByRole("combobox").click();
     await expect(page.getByRole("option")).toHaveCount(1);
     await page.goto("/privacy");
@@ -60,7 +60,7 @@ test("visitors get no cookies", async ({ page }) => {
 
 test("members get only the session's cookies", async ({ page }) => {
     await login(page);
-    await page.getByRole("link", { name: "Workflows" }).click();
+    await page.getByRole("link", { name: "Workflows", exact: true }).click();
     await page.getByRole("combobox").click();
     await expect(page.getByRole("option")).toHaveCount(1);
     const names = (await page.context().cookies()).map((val) => val.name);

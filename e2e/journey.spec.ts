@@ -23,7 +23,9 @@ test.describe("anonymous visitors", () => {
             page.getByRole("button", { name: /Anonymous/ }),
         ).toBeVisible();
 
-        await page.getByRole("link", { name: "Workflows" }).click();
+        await page
+            .getByRole("link", { name: "Workflows", exact: true })
+            .click();
         await page.getByRole("combobox").click();
         // only the https entry; the http entry and the TES are dropped
         await expect(page.getByRole("option")).toHaveCount(1);

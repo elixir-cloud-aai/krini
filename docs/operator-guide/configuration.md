@@ -9,6 +9,33 @@ for local development with `.env.local`.
 
 ## Settings
 
+These are all the settings that Krini reads at runtime; none of them is
+built into the image or into the JavaScript that the browser loads (Krini
+has no `NEXT_PUBLIC_*` variables):
+
+| Variable | Required | Format | Default | Example |
+| --- | --- | --- | --- | --- |
+| `LOGIN_PROVIDERS` | yes | JSON array of login providers, on one line (see [Login](login.md#login-providers)); holds the client secrets | none: no login | `[{"id":"example","issuer":"https://login.example.org/oidc","clientId":"<client ID>","clientSecret":"<client secret>"}]` |
+| `APP_ORIGIN` | yes | Origin at which browsers reach Krini: scheme, host and port if not the default, without path or trailing slash | none | `https://krini.example.org` |
+| `CLOUD_REGISTRY_URL` | yes | Base URL of the registry's API, to which Krini appends `/services` | none | `https://registry.example.org/ga4gh/registry/v1` |
+| `OIDC_REDIRECT_URI` | no | URL of `/auth/api/callback` at `APP_ORIGIN` | `<APP_ORIGIN>/auth/api/callback` | `https://krini.example.org/auth/api/callback` |
+| `COMPUTE_ACCESS_REQUEST_URL` | no | URL | none: no link | `https://example.org/compute-access` |
+| `PRIVACY_CONTROLLER` | no | Text | none | `Example Institute, Example Street 1, Example City` |
+| `PRIVACY_CONTACT` | no | Email address or `https` URL | none | `privacy@example.org` |
+| `PRIVACY_NOTICE_URL` | no | `https` URL | none | `https://example.org/privacy` |
+| `PRIVACY_LOGIN_NOTICE_URL` | no | `https` URL | none | `https://login.example.org/privacy` |
+| `PORT` | no | Port number | `3000` | `8080` |
+| `LISTEN_HOSTNAME` | no | Address of the interface to listen on | `0.0.0.0` (all IPv4 interfaces) | `::` |
+
+`PORT` and `LISTEN_HOSTNAME` are settings of the image's server (see
+[Running the image](deployment.md#running-the-image)); the login providers
+are described in [Login](login.md), the others below.
+
+Krini doesn't check its settings when it starts: a missing or invalid required setting shows only when a
+page needs it, e.g. as a login page without buttons, an empty list of
+services, or an error at the login or logout. After each change, go
+through [Checking a deployment](deployment.md#checking-a-deployment).
+
 An example with all settings of `.env.example`, in a format that both
 `.env.local` and `docker run --env-file` accept. Don't quote values: Docker
 keeps quotes as part of the value (see
@@ -18,7 +45,7 @@ keeps quotes as part of the value (see
 # Login providers: a JSON array; each entry configures one OIDC provider
 # (endpoints are discovered via <issuer>/.well-known/openid-configuration)
 # One line only: env files can't carry a multiline value
-LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/icon.jpg","issuer":"issuer-url","clientId":"your-client-id","clientSecret":"your-client-secret","scopes":["openid","profile","email","eduperson_entitlement", "offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["your-compute-group"],"adminGroups":["your-admin-group"]}]
+LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/ls-login-grey-wide.jpg","issuer":"issuer-url","clientId":"your-client-id","clientSecret":"your-client-secret","scopes":["openid","profile","email","eduperson_entitlement", "offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["your-compute-group"],"adminGroups":["your-admin-group"]}]
 
 # Optional override of the callback URL (default: <APP_ORIGIN>/auth/api/callback)
 OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
@@ -39,17 +66,11 @@ PRIVACY_NOTICE_URL=https://example.org/privacy
 PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
 ```
 
-- `LOGIN_PROVIDERS`: JSON array of login provider configurations; Krini
-  offers one login button per entry on `/auth/login`. Required fields per
-  entry: `id` (unique), `issuer` (the provider's issuer URL; endpoints are
-  discovered from its `/.well-known/openid-configuration`), `clientId` and
-  `clientSecret`. Optional fields: `name` (button label, defaults to `id`),
-  `logo` (image path for the button), `scopes` (default
-  `openid profile email offline_access`; keep `offline_access` for refresh
-  tokens), `groupsClaim`, `groupsFromUserinfo` (default `true`),
-  `computeGroups`, `adminGroups`, `groupSubgroupSeparator`. Group membership
-  derives the access tier: `adminGroups` → admin, `computeGroups` → compute,
-  otherwise user; compute actions are limited to compute and admin tiers.
+- `LOGIN_PROVIDERS`: the OpenID Connect providers that users log in with,
+  with Krini's client at each, and the groups of the access tiers: see
+  [Login](login.md). Set `computeGroups` or `adminGroups`: without them,
+  nobody can run tasks or workflows (see [Access
+  tiers](login.md#access-tiers)).
 - `OIDC_REDIRECT_URI`: Callback URL registered with the identity provider.
   Must match a redirect URI configured there, and must use the same origin
   as `APP_ORIGIN` — the session cookies are set for that origin, so a
@@ -57,7 +78,13 @@ PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
   `<APP_ORIGIN>/auth/api/callback`.
 - `COMPUTE_ACCESS_REQUEST_URL`: Optional URL shown to logged-in users
   without compute access ("Request compute access").
-- `CLOUD_REGISTRY_URL`: Base URL of the Cloud Registry API.
+- `CLOUD_REGISTRY_URL`: Base URL of the API of the [Cloud
+  Registry](https://cloud-registry.readthedocs.io/en/latest/), or of
+  another GA4GH Service Registry, e.g.
+  `https://registry.example.org/ga4gh/registry/v1`. Krini's server reads
+  its list of services (`GET <CLOUD_REGISTRY_URL>/services`) without a
+  token; the browser doesn't contact the registry (see [Service
+  configuration](deployment.md#service-configuration)).
 - `APP_ORIGIN`: Origin of your application (e.g., `http://localhost:3000`
   for local development or your production URL), as users' browsers reach
   it. The login sends users back to it, and the logout accepts requests

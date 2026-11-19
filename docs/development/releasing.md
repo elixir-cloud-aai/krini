@@ -5,9 +5,18 @@ fixes are merged into `dev`. Branch `main` only ever moves
 forward to commits on `dev` that are released, and release tags are on
 `main`. Releases are cut by the maintainers with the release workflow
 (`.github/workflows/release.yml`), which publishes the image
-`docker.io/elixircloud/krini:X.Y.Z` and the GitHub release. Until 1.0.0,
+`docker.io/elixircloud/krini:X.Y.Z` and the GitHub release, with the Helm
+chart attached (`krini-X.Y.Z.tgz`, and its Sigstore bundle
+`krini-X.Y.Z.tgz.sigstore.json`). Until 1.0.0,
 all releases are GitHub pre-releases; stable versions (without `-alphaN`,
 `-betaN` or `-rcN`) still update the image tag `latest`.
+
+The tag is the only source of the chart's version: the release workflow
+packages `deployment/` with `version` and `appVersion` set to the release
+version (`scripts/package-chart.sh`), so `deployment/Chart.yaml` keeps its
+placeholders (`0.0.0` and `dev`, the image of the newest commit on `dev`)
+and is never bumped in a release-prep pull request. The packaged chart
+deploys the release's image by default (`appVersion` is its tag).
 
 ## Steps
 
@@ -65,8 +74,9 @@ all releases are GitHub pre-releases; stable versions (without `-alphaN`,
     (keep these commands in sync with the `prepare` job of
     `.github/workflows/release.yml`), in Bash, with `git`, `jq`, `yq`
     ([mikefarah/yq](https://github.com/mikefarah/yq) v4), `curl`, Python 3,
-    `bun` and the [GitHub CLI](https://cli.github.com/). Run them before
-    tagging: tags can't be moved or deleted, and the release workflow
+    `bun`, `tar`, `sha256sum`, [Helm](https://helm.sh/) 3.22.1 (the version
+    of `release.yml`) and the [GitHub CLI](https://cli.github.com/). Run them
+    before tagging: tags can't be moved or deleted, and the release workflow
     checks the tagged commit, so a check that fails after the tag is pushed
     (other than a CI run that hasn't finished yet) fails again on re-runs,
     and the release then needs a new version, with its own release-prep
@@ -90,8 +100,13 @@ all releases are GitHub pre-releases; stable versions (without `-alphaN`,
         # The notes of the commit, with the checker of the action that
         # `release.yml` pins (as the `readiness` job of `ci.yml` does)
         notes="$(mktemp -d)" && git show "${sha}:docs/releases/${version}.md" > "${notes}/notes.md" &&
-            curl -fsSL "https://raw.githubusercontent.com/elixir-cloud-aai/.github/31f22fccc1f3c597ed7c1d1f75b2f85522155348/actions/publish-release/publish.py" -o "${notes}/publish.py" &&
+            curl -fsSL "https://raw.githubusercontent.com/elixir-cloud-aai/.github/bf3840c9c072aaf37d6cafe199aaa1994087d1ef/actions/publish-release/publish.py" -o "${notes}/publish.py" &&
             python3 -I "${notes}/publish.py" check "${notes}/notes.md" || { echo "Release notes docs/releases/${version}.md missing or not in the format"; exit 1; }
+        # The chart of the commit, packaged and checked as the release
+        # workflow packages it (version from the tag, lint, render); in a
+        # fork, use the image of its DOCKERHUB_ORG
+        chart="$(mktemp -d)" && git archive "${sha}" deployment scripts/package-chart.sh | tar -x -C "${chart}" &&
+            "${chart}/scripts/package-chart.sh" "${version}" docker.io/elixircloud/krini "${chart}/dist" > /dev/null || { echo "The chart can't be packaged"; exit 1; }
         # Also drafts, which the release workflow can't see before it fails on them
         release="$(gh release view "v${version}" --repo elixir-cloud-aai/krini 2>&1)" && { echo "A release or draft of v${version} exists: delete a draft"; exit 1; }
         [[ "${release}" == *"release not found"* ]] || { echo "Cannot check the releases: ${release}"; exit 1; }
@@ -127,16 +142,23 @@ all releases are GitHub pre-releases; stable versions (without `-alphaN`,
 4. Approve the jobs of the release workflow in the `release` environment,
     after checking that the run is for the tag you pushed. It checks that
     GitHub verified the tag's signature, that its commit is on `main`, the
-    versions, the curated notes and the CI run (`Prepare release`); builds
+    versions, the curated notes and the CI run, and packages the chart
+    (`Prepare release`); builds
     and pushes the image by digest (`Push release image`, needs approval);
     scans exactly that digest (`Scan release image`) and runs the smoke test
-    of CI on it (`Smoke test`, `scripts/check-image.sh`); attests, signs and
-    tags it `X.Y.Z` (and `latest` for the highest stable version)
+    of CI on it (`Smoke test`, `scripts/check-image.sh`, and the
+    end-to-end tests of CI, `End-to-end tests (release image)`); attests
+    and signs it, attests and signs the chart, and only then tags the
+    image `X.Y.Z` (and `latest` for the highest stable version), so that a
+    failure before leaves the image untagged
     (`Release image`, needs approval); and then, without another approval,
     creates the GitHub release (`Publish release`): the curated notes of the
     tagged commit, then GitHub's generated notes under `## Commits` (without
     their `## What's Changed` header, with "New Contributors"), and GitHub's
-    `**Full Changelog**` line last; versions below 1.0.0 and `-alpha`,
+    `**Full Changelog**` line last, with the chart and its Sigstore bundle
+    attached (it creates a draft, uploads them, and publishes it only then,
+    as assets of immutable releases can't be added later; if that fails,
+    the draft is deleted); versions below 1.0.0 and `-alpha`,
     `-beta` and `-rc` versions are pre-releases. Releases aren't edited after
     publishing (by convention): fix mistakes in the notes of the next
     release. If a job fails, use "Re-run failed jobs", not "Re-run all
@@ -145,8 +167,14 @@ all releases are GitHub pre-releases; stable versions (without `-alphaN`,
     exists, `prepare` fails; a re-run of `Publish release` passes without
     changes if an earlier attempt created the release after all. `prepare`
     can't see draft releases and `Publish release` fails on them, so delete
-    any draft of the tag before you push the tag. If `prepare` fails because
-    CI hasn't finished for the commit, re-run the workflow once it passed.
+    any draft of the tag before you push the tag. If `Publish release` was
+    cancelled (or lost its runner) after it created the draft, the draft
+    stays, and a re-run fails on it: delete the draft
+    (`gh release delete v<version> --repo elixir-cloud-aai/krini`, without
+    `--cleanup-tag`, which would delete the tag) and re-run the failed jobs.
+    A draft isn't a release, so deleting it is safe. If `prepare` fails
+    because CI hasn't finished for the commit, re-run the workflow once it
+    passed.
 
 ## Repository Settings
 
@@ -158,7 +186,8 @@ The repository needs, once:
   environment, not as repository secrets;
 - optionally the variable `DOCKERHUB_ORG` for another Docker Hub
   organization (forks: set it before pushing a test tag, as the workflows
-  fall back to `elixircloud`);
+  fall back to `elixircloud`); the packaged chart then deploys that
+  organization's image by default;
 - a ruleset for `dev` that requires the check `CI passed` (the gate job of
   `ci.yml`); a ruleset for `main` that lets only maintainers update it and
   protects it against non-fast-forward pushes; a ruleset that lets only

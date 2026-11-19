@@ -23,9 +23,9 @@ Registry](https://cloud-registry.readthedocs.io/en/latest/), run tasks on
 [GA4GH Workflow Execution Service
 (WES)](https://github.com/ga4gh/workflow-execution-service-schemas) instances,
 and follow their runs. Deploy Krini with its container image for your own
-registry and services; see the
-[configuration guide](docs/operator-guide/configuration.md#settings) for the
-login providers.
+registry, login provider and services; see the [operator
+guide][docs-operator-guide] for the deployment, the [settings][docs-configuration]
+and the [login][docs-login].
 
 **Read the [documentation][docs]**: the [user guide][docs-user-guide], the
 [operator guide][docs-operator-guide] for the deployment, configuration and
@@ -63,28 +63,31 @@ at each provider (more fields in the [Helm chart][docs-helm-chart] docs):
   "clientId": "my-client-id", "clientSecret": "my-client-secret"}]
 ```
 
-Then install the Helm chart in
-[`deployment/`](deployment/), with the login providers in a Secret
-of your own and the settings in a values file (see [Helm
-chart][docs-helm-chart] for all steps and values), e.g. from a checkout of
-the release's tag:
+Then install the Helm chart (from [`deployment/`](deployment/), packaged
+and attached to each [release][releases] as `krini-<version>.tgz`, which
+deploys that release's image), with the login providers in a Secret of
+your own and the settings in a values file (see [Helm
+chart][docs-helm-chart] for all steps and values, and how to verify the
+chart):
 
 ```bash
 kubectl create secret generic krini-login-providers -n <namespace> \
     --from-file=login-providers=login-providers.json
-helm install krini deployment -n <namespace> \
+gh release download v<version> --repo elixir-cloud-aai/krini \
+    --pattern 'krini-<version>.tgz*'
+helm install krini krini-<version>.tgz -n <namespace> \
     --set hostName=krini.example.org \
     --set config.cloudRegistryUrl=https://registry.example.org \
-    --set loginProviders.existingSecret=krini-login-providers \
-    --set krini.tag=<version>
+    --set loginProviders.existingSecret=krini-login-providers
 ```
 
 On OpenShift, add `--set krini.ingress.enabled=false`, so that the chart
 creates a Route with TLS instead of an Ingress.
 
 The [operator guide][docs-operator-guide] describes the image tags, how to
-verify an image, and what the login provider and the TES and WES services
-need.
+verify an image and check a deployment, and what the login provider, the
+Cloud Registry and the TES and WES services need (client registration,
+CORS).
 
 ## Citation
 
@@ -123,6 +126,7 @@ material that it contains or builds on is listed in [`NOTICE`](NOTICE).
 [docs-configuration]: <https://krini.readthedocs.io/en/latest/operator-guide/configuration/>
 [docs-development]: <https://krini.readthedocs.io/en/latest/development/>
 [docs-helm-chart]: <https://krini.readthedocs.io/en/latest/operator-guide/helm-chart/>
+[docs-login]: <https://krini.readthedocs.io/en/latest/operator-guide/login/>
 [docs-operator-guide]: <https://krini.readthedocs.io/en/latest/operator-guide/>
 [docs-user-guide]: <https://krini.readthedocs.io/en/latest/user-guide/>
 [releases]: <https://github.com/elixir-cloud-aai/krini/releases>

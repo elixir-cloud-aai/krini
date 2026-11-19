@@ -1,6 +1,4 @@
-import axios from "axios";
-import { axiosBase } from "@/lib/axios";
-import type { WESServiceInfo } from "@/types/workflows";
+import { getWesServiceInfo } from "@/lib/service-info";
 import { ServiceInfoPage } from "../_components";
 
 interface PageProps {
@@ -16,30 +14,16 @@ export default async function Page({ searchParams }: PageProps) {
         return <ServiceInfoPage error="No service ID was provided." />;
     }
 
-    try {
-        const { data: serviceInfo } = await axiosBase.get<WESServiceInfo>(
-            `${process.env.APP_ORIGIN}/api/workflows/get-service-info`,
-            {
-                params: { id },
-                headers: {
-                    Accept: "application/json",
-                },
-            },
-        );
+    const result = await getWesServiceInfo(id);
 
-        return (
-            <ServiceInfoPage
-                serviceInfo={serviceInfo}
-                sourceUrl={serviceInfo.url}
-            />
-        );
-    } catch (error) {
-        console.log(error);
-        const message = axios.isAxiosError(error)
-            ? (error.response?.data?.error ??
-              "Unable to fetch service information.")
-            : "Unable to fetch service information.";
-
-        return <ServiceInfoPage error={message} />;
+    if (!result.ok) {
+        return <ServiceInfoPage error={result.error} />;
     }
+
+    return (
+        <ServiceInfoPage
+            serviceInfo={result.serviceInfo}
+            sourceUrl={result.serviceInfo.url}
+        />
+    );
 }
