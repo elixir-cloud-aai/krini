@@ -4,7 +4,12 @@
  * that no page throws or gets server errors from the app
  */
 import { test as base, expect, type Page } from "@playwright/test";
-import { mockURL, type TesRequest, type WesRequest } from "./settings";
+import {
+    mockURL,
+    type RefreshMode,
+    type TesRequest,
+    type WesRequest,
+} from "./settings";
 
 /** Base URL of the mock login provider and registry (`e2e/mock/server.ts`) */
 const mock = mockURL;
@@ -59,6 +64,30 @@ async function tesRequests(): Promise<TesRequest[]> {
     return response.json();
 }
 
+/**
+ * Set how the mock provider answers refresh token grants, until the next
+ * test
+ * @param mode Error status and `error`, and delay; empty: normally
+ */
+async function setRefreshMode(mode: RefreshMode) {
+    await fetch(`${mock}/mock/refresh`, {
+        method: "POST",
+        body: JSON.stringify(mode),
+    });
+}
+
+/**
+ * Make the page's session due for a refresh: its access token expires now,
+ * as far as the browser's refresh timer knows (`token_expires_at`)
+ * @param page Page of the app
+ */
+async function expireAccessToken(page: Page) {
+    await page.evaluate(() => {
+        // biome-ignore lint/suspicious/noDocumentCookie: sets the cookie as the app's page sees it, in every test browser
+        document.cookie = `token_expires_at=${Date.now()}; path=/`;
+    });
+}
+
 type Fixtures = {
     /** Problems in the browser, which fail the test: page errors and
      * server errors of the app */
@@ -91,4 +120,14 @@ const test = base.extend<Fixtures>({
     ],
 });
 
-export { accessToken, expect, login, test, tesRequests, user, wesRequests };
+export {
+    accessToken,
+    expect,
+    expireAccessToken,
+    login,
+    setRefreshMode,
+    test,
+    tesRequests,
+    user,
+    wesRequests,
+};
