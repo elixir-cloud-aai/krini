@@ -54,7 +54,7 @@ OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
 COMPUTE_ACCESS_REQUEST_URL=
 
 # Cloud Registry
-CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev
+CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev/ga4gh/registry/v1
 
 # Application
 APP_ORIGIN=http://localhost:3000
