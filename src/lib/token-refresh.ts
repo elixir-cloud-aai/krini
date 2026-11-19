@@ -13,8 +13,10 @@
 export const REFRESH_MARGIN_MS = 5 * 60 * 1000;
 /** Longest wait between two checks (`setTimeout` overflows at 24.8 days) */
 export const MAX_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
-/** Longest wait for an answer of the refresh route */
-export const REFRESH_TIMEOUT_MS = 30 * 1000;
+/** Longest wait for an answer of the refresh route: well above its own
+ * worst case (three provider requests of 10 s each), so that it doesn't
+ * rotate a refresh token whose answer the browser no longer takes */
+export const REFRESH_TIMEOUT_MS = 60 * 1000;
 /** Shortest time between two checks */
 export const MIN_CHECK_INTERVAL_MS = 30 * 1000;
 /** First wait after a failed refresh; doubles with each further failure */

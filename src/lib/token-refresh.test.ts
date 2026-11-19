@@ -61,7 +61,7 @@ describe("parseExpiry", () => {
         ["0", null],
         ["-5", null],
         [":300000", null],
-        // written before 0.1.0: no lifetime
+        // a cookie without a lifetime (sessions of older images)
         ["1794488400000", { at: 1794488400000, lifetime: null }],
         ["1794488400000:300000", { at: 1794488400000, lifetime: 300000 }],
         ["1794488400000:abc", { at: 1794488400000, lifetime: null }],

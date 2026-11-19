@@ -57,8 +57,9 @@ export function clearSessionCookies(response: NextResponse): void {
 /**
  * Writes the Krini session cookies on a response. Token cookies are httpOnly;
  * `token_expires_at` is a non-sensitive timestamp (the access token's real
- * expiry and its lifetime, in ms) the client uses to schedule refreshes. `access_token` lives
- * as long as the provider's `expires_in`, `refresh_token` as long as
+ * expiry and its lifetime, in ms) the client uses to schedule refreshes.
+ * `access_token` lives as long as the provider's `expires_in`,
+ * `refresh_token` as long as
  * `refresh_expires_in` (at most 30 days). `id_token` and `token_expires_at`
  * live as long as the session: the refresh token's lifetime (30 days when a
  * refresh doesn't rotate it), or the access token's without a refresh token.

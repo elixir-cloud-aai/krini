@@ -132,8 +132,9 @@ Krini keeps the session in `httpOnly` cookies for as long as the provider's
 tokens are valid (`expires_in` and `refresh_expires_in` of the token
 response); in production builds, such as the image, the cookies are
 `Secure`, so Krini must be served over HTTPS. With a refresh token, Krini
-renews the access token shortly before it expires (5 minutes, or half the token lifetime if shorter) while one of its pages is
-open, so the session can last as long as the provider's refresh token (at
+renews the access token shortly before it expires (5 minutes before, or
+at half its lifetime if that is shorter) while one of its pages is open,
+so the session can last as long as the provider's refresh token (at
 most 30 days); without one, users log in again when the access token
 expires. The ID token, whose `sub` names the user, is kept as long as the
 session, as providers needn't send a new one on refresh; a new one must
