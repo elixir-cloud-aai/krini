@@ -12,6 +12,9 @@
 [![License][badge-license]][badge-url-license]
 [![Build_status][badge-build-status]][badge-url-build-status]
 [![Docs][badge-docs]][badge-url-docs]
+[![Coverage][badge-coverage]][badge-url-coverage]
+[![GitHub_tag][badge-github-tag]][badge-url-github-tag]
+[![Docker_image][badge-docker]][badge-url-docker]
 [![DOI][badge-doi]][badge-url-doi]
 
 A virtual research environment for running and managing life science
@@ -119,12 +122,18 @@ Krini is released under the [Apache License 2.0](LICENSE); third-party
 material that it contains or builds on is listed in [`NOTICE`](NOTICE).
 
 [badge-build-status]: <https://github.com/elixir-cloud-aai/krini/actions/workflows/ci.yml/badge.svg>
+[badge-coverage]: <https://codecov.io/gh/elixir-cloud-aai/krini/branch/dev/graph/badge.svg?branch=dev>
+[badge-docker]: <https://img.shields.io/docker/v/elixircloud/krini?sort=semver&label=image&color=C39BD3>
 [badge-docs]: <https://img.shields.io/readthedocs/krini>
 [badge-doi]: <https://zenodo.org/badge/DOI/10.5281/zenodo.24375681.svg>
+[badge-github-tag]: <https://img.shields.io/github/v/tag/elixir-cloud-aai/krini?color=C39BD3>
 [badge-license]: <https://img.shields.io/badge/license-Apache%202.0-blue.svg>
 [badge-url-build-status]: <https://github.com/elixir-cloud-aai/krini/actions/workflows/ci.yml>
+[badge-url-coverage]: <https://codecov.io/gh/elixir-cloud-aai/krini?branch=dev>
+[badge-url-docker]: <https://hub.docker.com/r/elixircloud/krini/tags>
 [badge-url-docs]: <https://krini.readthedocs.io/en/latest/>
 [badge-url-doi]: <https://doi.org/10.5281/zenodo.24375681>
+[badge-url-github-tag]: <https://github.com/elixir-cloud-aai/krini/releases>
 [badge-url-license]: <https://www.apache.org/licenses/LICENSE-2.0>
 [code-of-conduct]: <https://github.com/elixir-cloud-aai/.github/blob/main/CODE_OF_CONDUCT.md>
 [contributing]: <https://github.com/elixir-cloud-aai/.github/blob/main/CONTRIBUTING.md>
