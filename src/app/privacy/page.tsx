@@ -24,7 +24,8 @@ const COOKIES = [
     {
         name: "id_token",
         purpose: "the login provider's confirmation of your login",
-        lifetime: "an hour",
+        lifetime:
+            "as long as your session, up to 30 days; deleted when you log out",
     },
     {
         name: "refresh_token",
@@ -39,13 +40,14 @@ const COOKIES = [
     {
         name: "token_expires_at",
         purpose: "when your access token needs to be renewed",
-        lifetime: "up to 30 days; deleted when you log out",
+        lifetime:
+            "as long as your session, up to 30 days; deleted when you log out",
     },
     {
         name: "logout_marker",
         purpose:
-            "keeps you logged out, so that no open page renews the session",
-        lifetime: "15 minutes after you log out, or until you log in again",
+            "records your logout, so that Krini refuses any session cookies that a renewal still in progress sets again",
+        lifetime: "30 days after you log out, or until you log in again",
     },
     {
         name: "sidebar_state",
