@@ -3,8 +3,9 @@
 # `.github/workflows/ci.yml` and the `smoke` job of
 # `.github/workflows/release.yml`: the container runs as a non-root user
 # with a read-only root file system and a writable `/tmp`, serves the login
-# page without settings, redirects the start page and writes optimized
-# images to `/tmp/next-cache` (see "Container image" in
+# page without settings, redirects the start page, serves the workers of
+# the code editor, writes optimized images to `/tmp/next-cache` and has
+# LICENSE and NOTICE (see "Container image" in
 # `docs/operator-guide/deployment.md`). The optimized image is
 # `public/ls-login-grey-wide.jpg` (shown on the login page): change it here
 # if it is renamed. Needs Docker and curl, and port 3000 on 127.0.0.1.
@@ -25,6 +26,13 @@ if [[ "$(docker exec "${app}" id -u)" == 0 ]]; then
   echo "::error::The container runs as root"
   exit 1
 fi
+# the licence and the notices of third-party material
+for file in LICENSE NOTICE; do
+  if ! docker exec "${app}" test -s "/app/${file}"; then
+    echo "::error::The image has no /app/${file}"
+    exit 1
+  fi
+done
 for _ in $(seq 30); do
   # the start page redirects to the dashboard; the login page is served
   # without settings (200, not a redirect, which `curl -f` would also
@@ -45,6 +53,12 @@ for _ in $(seq 30); do
     if ! curl -fs -o /dev/null "http://127.0.0.1:3000/_next/image?url=%2Fls-login-grey-wide.jpg&w=640&q=75"; then
       docker logs "${app}"
       echo "::error::The image optimizer failed"
+      exit 1
+    fi
+    # the workers of the code editor, copied when the app is built
+    if ! curl -fs -o /dev/null http://127.0.0.1:3000/ace/worker-json.js; then
+      docker logs "${app}"
+      echo "::error::The image doesn't serve the editor's workers (/ace/)"
       exit 1
     fi
     if ! docker exec "${app}" sh -c 'ls /tmp/next-cache/images | grep -q .'; then

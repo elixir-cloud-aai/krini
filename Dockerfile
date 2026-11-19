@@ -47,7 +47,7 @@ RUN apt-get update \
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
-COPY --from=build /app/LICENSE ./
+COPY --from=build /app/LICENSE /app/NOTICE ./
 RUN ln -s /tmp/next-cache .next/cache
 
 USER bun
