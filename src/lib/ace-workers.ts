@@ -10,10 +10,11 @@
  */
 
 /** Workers of the editor's languages (`WorkerClient` in the modes of
- * `ace-builds`): those of the modes that `@elixir-cloud/design` loads */
+ * `ace-builds`): those of the modes that `@elixir-cloud/design` loads;
+ * `src/lib/ace-worker-files.test.ts` fails when they differ */
 const ACE_WORKERS = ["css", "html", "javascript", "json", "xml", "yaml"];
 
-/** Path at which Krini serves the workers */
+/** Path at which Krini serves the workers; `src/proxy.ts` skips it */
 const ACE_WORKER_PATH = "/ace";
 
 /** The part of the global `ace` of `ace-builds` that is configured here */
@@ -46,7 +47,9 @@ function selfHostAceWorkers(ace: AceGlobal | undefined): void {
 /**
  * Configure the editor's workers once a module of the Cloud Components is
  * loaded, which sets the global `ace`; for the `then` of their dynamic
- * imports, before any editor starts
+ * imports, before any editor starts. Every dynamic import of
+ * `@elixir-cloud/*\/react` must use it, or its editors would load their
+ * workers from the CDN, which the Content Security Policy blocks
  * @param mod The loaded module
  * @returns The module
  */
@@ -55,4 +58,4 @@ function withSelfHostedAce<T>(mod: T): T {
     return mod;
 }
 
-export { ACE_WORKER_PATH, ACE_WORKERS, selfHostAceWorkers, withSelfHostedAce };
+export { ACE_WORKERS, selfHostAceWorkers, withSelfHostedAce };

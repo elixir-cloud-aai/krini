@@ -1,6 +1,36 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
-import { proxy } from "./proxy";
+import { config, proxy } from "./proxy";
+
+describe("config", () => {
+    // Next.js matches the source against the whole path
+    const matches = (path: string) =>
+        new RegExp(`^${config.matcher[0].source}$`).test(path);
+
+    it("covers pages and API routes", () => {
+        for (const path of [
+            "/",
+            "/dashboard",
+            "/dashboard/workflows/create",
+            "/privacy",
+            "/auth/api/token",
+            "/api/tasks/get-tes-servers",
+        ]) {
+            expect(matches(path), path).toBe(true);
+        }
+    });
+
+    it("skips static files", () => {
+        for (const path of [
+            "/_next/static/chunks/main.js",
+            "/_next/image",
+            "/ace/worker-json.js",
+            "/favicon.ico",
+        ]) {
+            expect(matches(path), path).toBe(false);
+        }
+    });
+});
 
 describe("proxy", () => {
     it("sends a policy with a new nonce for each request", () => {

@@ -52,7 +52,5 @@ describe("withSelfHostedAce", () => {
 
         expect(withSelfHostedAce(mod)).toBe(mod);
         expect(ace.config.setModuleUrl).toHaveBeenCalled();
-
-        vi.unstubAllGlobals();
     });
 });

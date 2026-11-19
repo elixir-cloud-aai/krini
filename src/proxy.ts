@@ -31,8 +31,9 @@ export function proxy(request: NextRequest): NextResponse {
     return response;
 }
 
-// Not for static files, which run no scripts, nor for prefetches, whose
-// responses are no documents
+// Not for static files, which run no scripts (`ace/` is the path of the
+// editor's workers, `ACE_WORKER_PATH` in `src/lib/ace-workers.ts`), nor for
+// prefetches, whose responses are no documents
 export const config = {
     matcher: [
         {
