@@ -1,7 +1,8 @@
 /**
  * @description fixtures of the end-to-end tests: login through the mock
  * provider, the requests that the mock WES and TES services received, and a check
- * that no page throws or gets server errors from the app
+ * that no page throws, gets server errors from the app, breaks its Content
+ * Security Policy or loads anything from a CDN
  */
 import { test as base, expect, type Page } from "@playwright/test";
 import {
@@ -105,8 +106,9 @@ function forgiveProblems(
 }
 
 type Fixtures = {
-    /** Problems in the browser, which fail the test: page errors and
-     * server errors of the app */
+    /** Problems in the browser, which fail the test: page errors, server
+     * errors of the app, violations of its Content Security Policy and
+     * requests to a CDN */
     problems: string[];
 };
 
@@ -117,6 +119,26 @@ const test = base.extend<Fixtures>({
             const app = new URL(baseURL as string).origin;
             page.on("pageerror", (err) => {
                 problems.push(`page error: ${err.message}`);
+            });
+            // the browser reports violations as events of the document; an
+            // init script isn't subject to the page's policy
+            await page.addInitScript(() => {
+                document.addEventListener(
+                    "securitypolicyviolation",
+                    (event) => {
+                        console.error(
+                            `CSP violation: ${event.effectiveDirective} ${event.blockedURI}`,
+                        );
+                    },
+                );
+            });
+            page.on("console", (message) => {
+                if (message.text().startsWith("CSP violation:"))
+                    problems.push(message.text());
+            });
+            page.on("request", (request) => {
+                if (new URL(request.url()).hostname === "cdn.jsdelivr.net")
+                    problems.push(`CDN request: ${request.url()}`);
             });
             page.on("response", (response) => {
                 if (
