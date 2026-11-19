@@ -447,6 +447,6 @@ services over plain HTTP.
 1. **HTTPS only**: Always deploy Krini behind HTTPS in production
 2. **Secure cookies**: Production builds set the `Secure` flag on cookies automatically
 3. **Secret management**: Never commit `.env.local` or other env files (only `.env.example` belongs in the repository), never copy them into an image, and never expose secrets in client-side code
-4. **Origin validation**: The logout endpoint validates requests against `APP_ORIGIN` to prevent CSRF
+4. **Origin validation**: The logout and token refresh endpoints validate requests against `APP_ORIGIN` to prevent CSRF
 5. **Token refresh**: The `offline_access` scope enables silent token renewal, improving user experience
 6. **CORS restrictions**: Configure CORS to only allow trusted origins
