@@ -13,16 +13,16 @@ abstract: >-
   Service (WES) instances, and follow their runs.
 type: software
 authors:
-  - given-names: Chitransh
-    alias: AnonymousXC
-  - given-names: Anurag
-    family-names: Gupta
   - given-names: Alexander
     family-names: Kanitz
     orcid: "https://orcid.org/0000-0002-3468-0652"
     affiliation: >-
       Biozentrum, University of Basel, Basel, Switzerland; SIB Swiss Institute
       of Bioinformatics, Lausanne, Switzerland
+  - given-names: Chitransh
+    alias: AnonymousXC
+  - given-names: Anurag
+    family-names: Gupta
   - given-names: Raghupathi
     family-names: Dhara
   - given-names: Tanya
@@ -39,3 +39,4 @@ keywords:
   - web front end
 license: Apache-2.0
 version: "0.1.0"
+date-released: "2026-11-19"
