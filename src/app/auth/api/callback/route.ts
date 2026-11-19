@@ -35,10 +35,13 @@ function redirectError(request: NextRequest, type: string, state?: string) {
     const response = NextResponse.redirect(
         appUrl(`/auth/error?type=${type}`, request),
     );
-    if (state) expireLoginArtifacts(response, state);
+    // a failed login keeps the logout marker: it still voids session
+    // cookies that a refresh overtaken by the logout may have set
+    if (state) response.cookies.delete(`authState-${state}`);
     return response;
 }
 
+/** Ends the login transaction; the new session replaces the marker */
 function expireLoginArtifacts(response: NextResponse, state: string) {
     response.cookies.delete(`authState-${state}`);
     response.cookies.delete(LOGOUT_MARKER);

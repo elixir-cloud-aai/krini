@@ -322,9 +322,10 @@ describe("GET /auth/api/callback", () => {
         expect(locationOf(response)).toBe(
             `${appOrigin}/auth/error?type=internal`,
         );
-        // the consumed transaction and logout marker are expired
+        // the consumed transaction is expired; the logout marker stays, so
+        // that cookies restored after a logout stay void
         expect(cookieOf(response, "authState-s1")?.value).toBe("");
-        expect(cookieOf(response, "logout_marker")?.value).toBe("");
+        expect(cookieOf(response, "logout_marker")).toBeUndefined();
         expect(error.mock.calls[0][0]).toMatch(/category=invalid_response/);
     });
 

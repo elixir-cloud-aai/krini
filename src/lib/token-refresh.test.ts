@@ -201,16 +201,25 @@ describe("createTokenRefresher", () => {
         expect(refresh).toHaveBeenCalledTimes(1);
     });
 
-    it.each([
-        ["no_refresh_token"],
-        [undefined],
-    ])("stops without leaving the page on 401 %s", async (code) => {
+    it("stops without leaving the page on 401 no_refresh_token", async () => {
         const { refresh, onSessionEnded, refresher } = setUp(Date.now(), [
-            { status: 401, code },
+            { status: 401, code: "no_refresh_token" },
         ]);
         refresher.start();
         await vi.advanceTimersByTimeAsync(60 * minute);
         expect(refresh).toHaveBeenCalledTimes(1);
+        expect(onSessionEnded).not.toHaveBeenCalled();
+    });
+
+    it("retries a plain 401 of a pod of an older version", async () => {
+        const { refresh, onSessionEnded, refresher } = setUp(Date.now(), [
+            { status: 401 },
+        ]);
+        refresher.start();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(refresh).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(5_000);
+        expect(refresh).toHaveBeenCalledTimes(2);
         expect(onSessionEnded).not.toHaveBeenCalled();
     });
 

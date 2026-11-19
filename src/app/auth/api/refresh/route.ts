@@ -14,6 +14,8 @@ import {
     applySessionCookies,
     clearSessionCookies,
     hasLoggedOut,
+    type SessionTokens,
+    setRefreshTokenCookie,
 } from "@/lib/session-cookies";
 
 const REFRESH_SUCCESS_WINDOW_MS = 60 * 1000;
@@ -208,13 +210,28 @@ export async function POST(req: NextRequest) {
         return failure("session_ended", "Failed to refresh token");
     }
 
-    const { access_token, id_token } = response.data;
+    const data: unknown = response.data;
+    if (typeof data !== "object" || data === null) {
+        console.error(
+            `OIDC refresh error: category=invalid_response, endpoint=${endpoints.tokenEndpoint}`,
+        );
+        return failure("unavailable", "Invalid token response");
+    }
+    const { access_token, id_token } = data as Record<string, unknown>;
+
+    /** A failure that keeps a rotated refresh token: the provider may have
+     * invalidated the old one already, so a retry needs the new one */
+    const unavailable = () => {
+        const failed = failure("unavailable", "Invalid token response");
+        setRefreshTokenCookie(failed, data as SessionTokens);
+        return failed;
+    };
 
     if (typeof access_token !== "string") {
         console.error(
             `OIDC refresh error: category=invalid_response, endpoint=${endpoints.tokenEndpoint}`,
         );
-        return failure("unavailable", "Invalid token response");
+        return unavailable();
     }
 
     // A refreshed ID token carries no nonce; signature, issuer, audience
@@ -231,7 +248,7 @@ export async function POST(req: NextRequest) {
             console.error(
                 `OIDC refresh error: category=id_token_validation_failed, endpoint=${endpoints.tokenEndpoint}`,
             );
-            return failure("unavailable", "Invalid token response");
+            return unavailable();
         }
         if (
             idTokenPayload &&
@@ -245,14 +262,20 @@ export async function POST(req: NextRequest) {
         }
     }
 
+    // without a new ID token, the session's stays, with the session's new
+    // lifetime; without either (e.g. a session of an older image whose ID
+    // token cookie expired), nothing names the user any more
+    const sessionIdToken = typeof id_token === "string" ? id_token : idToken;
+    if (!sessionIdToken) {
+        return failure("session_ended", "Session has no ID token");
+    }
+
     const jsonResponse = NextResponse.json({ success: true });
     applySessionCookies(
         jsonResponse,
-        // without a new ID token, the session's stays, with the session's
-        // new lifetime
         {
-            ...response.data,
-            id_token: typeof id_token === "string" ? id_token : idToken,
+            ...(data as SessionTokens),
+            id_token: sessionIdToken,
         },
         provider.id,
         { keepRefreshToken: true },

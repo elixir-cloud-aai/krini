@@ -166,14 +166,16 @@ export function createTokenRefresher(deps: RefresherDeps) {
             scheduleNext();
             return;
         }
-        if (result.status === 401) {
-            // `no_refresh_token`: the server deleted `token_expires_at`,
-            // and the access token, if any, stays until it expires
-            if (result.code === "session_ended") deps.onSessionEnded();
+        if (result.code === "session_ended") {
+            deps.onSessionEnded();
             return;
         }
-        // the provider is unavailable, a concurrent refresh won, or no
-        // response came: the session stays; try again
+        // the server deleted `token_expires_at`, and the access token, if
+        // any, stays until it expires
+        if (result.code === "no_refresh_token") return;
+        // the provider is unavailable, a concurrent refresh won, no response
+        // came, or a pod of an older version answered a plain 401 during an
+        // upgrade: the session stays; try again
         failures += 1;
         schedule(Math.min(RETRY_BASE_MS * 2 ** (failures - 1), RETRY_MAX_MS));
     }

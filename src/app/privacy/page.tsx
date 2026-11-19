@@ -19,7 +19,7 @@ const COOKIES = [
     {
         name: "access_token",
         purpose: "your access token, which Krini passes to the services",
-        lifetime: "until the token expires, usually an hour",
+        lifetime: "until the token expires, usually an hour, at most 30 days",
     },
     {
         name: "id_token",

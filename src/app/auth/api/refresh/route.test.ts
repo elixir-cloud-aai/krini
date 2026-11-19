@@ -230,9 +230,16 @@ describe("POST /auth/api/refresh", () => {
     it("keeps the session cookies at most 30 days", async () => {
         const { response } = await refresh(undefined, {
             ...tokens(),
+            expires_in: 90 * 24 * 60 * 60,
             refresh_expires_in: 90 * 24 * 60 * 60,
         });
-        for (const name of ["refresh_token", "id_token", "token_expires_at"])
+        // the logout marker (30 days) outlives every session cookie
+        for (const name of [
+            "access_token",
+            "refresh_token",
+            "id_token",
+            "token_expires_at",
+        ])
             expect(cookieOf(response, name)?.attributes).toContain(
                 `max-age=${thirtyDays}`,
             );
@@ -411,6 +418,49 @@ describe("POST /auth/api/refresh", () => {
         expect(error.mock.calls[0][0]).toMatch(/category=invalid_response/);
     });
 
+    it.each([
+        ["null", null],
+        ["a string", "oops"],
+    ])("rejects a token response that is %s", async (_, reply) => {
+        const { response, error } = await refresh(undefined, reply);
+        expect(response.status).toBe(503);
+        expect(await response.json()).toEqual({
+            error: "Invalid token response",
+            code: "unavailable",
+        });
+        expect(response.headers.getSetCookie()).toEqual([]);
+        expect(error.mock.calls[0][0]).toMatch(/category=invalid_response/);
+    });
+
+    it.each([
+        ["without an access token", { id_token: "x" }],
+        [
+            "with an invalid ID token",
+            { access_token: "access-2", id_token: "not-a-jwt" },
+        ],
+    ])("keeps a rotated refresh token of a response %s", async (_, reply) => {
+        const { response } = await refresh(undefined, {
+            ...reply,
+            refresh_token: "refresh-2",
+        });
+        expect(response.status).toBe(503);
+        // the provider may have invalidated the old one already
+        expect(cookieOf(response, "refresh_token")).toMatchObject({
+            value: "refresh-2",
+            attributes: expect.arrayContaining([`max-age=${thirtyDays}`]),
+        });
+        expect(cookieOf(response, "access_token")).toBeUndefined();
+        expect(cookieOf(response, "id_token")).toBeUndefined();
+    });
+
+    it("ends a session that has no ID token and gets none", async () => {
+        const { response } = await refresh(undefined, {
+            access_token: "access-2",
+            expires_in: 600,
+        });
+        await expectSessionEnded(response, "Session has no ID token");
+    });
+
     it("rejects an ID token that fails validation", async () => {
         const { response, error } = await refresh(undefined, {
             access_token: "access-2",
@@ -432,6 +482,7 @@ describe("POST /auth/api/refresh", () => {
     ])("assumes an hour when expires_in is %s", async (_, expires_in) => {
         const { response } = await refresh(undefined, {
             access_token: "access-2",
+            id_token: idToken(),
             expires_in,
         });
         expect(cookieOf(response, "access_token")?.attributes).toContain(
