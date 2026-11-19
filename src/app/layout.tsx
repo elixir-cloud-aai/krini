@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
@@ -23,7 +24,12 @@ export const metadata: Metadata = {
     description: "Run tasks and workflows on selected registries",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+// The nonce of the Content Security Policy (`src/proxy.ts`), for the
+// inline script of the theme; reading it renders every page per request,
+// which the nonce needs
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+    const nonce = (await headers()).get("x-nonce") ?? undefined;
+
     return (
         <html
             lang="en"
@@ -43,6 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                     defaultTheme="system"
                     enableSystem
                     disableTransitionOnChange={false}
+                    nonce={nonce}
                 >
                     <TooltipProvider>{children}</TooltipProvider>
                     <Toaster />
