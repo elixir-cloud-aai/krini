@@ -1,58 +1,49 @@
 "use client";
 import { getCookie } from "cookies-next/client";
-import { useEffect, useRef } from "react";
-import { axiosBase } from "@/lib/axios";
+import { useEffect } from "react";
+import {
+    createTokenRefresher,
+    lockWith,
+    parseExpiry,
+    postRefresh,
+} from "@/lib/token-refresh";
 
+/** Runs a function while holding the lock that refreshes hold */
+function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
+    return lockWith(globalThis.navigator?.locks)(fn);
+}
+
+/** The page's one refresher; the browser APIs are used only when it runs */
+const refresher = createTokenRefresher({
+    readExpiry: () => parseExpiry(getCookie("token_expires_at")),
+    refresh: () => postRefresh(fetch),
+    onSessionEnded: () => {
+        window.location.href = "/auth/login";
+    },
+    withLock: withRefreshLock,
+});
+
+/** Keeps the session's access token fresh while the page is open */
 export function useTokenRefresh() {
-    const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
-
     useEffect(() => {
-        const checkAndRefreshToken = async () => {
-            try {
-                const expiresAtCookie = getCookie("token_expires_at");
-                const expiresAt = expiresAtCookie
-                    ? Number.parseInt(expiresAtCookie, 10)
-                    : null;
-
-                if (!expiresAt) {
-                    return;
-                }
-
-                const now = Date.now();
-                const timeUntilExpiry = expiresAt - now;
-
-                if (timeUntilExpiry < 5 * 60 * 1000) {
-                    await axiosBase.post("/auth/api/refresh");
-                }
-
-                const updatedExpiresAtCookie = getCookie("token_expires_at");
-                const updatedExpiresAt = updatedExpiresAtCookie
-                    ? Number.parseInt(updatedExpiresAtCookie, 10)
-                    : null;
-
-                if (updatedExpiresAt) {
-                    const updatedTimeUntilExpiry =
-                        updatedExpiresAt - Date.now();
-                    const nextCheckTime = Math.max(
-                        updatedTimeUntilExpiry / 2,
-                        120 * 1000,
-                    );
-                    refreshTimerRef.current = setTimeout(
-                        checkAndRefreshToken,
-                        nextCheckTime,
-                    );
-                }
-            } catch {
-                window.location.href = "/auth/login";
-            }
-        };
-
-        checkAndRefreshToken();
-
+        refresher.start();
         return () => {
-            if (refreshTimerRef.current) {
-                clearTimeout(refreshTimerRef.current);
-            }
+            void refresher.stop();
         };
     }, []);
 }
+
+/**
+ * Stops the page's refreshes and waits for one in flight, e.g. before a
+ * logout, so that no refresh can set the session's cookies again
+ */
+export function stopTokenRefresh(): Promise<void> {
+    return refresher.stop();
+}
+
+/** Starts the page's refreshes again, e.g. after a failed logout */
+export function startTokenRefresh(): void {
+    refresher.start();
+}
+
+export { withRefreshLock };
