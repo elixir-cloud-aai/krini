@@ -20,12 +20,18 @@
  * come from any `https:` origin, too, for the logos of the login providers.
  * @param nonce Nonce of the request, base64
  * @param development Whether the app runs with `next dev`, which needs
- * `eval` for its error overlay
+ * `eval` for its error overlay and WebSockets for its hot reload
  * @returns The value of the `Content-Security-Policy` header
  */
 function contentSecurityPolicy(nonce: string, development = false): string {
     const scriptSrc = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'"];
-    if (development) scriptSrc.push("'unsafe-eval'");
+    const connectSrc = ["'self'", "https:"];
+    if (development) {
+        scriptSrc.push("'unsafe-eval'");
+        // the hot reload of `next dev`, for browsers in which `'self'`
+        // doesn't cover WebSockets
+        connectSrc.push("ws:", "wss:");
+    }
 
     return [
         "default-src 'self'",
@@ -34,7 +40,7 @@ function contentSecurityPolicy(nonce: string, development = false): string {
         // login providers' logos may be `https` URLs (`docs/operator-guide/login.md`)
         "img-src 'self' https: data: blob:",
         "font-src 'self'",
-        "connect-src 'self' https:",
+        `connect-src ${connectSrc.join(" ")}`,
         // the syntax checks of the code editor (`src/lib/ace-workers.ts`)
         "worker-src 'self'",
         "object-src 'none'",

@@ -426,6 +426,9 @@ form-action 'self'; frame-ancestors 'none'
 - **Styles** may be inline, as React and the Cloud Components set them at
   runtime.
 - **Frames:** no site may embed Krini (`frame-ancestors 'none'`).
+- **Development:** `next dev` adds `'unsafe-eval'` to `script-src` (for its
+  error overlay) and `ws:` `wss:` to `connect-src` (for its hot reload).
+  Production builds don't.
 
 As each response gets its own nonce, all pages are rendered when they are
 requested, none at build time.

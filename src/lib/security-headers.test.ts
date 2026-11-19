@@ -67,6 +67,15 @@ describe("contentSecurityPolicy", () => {
         expect(policy["script-src"]).toContain("'unsafe-eval'");
     });
 
+    it("allows WebSockets only in development, for the hot reload", () => {
+        expect(
+            directives(contentSecurityPolicy("abc123", true))["connect-src"],
+        ).toEqual(["'self'", "https:", "ws:", "wss:"]);
+        expect(
+            directives(contentSecurityPolicy("abc123"))["connect-src"],
+        ).toEqual(["'self'", "https:"]);
+    });
+
     it("is one line", () => {
         expect(contentSecurityPolicy("abc123")).not.toMatch(/[\r\n]/);
     });
