@@ -12,6 +12,7 @@
 [![License][badge-license]][badge-url-license]
 [![Build_status][badge-build-status]][badge-url-build-status]
 [![Docs][badge-docs]][badge-url-docs]
+[![DOI][badge-doi]][badge-url-doi]
 
 A virtual research environment for running and managing life science
 analyses, brought to you by [ELIXIR On-Cloud](https://elixir-on.cloud/).
@@ -91,7 +92,10 @@ CORS).
 
 ## Citation
 
-If you use Krini, please cite it with the metadata in
+If you use Krini, please cite it with its DOI
+[10.5281/zenodo.24375681](https://doi.org/10.5281/zenodo.24375681), which
+always resolves to the latest version on [Zenodo](https://zenodo.org/); the
+Zenodo record lists the DOI of each version, too. The citation metadata is in
 [`CITATION.cff`](CITATION.cff): on GitHub, "Cite this repository" in the
 sidebar of the repository formats it as APA or BibTeX.
 
@@ -116,9 +120,11 @@ material that it contains or builds on is listed in [`NOTICE`](NOTICE).
 
 [badge-build-status]: <https://github.com/elixir-cloud-aai/krini/actions/workflows/ci.yml/badge.svg>
 [badge-docs]: <https://img.shields.io/readthedocs/krini>
+[badge-doi]: <https://zenodo.org/badge/DOI/10.5281/zenodo.24375681.svg>
 [badge-license]: <https://img.shields.io/badge/license-Apache%202.0-blue.svg>
 [badge-url-build-status]: <https://github.com/elixir-cloud-aai/krini/actions/workflows/ci.yml>
 [badge-url-docs]: <https://krini.readthedocs.io/en/latest/>
+[badge-url-doi]: <https://doi.org/10.5281/zenodo.24375681>
 [badge-url-license]: <https://www.apache.org/licenses/LICENSE-2.0>
 [code-of-conduct]: <https://github.com/elixir-cloud-aai/.github/blob/main/CODE_OF_CONDUCT.md>
 [contributing]: <https://github.com/elixir-cloud-aai/.github/blob/main/CONTRIBUTING.md>
