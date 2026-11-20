@@ -138,6 +138,7 @@ upgrade`.
 | `hostName` | — | none; the public host name of the Ingress, HTTPRoute or Route, e.g. `krini.example.org` |
 | `config.cloudRegistryUrl` | `CLOUD_REGISTRY_URL` | none; required |
 | `config.appOrigin` | `APP_ORIGIN` | `https://<hostName>`; an `https` origin without path or trailing slash |
+| `config.redirectToAppOrigin` | `REDIRECT_TO_APP_ORIGIN` | `true`: requests at other hosts are redirected to `APP_ORIGIN`; passed only if `false` |
 | `config.oidcRedirectUri` | `OIDC_REDIRECT_URI` | not set: Krini uses `<APP_ORIGIN>/auth/api/callback` |
 | `config.computeAccessRequestUrl` | `COMPUTE_ACCESS_REQUEST_URL` | not set |
 | `config.privacy.controller` | `PRIVACY_CONTROLLER` | not set |
@@ -238,6 +239,13 @@ Krini must be served over HTTPS: it sets secure cookies, and sends users
 back to `APP_ORIGIN` (`https://<hostName>`) after the login. If none of
 them is enabled, Krini is reachable only within the cluster, and Helm's
 notes say so.
+
+If Krini is also reachable at other addresses (e.g., an old Route kept for
+existing links), it redirects their requests to `APP_ORIGIN`, where the
+login works; probes and `helm test` reach the pod and the Service at
+internal addresses, which are never redirected. `config.redirectToAppOrigin:
+false` switches the redirect off (see [Several
+addresses](deployment.md#several-addresses)).
 
 ### Security
 

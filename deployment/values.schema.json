@@ -55,6 +55,10 @@
                     "pattern": "^(https://[^/\\s]+)?$",
                     "description": "Origin of Krini (APP_ORIGIN): https://, host and optional port, without path or trailing slash; https://<hostName> if empty"
                 },
+                "redirectToAppOrigin": {
+                    "type": "boolean",
+                    "description": "Redirect requests at other hosts to APP_ORIGIN (REDIRECT_TO_APP_ORIGIN, passed only if false)"
+                },
                 "oidcRedirectUri": {
                     "$ref": "#/$defs/url",
                     "description": "Callback URL of the login (OIDC_REDIRECT_URI)"

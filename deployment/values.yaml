@@ -26,6 +26,11 @@ config:
   # and optional port, without path or trailing slash (e.g.,
   # `https://krini.example.org`); `https://<hostName>` if empty
   appOrigin: ""
+  # Redirect requests that reach Krini at another host than that of
+  # `APP_ORIGIN` (e.g., an old address) permanently to the same path at
+  # `APP_ORIGIN`, where the login works (`REDIRECT_TO_APP_ORIGIN`, passed
+  # only if false); false to serve every host as is
+  redirectToAppOrigin: true
   # Callback URL of the login (`OIDC_REDIRECT_URI`); Krini uses
   # `<APP_ORIGIN>/auth/api/callback` if empty
   oidcRedirectUri: ""

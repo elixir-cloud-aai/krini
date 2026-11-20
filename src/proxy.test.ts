@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { config, proxy } from "./proxy";
 
 describe("config", () => {
@@ -63,5 +63,34 @@ describe("proxy", () => {
                 "x-middleware-request-content-security-policy",
             ),
         ).toBe(policy);
+    });
+});
+
+describe("proxy at another host", () => {
+    it("redirects permanently to APP_ORIGIN, with path and query", () => {
+        vi.stubEnv("APP_ORIGIN", "https://portal.example.org");
+        const response = proxy(
+            new NextRequest("https://old.example.org/dashboard?tab=1", {
+                headers: { host: "old.example.org" },
+            }),
+        );
+
+        expect(response.status).toBe(308);
+        expect(response.headers.get("Cache-Control")).toBe("no-store");
+        expect(response.headers.get("location")).toBe(
+            "https://portal.example.org/dashboard?tab=1",
+        );
+    });
+
+    it("serves the host of APP_ORIGIN", () => {
+        vi.stubEnv("APP_ORIGIN", "https://portal.example.org");
+        const response = proxy(
+            new NextRequest("https://portal.example.org/dashboard", {
+                headers: { host: "portal.example.org" },
+            }),
+        );
+
+        expect(response.headers.get("location")).toBeNull();
+        expect(response.headers.get("Content-Security-Policy")).toBeTruthy();
     });
 });

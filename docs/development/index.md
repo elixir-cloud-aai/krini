@@ -49,7 +49,12 @@ other origins (see
     Login fails if the app doesn't run on `http://localhost:3000/`. If you
     change the port, change `APP_ORIGIN` and `OIDC_REDIRECT_URI` in your
     `.env.local` file and register the new redirect URI with your OIDC
-    client.
+    client. Krini redirects requests at other host names to `APP_ORIGIN`
+    (IP addresses and names without a dot are served as they are); as
+    Next.js turns a redirect to its own address into a relative one, which
+    the browser follows at the same host, set `REDIRECT_TO_APP_ORIGIN=false`
+    if you open the development server at another name with a dot (see
+    [Several addresses](../operator-guide/deployment.md#several-addresses)).
 
 ### Environment variables
 

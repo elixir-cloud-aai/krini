@@ -350,6 +350,64 @@ map $http_origin $krini_cors_origin {
 Then use `$krini_cors_origin` instead of the fixed origin in the example
 above, and add `add_header 'Vary' 'Origin' always;` next to it.
 
+## Several addresses
+
+If Krini is reachable at more than one address (e.g., a new domain and the
+old one, kept for existing links), the login works only at `APP_ORIGIN`:
+Krini keeps the state of a login in a cookie for the host that the user is
+on, and the login provider always sends users back to the callback at
+`APP_ORIGIN`, where a login started at another host fails with "Invalid
+state found". So Krini redirects every request at another host to the same
+path and query at `APP_ORIGIN`, with a permanent redirect (`308`, which
+keeps the method). Krini sends it with `Cache-Control: no-store`, so that
+browsers don't cache it and a change of the settings takes effect at once.
+Requests to the host and port of `APP_ORIGIN` are served as they are
+(case doesn't matter, nor the scheme's default port); other ports and
+spellings of the same host (e.g., with a trailing dot) are redirected too,
+as the session refresh and the logout accept requests only from the origin
+of `APP_ORIGIN`, and browsers keep cookies of `example.org.` apart from
+those of `example.org`. Krini can't tell HTTP from HTTPS behind a proxy
+that terminates TLS: redirecting HTTP to HTTPS is up to the proxy (the
+Helm chart's Route does it).
+
+Requests at internal addresses are never redirected, so that health checks
+and other workloads in the cluster keep reaching Krini directly: IP
+addresses (e.g., Kubernetes' probes at the pod's address, or the image's
+health check at `127.0.0.1`), names without a dot (e.g., `localhost`, or a
+Service name such as `krini`, as `helm test` uses it) and Kubernetes
+Service names (`<service>.<namespace>.svc`, with or without the default
+cluster domain `.cluster.local`). Requests without a `Host` header,
+static files (`/_next/static/`, `/_next/image`, `/ace/`, `/favicon.ico`)
+and prefetches of Next.js are served at every host.
+
+Krini decides by the `Host` header of the request. Ingress controllers,
+Gateways and OpenShift routers pass on the browser's `Host`; a reverse
+proxy of your own must do so too (e.g., in Nginx, `proxy_set_header Host
+$host;`). A proxy that sends another public host name instead gets a
+redirect for every request, which sends browsers back to the proxy in a
+loop: make it pass on `Host`, or switch the redirect off. The same holds
+for the Helm chart if `config.appOrigin` names another host than
+`hostName`: the chart's Ingress, HTTPRoute or Route serve `hostName`, whose
+requests Krini redirects to `APP_ORIGIN`, so `APP_ORIGIN` must reach Krini
+some other way with its own host name (Helm's notes warn about it).
+
+To serve each address on its own instead (e.g., several deployments behind
+one proxy, each with its own login client and callback), set
+`REDIRECT_TO_APP_ORIGIN=false` (Helm chart: `config.redirectToAppOrigin:
+false`); then users must start the login at `APP_ORIGIN`.
+
+To change `APP_ORIGIN` of a running deployment with several pods, switch
+the redirect off for that rollout and on again in a second one: while old
+and new pods run side by side, each redirects to its own `APP_ORIGIN`, so
+browsers can be sent back and forth between the two hosts until the
+rollout is done.
+
+Switch it off also if Krini's server listens at the address of
+`APP_ORIGIN` itself (e.g., `localhost` for `next dev` and `next start`),
+as Next.js turns redirects to its own address into relative ones, which
+send browsers back to the same host; the image listens at `0.0.0.0` (or
+`LISTEN_HOSTNAME`), so this doesn't apply to it.
+
 ## Network access
 
 Krini's server needs outgoing HTTPS connections to:
