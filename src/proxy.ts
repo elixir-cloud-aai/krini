@@ -11,8 +11,8 @@ import { contentSecurityPolicy, createNonce } from "@/lib/security-headers";
 
 /**
  * Redirect requests at other hosts permanently (308, which keeps the
- * method; not cached) to `APP_ORIGIN`; add the Content Security Policy to the others,
- * for the rendering, and to their responses
+ * method; not cached) to `APP_ORIGIN`; add the Content Security Policy to
+ * the others, for the rendering, and to their responses
  * @param request The request
  * @returns The response
  */

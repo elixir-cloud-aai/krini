@@ -359,9 +359,10 @@ on, and the login provider always sends users back to the callback at
 `APP_ORIGIN`, where a login started at another host fails with "Invalid
 state found". So Krini redirects every request at another host to the same
 path and query at `APP_ORIGIN`, with a permanent redirect (`308`, which
-keeps the method), which browsers don't cache, so that changing the
-settings takes effect at once. Requests to the host of `APP_ORIGIN` are served as
-they are, whatever their port.
+keeps the method). Krini sends it with `Cache-Control: no-store`, so that
+browsers don't cache it and a change of the settings takes effect at once.
+Requests to the host of `APP_ORIGIN` are served as they are, whatever
+their port.
 
 Requests at internal addresses are never redirected, so that health checks
 and other workloads in the cluster keep reaching Krini directly: IP
@@ -369,9 +370,9 @@ addresses (e.g., Kubernetes' probes at the pod's address, or the image's
 health check at `127.0.0.1`), names without a dot (e.g., `localhost`, or a
 Service name such as `krini`, as `helm test` uses it) and Kubernetes
 Service names (`<service>.<namespace>.svc`, with or without the default
-cluster domain `.cluster.local`). Requests without a `Host` header, static files (`/_next/static/`,
-`/_next/image`, `/ace/`, `/favicon.ico`) and prefetches of Next.js are
-served at every host.
+cluster domain `.cluster.local`). Requests without a `Host` header,
+static files (`/_next/static/`, `/_next/image`, `/ace/`, `/favicon.ico`)
+and prefetches of Next.js are served at every host.
 
 Krini decides by the `Host` header of the request. Ingress controllers,
 Gateways and OpenShift routers pass on the browser's `Host`; a reverse
