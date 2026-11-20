@@ -361,8 +361,14 @@ state found". So Krini redirects every request at another host to the same
 path and query at `APP_ORIGIN`, with a permanent redirect (`308`, which
 keeps the method). Krini sends it with `Cache-Control: no-store`, so that
 browsers don't cache it and a change of the settings takes effect at once.
-Requests to the host of `APP_ORIGIN` are served as they are, whatever
-their port.
+Requests to the host and port of `APP_ORIGIN` are served as they are
+(case doesn't matter, nor the scheme's default port); other ports and
+spellings of the same host (e.g., with a trailing dot) are redirected too,
+as the session refresh and the logout accept requests only from the origin
+of `APP_ORIGIN`, and browsers keep cookies of `example.org.` apart from
+those of `example.org`. Krini can't tell HTTP from HTTPS behind a proxy
+that terminates TLS: redirecting HTTP to HTTPS is up to the proxy (the
+Helm chart's Route does it).
 
 Requests at internal addresses are never redirected, so that health checks
 and other workloads in the cluster keep reaching Krini directly: IP
@@ -388,12 +394,19 @@ some other way with its own host name (Helm's notes warn about it).
 To serve each address on its own instead (e.g., several deployments behind
 one proxy, each with its own login client and callback), set
 `REDIRECT_TO_APP_ORIGIN=false` (Helm chart: `config.redirectToAppOrigin:
-false`); then users must start the login at `APP_ORIGIN`. Set it also if
-Krini's server listens at the address of `APP_ORIGIN` itself (e.g.,
-`localhost` for `next dev` and `next start`), as Next.js turns redirects
-to its own address into relative ones, which send browsers back to the
-same host; the image listens at `0.0.0.0` (or `LISTEN_HOSTNAME`), so this
-doesn't apply to it.
+false`); then users must start the login at `APP_ORIGIN`.
+
+To change `APP_ORIGIN` of a running deployment with several pods, switch
+the redirect off for that rollout and on again in a second one: while old
+and new pods run side by side, each redirects to its own `APP_ORIGIN`, so
+browsers can be sent back and forth between the two hosts until the
+rollout is done.
+
+Switch it off also if Krini's server listens at the address of
+`APP_ORIGIN` itself (e.g., `localhost` for `next dev` and `next start`),
+as Next.js turns redirects to its own address into relative ones, which
+send browsers back to the same host; the image listens at `0.0.0.0` (or
+`LISTEN_HOSTNAME`), so this doesn't apply to it.
 
 ## Network access
 

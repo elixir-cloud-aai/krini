@@ -50,7 +50,6 @@ describe("hostRedirect", () => {
             "portal.example.org",
             "PORTAL.example.org",
             "portal.example.org:443",
-            "portal.example.org.",
         ]) {
             expect(
                 hostRedirect(request("https://portal.example.org/", host)),
@@ -59,14 +58,50 @@ describe("hostRedirect", () => {
         }
     });
 
-    it("accepts a trailing dot in APP_ORIGIN", () => {
-        vi.stubEnv("APP_ORIGIN", "https://portal.example.org.");
-        for (const host of ["portal.example.org", "portal.example.org."]) {
+    it("sends other ports and spellings of the host to APP_ORIGIN", () => {
+        // cookies of `portal.example.org.` aren't sent to
+        // `portal.example.org`, and the session refresh and the logout
+        // accept only the origin of APP_ORIGIN, port included
+        vi.stubEnv("APP_ORIGIN", appOrigin);
+        for (const host of ["portal.example.org.", "portal.example.org:8443"]) {
             expect(
-                hostRedirect(request("https://portal.example.org/", host)),
+                hostRedirect(
+                    request("https://portal.example.org/", host),
+                )?.toString(),
                 host,
-            ).toBeNull();
+            ).toBe("https://portal.example.org/");
         }
+    });
+
+    it("compares with the port of APP_ORIGIN", () => {
+        vi.stubEnv("APP_ORIGIN", "https://portal.example.org:8443");
+        expect(
+            hostRedirect(
+                request(
+                    "https://portal.example.org/",
+                    "portal.example.org:8443",
+                ),
+            ),
+        ).toBeNull();
+        expect(
+            hostRedirect(
+                request("https://portal.example.org/", "portal.example.org"),
+            )?.toString(),
+        ).toBe("https://portal.example.org:8443/");
+    });
+
+    it("keeps a trailing dot of APP_ORIGIN, without a loop", () => {
+        vi.stubEnv("APP_ORIGIN", "https://portal.example.org.");
+        expect(
+            hostRedirect(
+                request("https://portal.example.org/", "portal.example.org."),
+            ),
+        ).toBeNull();
+        expect(
+            hostRedirect(
+                request("https://portal.example.org/", "portal.example.org"),
+            )?.toString(),
+        ).toBe("https://portal.example.org./");
     });
 
     it("leaves internal addresses alone (health checks)", () => {
