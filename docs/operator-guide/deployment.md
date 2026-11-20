@@ -359,7 +359,8 @@ on, and the login provider always sends users back to the callback at
 `APP_ORIGIN`, where a login started at another host fails with "Invalid
 state found". So Krini redirects every request at another host to the same
 path and query at `APP_ORIGIN`, with a permanent redirect (`308`, which
-keeps the method). Requests to the host of `APP_ORIGIN` are served as
+keeps the method), which browsers don't cache, so that changing the
+settings takes effect at once. Requests to the host of `APP_ORIGIN` are served as
 they are, whatever their port.
 
 Requests at internal addresses are never redirected, so that health checks
@@ -367,9 +368,21 @@ and other workloads in the cluster keep reaching Krini directly: IP
 addresses (e.g., Kubernetes' probes at the pod's address, or the image's
 health check at `127.0.0.1`), names without a dot (e.g., `localhost`, or a
 Service name such as `krini`, as `helm test` uses it) and Kubernetes
-Service names (`<service>.<namespace>.svc`, with or without the cluster
-domain). Requests without a `Host` header, and static files (`/_next/static/`,
-`/_next/image`, `/ace/`, `/favicon.ico`), are served at every host.
+Service names (`<service>.<namespace>.svc`, with or without the default
+cluster domain `.cluster.local`). Requests without a `Host` header, static files (`/_next/static/`,
+`/_next/image`, `/ace/`, `/favicon.ico`) and prefetches of Next.js are
+served at every host.
+
+Krini decides by the `Host` header of the request. Ingress controllers,
+Gateways and OpenShift routers pass on the browser's `Host`; a reverse
+proxy of your own must do so too (e.g., in Nginx, `proxy_set_header Host
+$host;`). A proxy that sends another public host name instead gets a
+redirect for every request, which sends browsers back to the proxy in a
+loop: make it pass on `Host`, or switch the redirect off. The same holds
+for the Helm chart if `config.appOrigin` names another host than
+`hostName`: the chart's Ingress, HTTPRoute or Route serve `hostName`, whose
+requests Krini redirects to `APP_ORIGIN`, so `APP_ORIGIN` must reach Krini
+some other way with its own host name (Helm's notes warn about it).
 
 To serve each address on its own instead (e.g., several deployments behind
 one proxy, each with its own login client and callback), set

@@ -76,6 +76,7 @@ describe("proxy at another host", () => {
         );
 
         expect(response.status).toBe(308);
+        expect(response.headers.get("Cache-Control")).toBe("no-store");
         expect(response.headers.get("location")).toBe(
             "https://portal.example.org/dashboard?tab=1",
         );

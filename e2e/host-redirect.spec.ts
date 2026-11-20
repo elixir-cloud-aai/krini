@@ -25,3 +25,15 @@ test("the host of APP_ORIGIN is served", async ({ request }) => {
     const response = await request.get("/auth/login", { maxRedirects: 0 });
     expect(response.status()).toBe(200);
 });
+
+test("internal addresses are served, as for health checks", async ({
+    request,
+}) => {
+    for (const host of ["127.0.0.1", "krini", "krini.portal.svc"]) {
+        const response = await request.get("/privacy", {
+            headers: { host },
+            maxRedirects: 0,
+        });
+        expect(response.status(), host).toBe(200);
+    }
+});

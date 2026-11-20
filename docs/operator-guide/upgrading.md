@@ -29,6 +29,14 @@ both containers end the session, and send the user to the login page (see
 [Pods](helm-chart.md#pods)). Keep each browser on one pod (sticky
 sessions) to avoid even that.
 
+Since the version after 0.1.0, Krini redirects requests at other hosts
+than that of `APP_ORIGIN` to `APP_ORIGIN` (see [Several
+addresses](deployment.md#several-addresses)). If your deployment serves
+other public host names on purpose, set `REDIRECT_TO_APP_ORIGIN=false`
+(Helm chart: `config.redirectToAppOrigin: false`) to keep serving them as
+they are. A proxy in front of Krini must pass on the `Host` header of the
+browser's request.
+
 ## From the branch images to 0.1.0
 
 Deployments that pull `krini:staging`, `krini:dev` or a `sha-<commit>`

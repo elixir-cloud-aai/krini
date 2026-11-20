@@ -26,6 +26,7 @@ describe("hostRedirect", () => {
             "portal.example.org.evil.example",
             "svc.example.org",
             "1.2.3.4.example.org",
+            "app.team.svc.example.org",
         ]) {
             expect(
                 hostRedirect(request("https://x.example.org/", host))?.host,
@@ -51,6 +52,16 @@ describe("hostRedirect", () => {
             "portal.example.org:443",
             "portal.example.org.",
         ]) {
+            expect(
+                hostRedirect(request("https://portal.example.org/", host)),
+                host,
+            ).toBeNull();
+        }
+    });
+
+    it("accepts a trailing dot in APP_ORIGIN", () => {
+        vi.stubEnv("APP_ORIGIN", "https://portal.example.org.");
+        for (const host of ["portal.example.org", "portal.example.org."]) {
             expect(
                 hostRedirect(request("https://portal.example.org/", host)),
                 host,

@@ -21,7 +21,8 @@ function hostName(host: string): string | null {
  * (e.g., of the pod for Kubernetes' probes, or `127.0.0.1` for the image's
  * health check), a name without a dot (e.g., `localhost`, or a Kubernetes
  * Service, as for `helm test`) or a Kubernetes Service name
- * (`<service>.<namespace>.svc`, with or without the cluster domain)
+ * (`<service>.<namespace>.svc`, with or without the default cluster
+ * domain `cluster.local`)
  * @param name The host name, as `hostName()` returns it
  * @returns Whether it is an internal address
  */
@@ -30,7 +31,7 @@ function isInternal(name: string): boolean {
         !name.includes(".") ||
         name.startsWith("[") ||
         /^\d{1,3}(\.\d{1,3}){3}$/.test(name) ||
-        /^[^.]+\.[^.]+\.svc(\.|$)/.test(name)
+        /^[^.]+\.[^.]+\.svc(\.cluster\.local)?$/.test(name)
     );
 }
 
@@ -55,7 +56,8 @@ export function hostRedirect(request: NextRequest): URL | null {
 
     const name = hostName(host);
     const target = new URL(appOrigin);
-    if (!name || name === target.hostname || isInternal(name)) return null;
+    const targetName = target.hostname.replace(/\.$/, "");
+    if (!name || name === targetName || isInternal(name)) return null;
 
     target.pathname = request.nextUrl.pathname;
     target.search = request.nextUrl.search;
