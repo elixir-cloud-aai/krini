@@ -350,6 +350,37 @@ map $http_origin $krini_cors_origin {
 Then use `$krini_cors_origin` instead of the fixed origin in the example
 above, and add `add_header 'Vary' 'Origin' always;` next to it.
 
+## Several addresses
+
+If Krini is reachable at more than one address (e.g., a new domain and the
+old one, kept for existing links), the login works only at `APP_ORIGIN`:
+Krini keeps the state of a login in a cookie for the host that the user is
+on, and the login provider always sends users back to the callback at
+`APP_ORIGIN`, where a login started at another host fails with "Invalid
+state found". So Krini redirects every request at another host to the same
+path and query at `APP_ORIGIN`, with a permanent redirect (`308`, which
+keeps the method). Requests to the host of `APP_ORIGIN` are served as
+they are, whatever their port.
+
+Requests at internal addresses are never redirected, so that health checks
+and other workloads in the cluster keep reaching Krini directly: IP
+addresses (e.g., Kubernetes' probes at the pod's address, or the image's
+health check at `127.0.0.1`), names without a dot (e.g., `localhost`, or a
+Service name such as `krini`, as `helm test` uses it) and Kubernetes
+Service names (`<service>.<namespace>.svc`, with or without the cluster
+domain). Requests without a `Host` header, and static files (`/_next/static/`,
+`/_next/image`, `/ace/`, `/favicon.ico`), are served at every host.
+
+To serve each address on its own instead (e.g., several deployments behind
+one proxy, each with its own login client and callback), set
+`REDIRECT_TO_APP_ORIGIN=false` (Helm chart: `config.redirectToAppOrigin:
+false`); then users must start the login at `APP_ORIGIN`. Set it also if
+Krini's server listens at the address of `APP_ORIGIN` itself (e.g.,
+`localhost` for `next dev` and `next start`), as Next.js turns redirects
+to its own address into relative ones, which send browsers back to the
+same host; the image listens at `0.0.0.0` (or `LISTEN_HOSTNAME`), so this
+doesn't apply to it.
+
 ## Network access
 
 Krini's server needs outgoing HTTPS connections to:

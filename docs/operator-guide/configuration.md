@@ -18,6 +18,7 @@ has no `NEXT_PUBLIC_*` variables):
 | `LOGIN_PROVIDERS` | yes | JSON array of login providers, on one line (see [Login](login.md#login-providers)); holds the client secrets | none: no login | `[{"id":"example","issuer":"https://login.example.org/oidc","clientId":"<client ID>","clientSecret":"<client secret>"}]` |
 | `APP_ORIGIN` | yes | Origin at which browsers reach Krini: scheme, host and port if not the default, without path or trailing slash | none | `https://krini.example.org` |
 | `CLOUD_REGISTRY_URL` | yes | Base URL of the registry's API, to which Krini appends `/services` | none | `https://registry.example.org/ga4gh/registry/v1` |
+| `REDIRECT_TO_APP_ORIGIN` | no | `true` or `false` | `true`: requests at other hosts are redirected to `APP_ORIGIN` | `false` |
 | `OIDC_REDIRECT_URI` | no | URL of `/auth/api/callback` at `APP_ORIGIN` | `<APP_ORIGIN>/auth/api/callback` | `https://krini.example.org/auth/api/callback` |
 | `COMPUTE_ACCESS_REQUEST_URL` | no | URL | none: no link | `https://example.org/compute-access` |
 | `PRIVACY_CONTROLLER` | no | Text | none | `Example Institute, Example Street 1, Example City` |
@@ -58,6 +59,8 @@ CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev/ga4gh/registry/v1
 
 # Application
 APP_ORIGIN=http://localhost:3000
+# Redirect requests at other hosts to APP_ORIGIN (default: true)
+REDIRECT_TO_APP_ORIGIN=true
 
 # Privacy notice (optional)
 PRIVACY_CONTROLLER=Example Institute, Example Street 1, Example City
@@ -89,6 +92,13 @@ PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
   for local development or your production URL), as users' browsers reach
   it. The login sends users back to it, and the session refresh and the
   logout accept requests only from it.
+- `REDIRECT_TO_APP_ORIGIN`: Whether Krini redirects requests that reach it
+  at another host than that of `APP_ORIGIN` (e.g., an old address kept for
+  existing links) to the same path and query at `APP_ORIGIN`, with a
+  permanent redirect (`308`). On by default when `APP_ORIGIN` is set;
+  `false` switches it off. Requests at internal addresses, as health
+  checks use them, are never redirected. See [Several
+  addresses](deployment.md#several-addresses).
 
 Make sure each OIDC client has the redirect URI of `OIDC_REDIRECT_URI`
 registered, e.g. for local development:
