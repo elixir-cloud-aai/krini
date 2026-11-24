@@ -38,8 +38,9 @@ export type WESServiceInfo = {
     createdAt: string;
     updatedAt: string;
 
-    contactUrl: string;
-    contact_info: string;
+    contactUrl?: string;
+    contact_info_url?: string;
+    contact_info?: string;
     auth_instructions_url: string;
     documentationUrl: string;
 

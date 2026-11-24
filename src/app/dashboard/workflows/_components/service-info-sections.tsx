@@ -6,8 +6,9 @@ import {
     Globe,
     Server,
 } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
-import { formatDate, STATE_LABELS } from "@/lib/utils";
+import { contactHref, formatDate, linkHref, STATE_LABELS } from "@/lib/utils";
 import type { WESServiceInfo } from "@/types/workflows";
 
 function Section({
@@ -42,30 +43,30 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function ExternalLinkRow({ label, href }: { label: string; href?: string }) {
-    let validUrl = false;
-
-    try {
-        const parsed = new URL(href ?? "");
-        validUrl = ["https:", "http:"].includes(parsed.protocol);
-    } catch {
-        // Display invalid or missing values as plain text.
-    }
+    const link = linkHref(href);
 
     return (
         <DetailRow
             label={label}
             value={
-                validUrl ? (
-                    <a
-                        href={href}
-                        target="_blank"
+                link ? (
+                    <Link
+                        href={link}
+                        target={
+                            link.startsWith("mailto:") ? undefined : "_blank"
+                        }
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 underline underline-offset-4"
                     >
-                        Open link <ExternalLink className="size-3.5" />
-                    </a>
+                        {link.startsWith("mailto:")
+                            ? "Send email"
+                            : "Open link"}{" "}
+                        <ExternalLink className="size-3.5" />
+                    </Link>
+                ) : typeof href === "string" && href ? (
+                    href
                 ) : (
-                    href || "Not provided"
+                    "Not provided"
                 )
             }
         />
@@ -102,7 +103,7 @@ function TagValue({ value }: { value: string }) {
                     }
 
                     return isUrl ? (
-                        <a
+                        <Link
                             key={item}
                             href={item}
                             target="_blank"
@@ -111,7 +112,7 @@ function TagValue({ value }: { value: string }) {
                         >
                             {new URL(item).hostname}
                             <ExternalLink className="size-3" />
-                        </a>
+                        </Link>
                     ) : (
                         <span key={item}>{item}</span>
                     );
@@ -189,7 +190,7 @@ export function OrganizationDetails({ service }: { service: WESServiceInfo }) {
             />
             <ExternalLinkRow
                 label="Contact information"
-                href={service.contact_info}
+                href={contactHref(service)}
             />
         </Section>
     );
@@ -352,14 +353,14 @@ export function ServiceApiEndpoint({ url }: { url: string }) {
             <p className="break-all font-mono text-xs text-muted-foreground">
                 {url}
             </p>
-            <a
+            <Link
                 href={url}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-3 inline-flex items-center gap-2 text-sm underline underline-offset-4"
             >
                 View raw service info <ExternalLink className="size-4" />
-            </a>
+            </Link>
         </Section>
     );
 }
