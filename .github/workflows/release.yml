@@ -177,7 +177,7 @@ jobs:
       # Same Helm version as the `chart` job of `ci.yml`, which tests the
       # chart and its packaging
       - name: Set up Helm
-        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # v5.1.0
         with:
           version: v3.22.1
       # `version` and `appVersion` (the default image tag) are the release
@@ -304,7 +304,7 @@ jobs:
             exit 1
           fi
       - name: Scan image
-        uses: elixir-cloud-aai/.github/actions/scan-image@743e82d290a53768454999e413756a924e383259 # v1.0.0
+        uses: elixir-cloud-aai/.github/actions/scan-image@31f22fccc1f3c597ed7c1d1f75b2f85522155348 # v1.1.0
         with:
           image: ${{ env.IMAGE_NAME }}@${{ needs.push.outputs.digest }}
           category: release
