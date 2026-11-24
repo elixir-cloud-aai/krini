@@ -30,6 +30,12 @@ test.describe("anonymous visitors", () => {
         // only the https entry; the http entry and the TES are dropped
         await expect(page.getByRole("option")).toHaveCount(1);
         await expect(page.getByRole("option")).toContainText("Mock WES");
+
+        // the mock WES has a port: the info page accepts it like the list
+        await page.goto("/dashboard/workflows/service-info?id=mock-wes");
+        await expect(
+            page.getByRole("heading", { name: "Mock WES" }),
+        ).toBeVisible();
     });
 
     test("can browse the TES services of the registry", async ({ page }) => {

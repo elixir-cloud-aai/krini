@@ -21,7 +21,7 @@ function ServiceInfoButton() {
             <TooltipTrigger
                 render={
                     <Link
-                        href={`/dashboard/workflows/service-info?id=${getWESSelectedServerID(selectedWESServer)}`}
+                        href={`/dashboard/workflows/service-info?id=${encodeURIComponent(getWESSelectedServerID(selectedWESServer) ?? "")}`}
                     >
                         <Info className="h-4 w-4" />
                     </Link>
