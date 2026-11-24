@@ -16,7 +16,10 @@ export function linkHref(value: string | undefined): string | undefined {
 
     const trimmed = value.trim();
 
-    if (!value.includes("mailto:") && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    if (
+        !value.includes("mailto:") &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
+    ) {
         return `mailto:${trimmed}`;
     }
 

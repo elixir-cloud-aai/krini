@@ -31,6 +31,13 @@ describe("linkHref", () => {
         expect(linkHref(value)).toBeUndefined();
     });
 
+    it("turns a bare email address into a mailto link", () => {
+        expect(linkHref("admin@example.org")).toBe("mailto:admin@example.org");
+        expect(linkHref("  admin@example.org  ")).toBe(
+            "mailto:admin@example.org",
+        );
+    });
+
     it("rejects a missing value", () => {
         expect(linkHref(undefined)).toBeUndefined();
     });
