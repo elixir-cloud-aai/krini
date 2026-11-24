@@ -33,17 +33,31 @@ export function linkHref(value: unknown): string | undefined {
 
 /**
  * Contact link of a WES service: `contactUrl` of WES 1.1 and GA4GH
- * service-info, or `contact_info_url` of WES 1.0
+ * service-info, `contact_info_url` of WES 1.0, or the non-standard
+ * `contact_info` that some services still return. The first value that is
+ * a usable link wins; if none is, the first reported value is returned to
+ * be shown as text
  * @param service Service info of a WES service
  * @returns The contact link, or undefined if the service reports none
  */
 export function contactHref(service: {
     contactUrl?: unknown;
     contact_info_url?: unknown;
+    contact_info?: unknown;
 }): string | undefined {
-    for (const value of [service.contactUrl, service.contact_info_url])
-        if (typeof value === "string" && value) return value;
-    return undefined;
+    let text: string | undefined;
+
+    for (const value of [
+        service.contactUrl,
+        service.contact_info_url,
+        service.contact_info,
+    ]) {
+        if (typeof value !== "string" || !value) continue;
+        if (linkHref(value) !== undefined) return value;
+        text ??= value;
+    }
+
+    return text;
 }
 
 export function formatDate(value: string) {

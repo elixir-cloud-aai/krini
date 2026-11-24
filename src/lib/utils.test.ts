@@ -77,6 +77,42 @@ describe("contactHref", () => {
         ).toBe("https://example.org/contact");
     });
 
+    it("falls back to contact_info of services that still return it", () => {
+        expect(contactHref({ contact_info: "admin@example.org" })).toBe(
+            "admin@example.org",
+        );
+        expect(
+            contactHref({
+                contact_info_url: "https://example.org/old",
+                contact_info: "https://example.org/older",
+            }),
+        ).toBe("https://example.org/old");
+    });
+
+    it("skips an unusable contactUrl for a linkable legacy value", () => {
+        expect(
+            contactHref({
+                contactUrl: "not a url",
+                contact_info_url: "https://example.org/contact",
+            }),
+        ).toBe("https://example.org/contact");
+        expect(
+            contactHref({
+                contactUrl: "javascript:alert(1)",
+                contact_info: "admin@example.org",
+            }),
+        ).toBe("admin@example.org");
+    });
+
+    it("returns the first reported value when none is linkable", () => {
+        expect(
+            contactHref({
+                contactUrl: "not a url",
+                contact_info_url: "also not a url",
+            }),
+        ).toBe("not a url");
+    });
+
     it("returns undefined without a contact link", () => {
         expect(contactHref({})).toBeUndefined();
     });
