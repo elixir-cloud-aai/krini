@@ -50,6 +50,10 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
+const REGISTRY_ERROR = {
+    error: "Unable to fetch the service registry.",
+};
+
 describe("GET /api/workflows/get-wes-servers", () => {
     it("lists the WES services and gateways with their service info", async () => {
         const wes = service("wes", urlOf("wes"));
@@ -83,10 +87,10 @@ describe("GET /api/workflows/get-wes-servers", () => {
         );
 
         // reads of the registry and service info are public: no token
-        expect(get.mock.calls[0]).toEqual([
-            `${registryUrl}/services`,
-            { timeout: 8000, signal: expect.any(AbortSignal) },
-        ]);
+        expect(get.mock.calls[0][0]).toBe(`${registryUrl}/services`);
+        expect(get.mock.calls[0][1]).toMatchObject({
+            headers: { Accept: "application/json" },
+        });
         const probe = get.mock.calls.find(
             ([url]) => url === `${urlOf("wes")}/service-info`,
         );
@@ -98,18 +102,51 @@ describe("GET /api/workflows/get-wes-servers", () => {
         expect(probe?.[1]?.validateStatus?.(300)).toBe(false);
     });
 
-    it("probes URLs without their query and trailing slash", async () => {
+    it("keeps the registry's order, not the probes' completion order", async () => {
+        // the first service answers last
+        const { GET } = await load(
+            [service("slow", urlOf("slow")), service("fast", urlOf("fast"))],
+            {
+                slow: async (url: string) => {
+                    await new Promise((resolve) => setTimeout(resolve, 20));
+                    return { status: 200, data: infoOf(new URL(url).hostname) };
+                },
+                fast: async (url: string) => ({
+                    status: 200,
+                    data: infoOf(new URL(url).hostname),
+                }),
+            },
+        );
+        const body = await (await GET()).json();
+        expect(body.map((val: { id: string }) => val.id)).toEqual([
+            "slow",
+            "fast",
+        ]);
+    });
+
+    it("probes the normalized URL: no query, fragment or trailing slash", async () => {
         const { GET, get } = await load([
             service("wes", `${urlOf("wes")}/?a=b#c`),
+            service("port", "https://port.example.org:8443/ga4gh/wes/v1/"),
         ]);
         await GET();
         expect(get.mock.calls[1][0]).toBe(`${urlOf("wes")}/service-info`);
+        expect(get.mock.calls[2][0]).toBe(
+            "https://port.example.org:8443/ga4gh/wes/v1/service-info",
+        );
     });
 
-    it.each([
-        ["no URL", undefined, undefined],
-        ["a malformed URL", "not a url", undefined],
-        ["an http URL", "http://wes.example.org/ga4gh/wes/v1", undefined],
+    it("gives the browser the normalized URL", async () => {
+        const { GET } = await load([service("wes", `${urlOf("wes")}/?a=b#c`)]);
+        const body = await (await GET()).json();
+        expect(body[0].url).toBe(urlOf("wes"));
+    });
+
+    it.each<[string, unknown, Reply?]>([
+        ["no URL", undefined],
+        ["a malformed URL", "not a url"],
+        ["an http URL", "http://wes.example.org/ga4gh/wes/v1"],
+        ["credentials in the URL", "https://user:pw@wes.example.org/x"],
         ["service info that is a list", urlOf("wes"), []],
         ["service info that is text", urlOf("wes"), "text"],
         ["no service info", urlOf("wes"), null],
@@ -167,21 +204,19 @@ describe("GET /api/workflows/get-wes-servers", () => {
         expect(get).toHaveBeenCalledTimes(6);
     });
 
-    it("keeps the list of the request that finished first", async () => {
-        let calls = 0;
-        const { GET } = await load([service("wes", urlOf("wes"))], {
-            // the second request's probe fails, but it doesn't replace the
-            // first one's list, which finished at the same time
-            wes: async () => {
-                calls++;
-                if (calls === 2) throw httpError(503);
-                return { status: 200, data: infoOf("wes") };
-            },
+    it("shares one load between concurrent cache misses", async () => {
+        const { GET, get } = await load([service("wes", urlOf("wes"))], {
+            wes: async (url: string) => ({
+                status: 200,
+                data: infoOf(new URL(url).hostname),
+            }),
         });
         const [first, second] = await Promise.all([GET(), GET()]);
         expect(first.headers.get("x-cache")).toBe("MISS");
         expect(second.headers.get("x-cache")).toBe("MISS");
-        expect(second.headers.get("x-unreachable-count")).toBe("1");
+        expect(second.headers.get("x-unreachable-count")).toBe("0");
+        // one registry read and one probe for both requests
+        expect(get).toHaveBeenCalledTimes(2);
         const cached = await GET();
         expect(cached.headers.get("x-cache")).toBe("HIT");
         expect(cached.headers.get("x-unreachable-count")).toBe("0");
@@ -217,10 +252,8 @@ describe("GET /api/workflows/get-wes-servers", () => {
         vi.stubEnv("CLOUD_REGISTRY_URL", "");
         const { GET, get } = await load([]);
         const response = await GET();
-        expect(response.status).toBe(500);
-        expect(await response.json()).toEqual({
-            message: "Cloud Registry URL is not configured",
-        });
+        expect(response.status).toBe(502);
+        expect(await response.json()).toEqual(REGISTRY_ERROR);
         expect(get).not.toHaveBeenCalled();
     });
 
@@ -228,17 +261,13 @@ describe("GET /api/workflows/get-wes-servers", () => {
         const { GET } = await load(networkError("ECONNREFUSED"));
         const response = await GET();
         expect(response.status).toBe(502);
-        expect(await response.json()).toEqual({
-            message: "Failed to fetch Cloud Registry services",
-        });
+        expect(await response.json()).toEqual(REGISTRY_ERROR);
     });
 
     it("fails on a registry response that isn't a list", async () => {
         const { GET } = await load({ services: [] });
         const response = await GET();
-        expect(response.status).toBe(500);
-        expect(await response.json()).toEqual({
-            message: "Internal server error",
-        });
+        expect(response.status).toBe(502);
+        expect(await response.json()).toEqual(REGISTRY_ERROR);
     });
 });

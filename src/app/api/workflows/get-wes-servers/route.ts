@@ -1,13 +1,24 @@
 import axios from "axios";
 import { NextResponse } from "next/server";
-import { axiosBase } from "@/lib/axios";
-import type { WESServer, WESServiceInfo } from "@/types/workflows";
+import { axiosBase, deadline } from "@/lib/axios";
+import {
+    allowedServiceUrl,
+    fetchRegistryServices,
+    type RegistryService,
+} from "@/lib/registry";
+import type { WESServiceInfo } from "@/types/workflows";
 
 const TIMEOUT = 8000;
 const CACHE_TTL = 60000;
 const MAX_CONCURRENCY = 8;
 
-type CachedWESServer = WESServer & {
+const REGISTRY_ERROR = {
+    error: "Unable to fetch the service registry.",
+} as const;
+
+type WESService = RegistryService & { url: string };
+
+type CachedWESServer = WESService & {
     health: {
         status: "ok" | "unreachable";
         reason?: string;
@@ -19,36 +30,20 @@ let cache: {
     data: CachedWESServer[];
     timestamp: number;
 } | null = null;
+let pending: Promise<CachedWESServer[]> | null = null;
 
 type ProbeResult =
     | { status: "valid"; serviceInfo: WESServiceInfo }
     | { status: "invalid"; reason: string }
     | { status: "unreachable"; reason: string };
 
-async function probeWesService(service: WESServer): Promise<ProbeResult> {
-    const serviceUrl = service?.url;
-
-    if (typeof serviceUrl !== "string") {
-        return { status: "invalid", reason: "missing url" };
-    }
-
-    let url: URL;
+async function probeWesService(service: WESService): Promise<ProbeResult> {
     try {
-        url = new URL(serviceUrl);
-    } catch {
-        return { status: "invalid", reason: "malformed url" };
-    }
-
-    if (url.protocol !== "https:") {
-        return { status: "invalid", reason: "url is not https" };
-    }
-
-    try {
-        const response = await axiosBase.get(
-            `${url.origin}${url.pathname.replace(/\/$/, "")}/service-info`,
+        const response = await axiosBase.get<unknown>(
+            `${service.url}/service-info`,
             {
                 timeout: TIMEOUT,
-                signal: AbortSignal.timeout(TIMEOUT),
+                signal: deadline(TIMEOUT),
                 maxRedirects: 0,
                 validateStatus: (status) => status >= 200 && status < 300,
             },
@@ -60,7 +55,10 @@ async function probeWesService(service: WESServer): Promise<ProbeResult> {
             !Array.isArray(response.data);
 
         return ok
-            ? { status: "valid", serviceInfo: response.data }
+            ? {
+                  status: "valid",
+                  serviceInfo: response.data as WESServiceInfo,
+              }
             : {
                   status: "invalid",
                   reason: "service-info is not a JSON object",
@@ -82,19 +80,18 @@ async function probeWithConcurrencyLimit<T>(
     items: T[],
     probeFn: (item: T) => Promise<ProbeResult>,
     limit: number,
-): Promise<Array<{ item: T; probe: ProbeResult }>> {
-    const results: Array<{ item: T; probe: ProbeResult }> = [];
+): Promise<ProbeResult[]> {
+    const results: ProbeResult[] = new Array(items.length);
     let running = 0;
     let index = 0;
 
     const processNext = async (): Promise<void> => {
-        // every caller checks the index first
-        const item = items[index++];
+        const i = index++;
+        const item = items[i];
         running++;
 
         try {
-            const probe = await probeFn(item);
-            results.push({ item, probe });
+            results[i] = await probeFn(item);
         } finally {
             running--;
             if (running < limit && index < items.length) {
@@ -113,66 +110,70 @@ async function probeWithConcurrencyLimit<T>(
     return results;
 }
 
-export async function GET() {
-    try {
-        const registryUrl = process.env.CLOUD_REGISTRY_URL;
+/** Read the registry and probe its WES services, in registry order */
+async function loadServers(): Promise<CachedWESServer[]> {
+    const services = await fetchRegistryServices();
 
-        if (!registryUrl) {
-            return NextResponse.json(
-                { message: "Cloud Registry URL is not configured" },
-                { status: 500 },
-            );
-        }
-
-        const now = Date.now();
-        if (cache && now - cache.timestamp < CACHE_TTL) {
-            const unreachableCount = cache.data.filter(
-                (s) => s.health.status === "unreachable",
-            ).length;
-
-            return NextResponse.json(cache.data, {
-                headers: {
-                    "X-Unreachable-Count": String(unreachableCount),
-                    "X-Cache": "HIT",
-                },
-            });
-        }
-
-        const res = await axiosBase.get(
-            `${registryUrl.replace(/\/$/, "")}/services`,
-            { timeout: TIMEOUT, signal: AbortSignal.timeout(TIMEOUT) },
-        );
-
-        if (!Array.isArray(res.data)) {
-            throw new Error("Invalid registry response");
-        }
-
-        const wesServices: WESServer[] = res.data.filter(
-            (service: WESServer) =>
+    // the components send the user's token to the selected service:
+    // only WES services and gateways over an allowed URL
+    const wesServices = services
+        .filter(
+            (service) =>
                 service?.type?.artifact === "wes" ||
                 service?.type?.artifact === "wes-gateway",
-        );
+        )
+        .map((service) => ({
+            ...service,
+            url: allowedServiceUrl(service.url),
+        }))
+        .filter((service): service is WESService => service.url !== null);
 
-        const results = await probeWithConcurrencyLimit(
-            wesServices,
-            probeWesService,
-            MAX_CONCURRENCY,
-        );
+    const probes = await probeWithConcurrencyLimit(
+        wesServices,
+        probeWesService,
+        MAX_CONCURRENCY,
+    );
 
-        const servers: CachedWESServer[] = results
-            .filter(({ probe }) => probe.status !== "invalid")
-            .map(({ item: service, probe }) => ({
-                ...service,
-                health:
-                    probe.status === "valid"
-                        ? { status: "ok" as const }
-                        : {
-                              status: "unreachable" as const,
-                              reason: probe.reason,
-                          },
-                serviceInfo:
-                    probe.status === "valid" ? probe.serviceInfo : null,
-            }));
+    const servers: CachedWESServer[] = [];
+    wesServices.forEach((service, i) => {
+        const probe = probes[i];
+        if (probe.status === "invalid") return;
+        servers.push({
+            ...service,
+            health:
+                probe.status === "valid"
+                    ? { status: "ok" as const }
+                    : {
+                          status: "unreachable" as const,
+                          reason: probe.reason,
+                      },
+            serviceInfo: probe.status === "valid" ? probe.serviceInfo : null,
+        });
+    });
+    return servers;
+}
+
+export async function GET() {
+    const now = Date.now();
+    if (cache && now - cache.timestamp < CACHE_TTL) {
+        const unreachableCount = cache.data.filter(
+            (s) => s.health.status === "unreachable",
+        ).length;
+
+        return NextResponse.json(cache.data, {
+            headers: {
+                "X-Unreachable-Count": String(unreachableCount),
+                "X-Cache": "HIT",
+            },
+        });
+    }
+
+    try {
+        // concurrent cache misses share one load
+        pending ??= loadServers().finally(() => {
+            pending = null;
+        });
+        const servers = await pending;
 
         const unreachableCount = servers.filter(
             (s) => s.health.status === "unreachable",
@@ -189,17 +190,7 @@ export async function GET() {
                 "X-Cache": "MISS",
             },
         });
-    } catch (err) {
-        if (axios.isAxiosError(err) || axios.isCancel(err)) {
-            return NextResponse.json(
-                { message: "Failed to fetch Cloud Registry services" },
-                { status: 502 },
-            );
-        }
-
-        return NextResponse.json(
-            { message: "Internal server error" },
-            { status: 500 },
-        );
+    } catch {
+        return NextResponse.json(REGISTRY_ERROR, { status: 502 });
     }
 }

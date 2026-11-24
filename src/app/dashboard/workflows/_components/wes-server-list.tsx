@@ -208,7 +208,7 @@ function WESServerList() {
                                         <Tooltip>
                                             <TooltipTrigger>
                                                 <Link
-                                                    href={`/dashboard/workflows/service-info?id=${server.id}`}
+                                                    href={`/dashboard/workflows/service-info?id=${encodeURIComponent(server.id)}`}
                                                     onClick={(e) =>
                                                         e.stopPropagation()
                                                     }
