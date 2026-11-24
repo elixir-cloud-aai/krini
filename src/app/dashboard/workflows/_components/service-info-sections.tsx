@@ -6,10 +6,10 @@ import {
     Globe,
     Server,
 } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { contactHref, formatDate, linkHref, STATE_LABELS } from "@/lib/utils";
 import type { WESServiceInfo } from "@/types/workflows";
-import Link from "next/link";
 
 function Section({
     title,
