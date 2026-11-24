@@ -7,7 +7,6 @@
  * array check, a size limit and one error mapping (`RegistryError`). The
  * list is cached for a minute, and concurrent misses share one request.
  */
-import axios from "axios";
 import { axiosBase, deadline } from "@/lib/axios";
 
 const CACHE_TTL = 60_000;
