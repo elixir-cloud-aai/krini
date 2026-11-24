@@ -84,7 +84,7 @@ assert_eq "LOGIN_PROVIDERS from the Secret" "$(env_value LOGIN_PROVIDERS)" \
   "secret:krini-login-providers/login-providers"
 assert_eq "PORT" "$(env_value PORT)" "3000"
 assert_eq "no empty settings" \
-  "$(get Deployment '[.spec.template.spec.containers[0].env[].name | select(test("^(PRIVACY_|OIDC_|COMPUTE_)"))] | length')" "0"
+  "$(get Deployment '[.spec.template.spec.containers[0].env[].name | select(test("^(PRIVACY_|OIDC_|COMPUTE_|REDIRECT_)"))] | length')" "0"
 assert_eq "container port" \
   "$(get Deployment '.spec.template.spec.containers[0].ports[0] | .name + ":" + (.containerPort | tostring)')" "http:3000"
 assert_eq "probes" \
@@ -141,6 +141,8 @@ assert_eq "privacy contact" "$(env_value PRIVACY_CONTACT)" "privacy@example.org"
 assert_eq "privacy notice" "$(env_value PRIVACY_NOTICE_URL)" "https://example.org/privacy"
 assert_eq "privacy login notice" "$(env_value PRIVACY_LOGIN_NOTICE_URL)" "https://login.example.org/privacy"
 assert_eq "secret key" "$(env_value LOGIN_PROVIDERS)" "secret:krini-login-providers/providers.json"
+render --set config.redirectToAppOrigin=false
+assert_eq "redirectToAppOrigin off" "$(env_value REDIRECT_TO_APP_ORIGIN)" "false"
 render --set-json 'extraEnv=[{"name":"LISTEN_HOSTNAME","value":"::"}]'
 assert_eq "extraEnv" "$(env_value LISTEN_HOSTNAME)" "::"
 render --set hostName= --set config.appOrigin=https://portal.example.org --set krini.ingress.enabled=false
@@ -275,6 +277,10 @@ assert_fails "PodDisruptionBudget bounds" "minAvailable|maxUnavailable" -f "${va
   --set krini.podDisruptionBudget.minAvailable=1 --set krini.podDisruptionBudget.maxUnavailable=1
 assert_fails "extraEnv for a setting of the chart" "APP_ORIGIN" -f "${values}" \
   --set-json 'extraEnv=[{"name":"APP_ORIGIN","value":"https://other.example.org"}]'
+assert_fails "extraEnv for the redirect" "REDIRECT_TO_APP_ORIGIN" -f "${values}" \
+  --set-json 'extraEnv=[{"name":"REDIRECT_TO_APP_ORIGIN","value":"false"}]'
+assert_fails "redirectToAppOrigin not a boolean" "redirectToAppOrigin" -f "${values}" \
+  --set config.redirectToAppOrigin=no
 assert_fails "HTTPS without issuer" "https.issuer" -f "${values}" --set krini.ingress.https.enabled=true
 assert_fails "replicas" "replicas" -f "${values}" --set krini.replicas=0
 

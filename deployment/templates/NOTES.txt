@@ -23,6 +23,16 @@ make sure that its listener terminates TLS for {{ .Values.hostName }}, and
 check that the route is accepted with
 `kubectl get httproute {{ $fullname }} -n {{ .Release.Namespace }} -o yaml`.
 {{- end }}
+{{- $originHost := (urlParse $origin).host | default "" | lower | trimSuffix ":443" -}}
+{{- if and .Values.hostName (ne (.Values.config.redirectToAppOrigin | toString) "false") (ne (.Values.hostName | lower) $originHost) }}
+
+WARNING: hostName ({{ .Values.hostName }}) isn't the host of
+config.appOrigin ({{ $origin }}): Krini redirects every request at
+{{ .Values.hostName }} to {{ $origin }}. Make sure that {{ $origin }} reaches
+Krini with its own host name (a proxy must pass on the Host header), or
+browsers loop; or set config.redirectToAppOrigin to false (see "Several
+addresses" in the operator guide).
+{{- end }}
 {{- if not $exposed }}
 
 WARNING: Neither an Ingress, an HTTPRoute nor an OpenShift Route was

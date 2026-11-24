@@ -127,6 +127,7 @@ settings are left out, so that Krini's defaults apply.
 {{- $vars := list
   (list "CLOUD_REGISTRY_URL" (required "config.cloudRegistryUrl must be set to the base URL of the Cloud Registry" $config.cloudRegistryUrl))
   (list "APP_ORIGIN" (include "krini.appOrigin" .))
+  (list "REDIRECT_TO_APP_ORIGIN" (ternary "false" "" (eq $config.redirectToAppOrigin false)))
   (list "OIDC_REDIRECT_URI" $config.oidcRedirectUri)
   (list "COMPUTE_ACCESS_REQUEST_URL" $config.computeAccessRequestUrl)
   (list "PRIVACY_CONTROLLER" $privacy.controller)
@@ -155,7 +156,7 @@ Names of the environment variables that the chart sets, which `extraEnv`
 must not set (Kubernetes would use the last one, silently).
 */}}
 {{- define "krini.reservedEnv" -}}
-{{- toJson (list "CLOUD_REGISTRY_URL" "APP_ORIGIN" "OIDC_REDIRECT_URI" "COMPUTE_ACCESS_REQUEST_URL" "PRIVACY_CONTROLLER" "PRIVACY_CONTACT" "PRIVACY_NOTICE_URL" "PRIVACY_LOGIN_NOTICE_URL" "LOGIN_PROVIDERS" "PORT") -}}
+{{- toJson (list "CLOUD_REGISTRY_URL" "APP_ORIGIN" "REDIRECT_TO_APP_ORIGIN" "OIDC_REDIRECT_URI" "COMPUTE_ACCESS_REQUEST_URL" "PRIVACY_CONTROLLER" "PRIVACY_CONTACT" "PRIVACY_NOTICE_URL" "PRIVACY_LOGIN_NOTICE_URL" "LOGIN_PROVIDERS" "PORT") -}}
 {{- end -}}
 
 {{/*
