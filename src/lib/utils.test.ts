@@ -41,6 +41,15 @@ describe("linkHref", () => {
     it("rejects a missing value", () => {
         expect(linkHref(undefined)).toBeUndefined();
     });
+
+    it.each([
+        [42],
+        [{}],
+        [[]],
+        [true],
+    ])("rejects the non-string value %s", (value) => {
+        expect(linkHref(value)).toBeUndefined();
+    });
 });
 
 describe("contactHref", () => {
@@ -70,5 +79,17 @@ describe("contactHref", () => {
 
     it("returns undefined without a contact link", () => {
         expect(contactHref({})).toBeUndefined();
+    });
+
+    it("skips non-string contact values", () => {
+        expect(
+            contactHref({
+                contactUrl: 42,
+                contact_info_url: "https://example.org/contact",
+            }),
+        ).toBe("https://example.org/contact");
+        expect(
+            contactHref({ contactUrl: { url: "https://x" } }),
+        ).toBeUndefined();
     });
 });

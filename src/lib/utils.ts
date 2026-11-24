@@ -1,5 +1,3 @@
-import type { WESServiceInfo } from "@/types/workflows";
-
 export { cn } from "cn";
 
 const LINK_PROTOCOLS = new Set(["https:", "http:", "mailto:"]);
@@ -11,13 +9,14 @@ const LINK_PROTOCOLS = new Set(["https:", "http:", "mailto:"]);
  * @param value URL or address to check
  * @returns The value if it is an allowed link, else undefined
  */
-export function linkHref(value: string | undefined): string | undefined {
-    if (!value) return undefined;
+export function linkHref(value: unknown): string | undefined {
+    if (typeof value !== "string") return undefined;
 
     const trimmed = value.trim();
+    if (!trimmed) return undefined;
 
     if (
-        !value.includes("mailto:") &&
+        !trimmed.includes("mailto:") &&
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
     ) {
         return `mailto:${trimmed}`;
@@ -38,10 +37,13 @@ export function linkHref(value: string | undefined): string | undefined {
  * @param service Service info of a WES service
  * @returns The contact link, or undefined if the service reports none
  */
-export function contactHref(
-    service: Pick<WESServiceInfo, "contactUrl" | "contact_info_url">,
-): string | undefined {
-    return service.contactUrl || service.contact_info_url || undefined;
+export function contactHref(service: {
+    contactUrl?: unknown;
+    contact_info_url?: unknown;
+}): string | undefined {
+    for (const value of [service.contactUrl, service.contact_info_url])
+        if (typeof value === "string" && value) return value;
+    return undefined;
 }
 
 export function formatDate(value: string) {

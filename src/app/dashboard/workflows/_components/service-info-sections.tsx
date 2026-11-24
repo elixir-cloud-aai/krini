@@ -63,8 +63,10 @@ function ExternalLinkRow({ label, href }: { label: string; href?: string }) {
                             : "Open link"}{" "}
                         <ExternalLink className="size-3.5" />
                     </Link>
+                ) : typeof href === "string" && href ? (
+                    href
                 ) : (
-                    href || "Not provided"
+                    "Not provided"
                 )
             }
         />
