@@ -21,7 +21,9 @@
 # configured. `push` and `release-image` each need approval in the
 # `release` environment (required reviewer, Docker Hub secrets
 # `DOCKERHUB_LOGIN` and `DOCKERHUB_TOKEN`), and so does `notify` if
-# Pubgrade is configured (secret `PUBGRADE_TOKEN`). Re-running all jobs
+# Pubgrade is configured (secret `PUBGRADE_TOKEN`; `publish` doesn't wait
+# for it, and re-running a failed `notify` notifies the deployments
+# again, without a new release). Re-running all jobs
 # builds, scans, signs and tags a new digest (and packages the chart
 # again), but stops before building if the version tag exists (released
 # images don't change); re-running failed jobs reuses the digest and the
@@ -645,6 +647,9 @@ jobs:
     steps:
       - name: Notify Pubgrade
         uses: elixir-cloud-aai/Pubgrade/actions/notify@344a58adc1c871135f86c404eb33ed91011886ad # v0.3.0
+        # `image` is `IMAGE_NAME:X.Y.Z` (the tag `release-image` pushed)
+        # without `docker.io/`, the form Pubgrade and its sidecars expect
+        # (as in tesk-api); keep both in sync
         with:
           url: ${{ vars.PUBGRADE_URL }}
           repository-id: ${{ vars.PUBGRADE_REPOSITORY_ID }}

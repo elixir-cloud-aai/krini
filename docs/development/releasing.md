@@ -159,10 +159,14 @@ deploys the release's image by default (`appVersion` is its tag).
     attached (it creates a draft, uploads them, and publishes it only then,
     as assets of immutable releases can't be added later; if that fails,
     the draft is deleted); versions below 1.0.0 and `-alpha`,
-    `-beta` and `-rc` versions are pre-releases. If Pubgrade is configured
-    (see [Pubgrade](#pubgrade)), `Notify Pubgrade` registers the tagged
-    image there once `Release image` has passed (needs approval), without
-    waiting for `Publish release`. Releases aren't edited after
+    `-beta` and `-rc` versions are pre-releases. Only if the repository
+    variable `PUBGRADE_URL` is set (see [Pubgrade](#pubgrade)),
+    `Notify Pubgrade` registers the tagged image there once `Release image`
+    has passed (needs approval), without waiting for `Publish release`;
+    the run only completes, and "Re-run failed jobs" is only offered, once
+    it is approved or rejected (a rejected `Notify Pubgrade` asks for
+    approval again on that re-run: reject it again to skip it). Releases
+    aren't edited after
     publishing (by convention): fix mistakes in the notes of the next
     release. If a job fails, use "Re-run failed jobs", not "Re-run all
     jobs": once the image is tagged, a new attempt of all jobs stops at the
