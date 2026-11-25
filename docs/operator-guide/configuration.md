@@ -32,10 +32,14 @@ has no `NEXT_PUBLIC_*` variables):
 [Running the image](deployment.md#running-the-image)); the login providers
 are described in [Login](login.md), the others below.
 
-Krini doesn't check its settings when it starts: a missing or invalid required setting shows only when a
-page needs it, e.g. as a login page without buttons, an empty list of
-services, or an error at the login or logout. After each change, go
-through [Checking a deployment](deployment.md#checking-a-deployment).
+Krini checks its settings when it starts (see `src/lib/settings.ts`):
+a missing or invalid required setting (`LOGIN_PROVIDERS`, `APP_ORIGIN`,
+`CLOUD_REGISTRY_URL`, `OIDC_REDIRECT_URI`) is logged with the reason and
+Krini refuses to start. Warnings — an invalid `COMPUTE_ACCESS_REQUEST_URL`,
+or no provider with `computeGroups`/`adminGroups` — are logged but don't
+stop the start. Provider problems name the provider `id` and the missing
+field, never `clientSecret`. After each change, still go through
+[Checking a deployment](deployment.md#checking-a-deployment).
 
 An example with all settings of `.env.example`, in a format that both
 `.env.local` and `docker run --env-file` accept. Don't quote values: Docker
