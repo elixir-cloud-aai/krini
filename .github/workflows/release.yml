@@ -645,14 +645,19 @@ jobs:
     environment: release
     permissions: {}
     steps:
+      # The tag `release-image` pushed (`IMAGE_NAME:X.Y.Z`, resolved in
+      # the same environment), without `docker.io/`, the form Pubgrade and
+      # its sidecars expect (as in tesk-api)
+      - name: Name image
+        id: image
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: echo "ref=${IMAGE_NAME#docker.io/}:${VERSION}" >> "${GITHUB_OUTPUT}"
       - name: Notify Pubgrade
         uses: elixir-cloud-aai/Pubgrade/actions/notify@344a58adc1c871135f86c404eb33ed91011886ad # v0.3.0
-        # `image` is `IMAGE_NAME:X.Y.Z` (the tag `release-image` pushed)
-        # without `docker.io/`, the form Pubgrade and its sidecars expect
-        # (as in tesk-api); keep both in sync
         with:
           url: ${{ vars.PUBGRADE_URL }}
           repository-id: ${{ vars.PUBGRADE_REPOSITORY_ID }}
           token: ${{ secrets.PUBGRADE_TOKEN }}
-          image: ${{ vars.DOCKERHUB_ORG || 'elixircloud' }}/krini:${{ needs.prepare.outputs.version }}
+          image: ${{ steps.image.outputs.ref }}
           git-tag: ${{ github.ref_name }}
