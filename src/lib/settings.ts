@@ -25,6 +25,10 @@ const REQUIRED_PROVIDER_FIELDS = [
     "clientSecret",
 ] as const;
 
+function isLocalHost(hostname: string): boolean {
+    return /^(localhost|127\.0\.0\.1|\[?::1\]?)$/.test(hostname);
+}
+
 function isHttpUrl(value: string): boolean {
     try {
         const url = new URL(value);
@@ -34,45 +38,39 @@ function isHttpUrl(value: string): boolean {
     }
 }
 
-function loginProviderProblems(): SettingsProblem[] {
+function loginProviderProblems(): {
+    fatal: SettingsProblem[];
+    warnings: SettingsProblem[];
+} {
+    const fatal = (problem: string): SettingsProblem[] => [
+        { setting: "LOGIN_PROVIDERS", problem },
+    ];
     const raw = process.env.LOGIN_PROVIDERS;
-    const problems: SettingsProblem[] = [];
 
-    if (!raw) {
-        return [
-            {
-                setting: "LOGIN_PROVIDERS",
-                problem: "is not set",
-            },
-        ];
-    }
+    if (!raw) return { fatal: fatal("is not set"), warnings: [] };
 
     let parsed: unknown;
     try {
         parsed = JSON.parse(raw);
     } catch {
-        return [
-            {
-                setting: "LOGIN_PROVIDERS",
-                problem: "is not valid JSON",
-            },
-        ];
+        return { fatal: fatal("is not valid JSON"), warnings: [] };
     }
 
     if (!Array.isArray(parsed)) {
-        return [
-            {
-                setting: "LOGIN_PROVIDERS",
-                problem: "is not a JSON array",
-            },
-        ];
+        return { fatal: fatal("is not a JSON array"), warnings: [] };
     }
 
+    // problems of single entries: they keep a usable provider from
+    // starting only when no entry is usable at all
+    const entryProblems: SettingsProblem[] = [];
+    const problem = (text: string) =>
+        entryProblems.push({ setting: "LOGIN_PROVIDERS", problem: text });
+
     if (parsed.length === 0) {
-        problems.push({
-            setting: "LOGIN_PROVIDERS",
-            problem: "is an empty array: no login provider is configured",
-        });
+        return {
+            fatal: fatal("is an empty array: no login provider is configured"),
+            warnings: [],
+        };
     }
 
     const seen = new Set<string>();
@@ -90,10 +88,7 @@ function loginProviderProblems(): SettingsProblem[] {
             entry === null ||
             Array.isArray(entry)
         ) {
-            problems.push({
-                setting: "LOGIN_PROVIDERS",
-                problem: `${where} is not an object`,
-            });
+            problem(`${where} is not an object`);
             return;
         }
 
@@ -101,49 +96,78 @@ function loginProviderProblems(): SettingsProblem[] {
         for (const field of REQUIRED_PROVIDER_FIELDS) {
             const value = record[field];
             if (typeof value !== "string" || value === "") {
-                problems.push({
-                    setting: "LOGIN_PROVIDERS",
-                    problem: `${where} has no ${field}`,
-                });
+                problem(`${where} has no ${field}`);
             }
         }
 
         const id = record.id;
         if (typeof id === "string" && id !== "") {
             if (seen.has(id)) {
-                problems.push({
-                    setting: "LOGIN_PROVIDERS",
-                    problem: `entry "${id}" has a duplicate id`,
-                });
+                problem(`entry "${id}" has a duplicate id`);
             }
             seen.add(id);
         }
     });
 
-    if (getLoginProviders().length === 0 && parsed.length > 0) {
-        problems.push({
-            setting: "LOGIN_PROVIDERS",
-            problem: "has no valid provider",
-        });
+    if (getLoginProviders().length === 0) {
+        // no usable provider: the entry problems are fatal too
+        return {
+            fatal: [
+                ...entryProblems,
+                {
+                    setting: "LOGIN_PROVIDERS",
+                    problem: "has no valid provider",
+                },
+            ],
+            warnings: [],
+        };
     }
 
-    return problems;
+    return { fatal: [], warnings: entryProblems };
+}
+
+export function getComputeAccessRequestUrl(): string | null {
+    const value = process.env.COMPUTE_ACCESS_REQUEST_URL;
+    return value && isHttpUrl(value) ? value : null;
 }
 
 export function validateSettings(): SettingsReport {
     const fatal: SettingsProblem[] = [];
     const warnings: SettingsProblem[] = [];
 
-    fatal.push(...loginProviderProblems());
+    const providerProblems = loginProviderProblems();
+    fatal.push(...providerProblems.fatal);
+    warnings.push(...providerProblems.warnings);
 
     const appOrigin = process.env.APP_ORIGIN;
     if (!appOrigin) {
         fatal.push({ setting: "APP_ORIGIN", problem: "is not set" });
-    } else if (!isHttpUrl(appOrigin)) {
-        fatal.push({
-            setting: "APP_ORIGIN",
-            problem: "is not a valid http(s) URL",
-        });
+    } else {
+        try {
+            const appUrl = new URL(appOrigin);
+            if (appUrl.protocol !== "http:" && appUrl.protocol !== "https:") {
+                fatal.push({
+                    setting: "APP_ORIGIN",
+                    problem: "is not a valid http(s) URL",
+                });
+            } else if (
+                process.env.NODE_ENV === "production" &&
+                appUrl.protocol === "http:" &&
+                !isLocalHost(appUrl.hostname)
+            ) {
+                // Secure session cookies need https outside localhost
+                fatal.push({
+                    setting: "APP_ORIGIN",
+                    problem:
+                        "must use https in production (http is allowed only for localhost)",
+                });
+            }
+        } catch {
+            fatal.push({
+                setting: "APP_ORIGIN",
+                problem: "is not a valid http(s) URL",
+            });
+        }
     }
 
     const registryUrl = process.env.CLOUD_REGISTRY_URL;
@@ -152,11 +176,27 @@ export function validateSettings(): SettingsReport {
             setting: "CLOUD_REGISTRY_URL",
             problem: "is not set",
         });
-    } else if (!isHttpUrl(registryUrl)) {
-        fatal.push({
-            setting: "CLOUD_REGISTRY_URL",
-            problem: "is not a valid URL",
-        });
+    } else {
+        try {
+            const url = new URL(registryUrl);
+            if (url.protocol !== "http:" && url.protocol !== "https:") {
+                fatal.push({
+                    setting: "CLOUD_REGISTRY_URL",
+                    problem: "is not a valid URL",
+                });
+            } else if (url.search || url.hash) {
+                // `load` appends `/services` to the raw value
+                fatal.push({
+                    setting: "CLOUD_REGISTRY_URL",
+                    problem: "must not contain a query or fragment",
+                });
+            }
+        } catch {
+            fatal.push({
+                setting: "CLOUD_REGISTRY_URL",
+                problem: "is not a valid URL",
+            });
+        }
     }
 
     const redirectUri = process.env.OIDC_REDIRECT_URI;
@@ -167,12 +207,13 @@ export function validateSettings(): SettingsReport {
             if (
                 (callback.protocol !== "http:" &&
                     callback.protocol !== "https:") ||
+                callback.pathname !== "/auth/api/callback" ||
                 (app && callback.origin !== app.origin)
             ) {
                 fatal.push({
                     setting: "OIDC_REDIRECT_URI",
                     problem:
-                        "must be an http(s) URL on the origin of APP_ORIGIN",
+                        "must be an http(s) URL on the origin of APP_ORIGIN with path /auth/api/callback",
                 });
             }
         } catch {

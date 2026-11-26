@@ -7,6 +7,7 @@ import {
     getUserSession,
 } from "@/lib/oidc";
 import { hasLoggedOut } from "@/lib/session-cookies";
+import { getComputeAccessRequestUrl } from "@/lib/settings";
 
 export async function GET() {
     const cookieStore = await cookies();
@@ -49,6 +50,6 @@ export async function GET() {
         user: session.user,
         groups: session.groups,
         tier: session.tier,
-        access_request_url: process.env.COMPUTE_ACCESS_REQUEST_URL ?? null,
+        access_request_url: getComputeAccessRequestUrl(),
     });
 }

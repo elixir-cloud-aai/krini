@@ -67,6 +67,15 @@ describe("GET /auth/api/user-info", () => {
         expect(body.access_request_url).toBe("https://example.org/access");
     });
 
+    it("omits an invalid access request URL", async () => {
+        setUp({ access_token: "at", id_token: idTokenCookie() });
+        mockOidcProvider();
+        vi.stubEnv("COMPUTE_ACCESS_REQUEST_URL", "javascript:alert(1)");
+        const { GET } = await import("./route");
+        const body = await (await GET()).json();
+        expect(body.access_request_url).toBeNull();
+    });
+
     it("matches compute subgroups with the configured separator", async () => {
         const response = await userInfo(
             { access_token: "at", id_token: idTokenCookie() },

@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { providersJson } from "@/test/oidc";
-import { enforceSettings, validateSettings } from "./settings";
+import {
+    enforceSettings,
+    getComputeAccessRequestUrl,
+    validateSettings,
+} from "./settings";
 
 function setUp(overrides: Record<string, string | undefined> = {}) {
     vi.stubEnv(
@@ -38,7 +42,7 @@ describe("validateSettings", () => {
         expect(validateSettings().fatal.length).toBeGreaterThan(0);
     });
 
-    it("names each invalid provider entry and its missing field", () => {
+    it("warns about each invalid provider entry when another is usable", () => {
         setUp({
             LOGIN_PROVIDERS: JSON.stringify([
                 { id: "broken", issuer: "https://i.example.org" },
@@ -57,8 +61,8 @@ describe("validateSettings", () => {
                 },
             ]),
         });
-        const { fatal } = validateSettings();
-        const problems = fatal
+        const { fatal, warnings } = validateSettings();
+        const problems = warnings
             .filter((p) => p.setting === "LOGIN_PROVIDERS")
             .map((p) => p.problem);
         expect(problems).toEqual(
@@ -69,8 +73,34 @@ describe("validateSettings", () => {
                 'entry "dup" has a duplicate id',
             ]),
         );
+        expect(fatal.filter((p) => p.setting === "LOGIN_PROVIDERS")).toEqual(
+            [],
+        );
         // secret values never appear in the report (field names may)
-        expect(JSON.stringify(fatal)).not.toContain("s3cr3t-value");
+        expect(JSON.stringify({ fatal, warnings })).not.toContain(
+            "s3cr3t-value",
+        );
+    });
+
+    it("rejects entry problems when no provider is usable", () => {
+        setUp({
+            LOGIN_PROVIDERS: JSON.stringify([
+                { id: "broken", issuer: "https://i.example.org" },
+            ]),
+        });
+        const { fatal } = validateSettings();
+        expect(fatal).toEqual(
+            expect.arrayContaining([
+                {
+                    setting: "LOGIN_PROVIDERS",
+                    problem: 'entry "broken" has no clientId',
+                },
+                {
+                    setting: "LOGIN_PROVIDERS",
+                    problem: "has no valid provider",
+                },
+            ]),
+        );
     });
 
     it("requires APP_ORIGIN and CLOUD_REGISTRY_URL", () => {
@@ -110,13 +140,75 @@ describe("validateSettings", () => {
         );
     });
 
+    it("rejects a non-https APP_ORIGIN in production", () => {
+        setUp({
+            NODE_ENV: "production",
+            APP_ORIGIN: "http://app.example.org",
+        });
+        expect(validateSettings().fatal).toContainEqual({
+            setting: "APP_ORIGIN",
+            problem:
+                "must use https in production (http is allowed only for localhost)",
+        });
+    });
+
+    it.each([
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://[::1]:3000",
+    ])("accepts the localhost APP_ORIGIN %s in production", (origin) => {
+        setUp({ NODE_ENV: "production", APP_ORIGIN: origin });
+        expect(validateSettings().fatal).toEqual([]);
+    });
+
+    it("accepts an https APP_ORIGIN in production", () => {
+        setUp({
+            NODE_ENV: "production",
+            APP_ORIGIN: "https://app.example.org",
+        });
+        expect(validateSettings().fatal).toEqual([]);
+    });
+
+    it("accepts an http APP_ORIGIN outside production", () => {
+        setUp({ APP_ORIGIN: "http://app.example.org" });
+        expect(validateSettings().fatal).toEqual([]);
+    });
+
+    it("rejects an unparseable APP_ORIGIN", () => {
+        setUp({ APP_ORIGIN: "not a url" });
+        expect(validateSettings().fatal).toContainEqual({
+            setting: "APP_ORIGIN",
+            problem: "is not a valid http(s) URL",
+        });
+    });
+
+    it("rejects a non-http CLOUD_REGISTRY_URL", () => {
+        setUp({ CLOUD_REGISTRY_URL: "ftp://registry.example.org" });
+        expect(validateSettings().fatal).toContainEqual({
+            setting: "CLOUD_REGISTRY_URL",
+            problem: "is not a valid URL",
+        });
+    });
+
+    it.each([
+        "https://registry.example.org/v1?foo=bar",
+        "https://registry.example.org/v1#frag",
+    ])("rejects a CLOUD_REGISTRY_URL with query or fragment: %s", (url) => {
+        setUp({ CLOUD_REGISTRY_URL: url });
+        expect(validateSettings().fatal).toContainEqual({
+            setting: "CLOUD_REGISTRY_URL",
+            problem: "must not contain a query or fragment",
+        });
+    });
+
     it("requires OIDC_REDIRECT_URI on the origin of APP_ORIGIN", () => {
         setUp({
             OIDC_REDIRECT_URI: "https://other.example.org/auth/api/callback",
         });
         expect(validateSettings().fatal).toContainEqual({
             setting: "OIDC_REDIRECT_URI",
-            problem: "must be an http(s) URL on the origin of APP_ORIGIN",
+            problem:
+                "must be an http(s) URL on the origin of APP_ORIGIN with path /auth/api/callback",
         });
     });
 
@@ -165,7 +257,19 @@ describe("validateSettings", () => {
         setUp({ OIDC_REDIRECT_URI: "ftp://app.example.org/cb" });
         expect(validateSettings().fatal).toContainEqual({
             setting: "OIDC_REDIRECT_URI",
-            problem: "must be an http(s) URL on the origin of APP_ORIGIN",
+            problem:
+                "must be an http(s) URL on the origin of APP_ORIGIN with path /auth/api/callback",
+        });
+    });
+
+    it("rejects an OIDC_REDIRECT_URI with a wrong path", () => {
+        setUp({
+            OIDC_REDIRECT_URI: "https://app.example.org/auth/callback",
+        });
+        expect(validateSettings().fatal).toContainEqual({
+            setting: "OIDC_REDIRECT_URI",
+            problem:
+                "must be an http(s) URL on the origin of APP_ORIGIN with path /auth/api/callback",
         });
     });
 
@@ -197,7 +301,7 @@ describe("validateSettings", () => {
     it("checks OIDC_REDIRECT_URI's protocol when APP_ORIGIN is unset", () => {
         setUp({
             APP_ORIGIN: undefined,
-            OIDC_REDIRECT_URI: "https://app.example.org/cb",
+            OIDC_REDIRECT_URI: "https://app.example.org/auth/api/callback",
         });
         const { fatal } = validateSettings();
         expect(fatal).toContainEqual({
@@ -222,6 +326,20 @@ describe("validateSettings", () => {
             ]),
         });
         expect(validateSettings().warnings).toEqual([]);
+    });
+});
+
+describe("getComputeAccessRequestUrl", () => {
+    it("returns the URL when it is a valid http(s) URL", () => {
+        setUp({ COMPUTE_ACCESS_REQUEST_URL: "https://example.org/access" });
+        expect(getComputeAccessRequestUrl()).toBe("https://example.org/access");
+    });
+
+    it("returns null when unset or invalid", () => {
+        setUp();
+        expect(getComputeAccessRequestUrl()).toBeNull();
+        vi.stubEnv("COMPUTE_ACCESS_REQUEST_URL", "javascript:alert(1)");
+        expect(getComputeAccessRequestUrl()).toBeNull();
     });
 });
 
