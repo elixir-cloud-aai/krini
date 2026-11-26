@@ -17,7 +17,7 @@ has no `NEXT_PUBLIC_*` variables):
 | --- | --- | --- | --- | --- |
 | `LOGIN_PROVIDERS` | yes | JSON array of login providers, on one line (see [Login](login.md#login-providers)); holds the client secrets | none: no login | `[{"id":"example","issuer":"https://login.example.org/oidc","clientId":"<client ID>","clientSecret":"<client secret>"}]` |
 | `APP_ORIGIN` | yes | Origin at which browsers reach Krini: scheme, host and port if not the default, without path or trailing slash | none | `https://krini.example.org` |
-| `CLOUD_REGISTRY_URL` | yes | Base URL of the registry's API, to which Krini appends `/services` | none | `https://registry.example.org/ga4gh/registry/v1` |
+| `CLOUD_REGISTRY_URL` | yes | Base URL of the registry's API, to which Krini appends `/services`; no query or fragment | none | `https://registry.example.org/ga4gh/registry/v1` |
 | `REDIRECT_TO_APP_ORIGIN` | no | `true` or `false` | `true`: requests at other hosts are redirected to `APP_ORIGIN` | `false` |
 | `OIDC_REDIRECT_URI` | no | URL of `/auth/api/callback` at `APP_ORIGIN` | `<APP_ORIGIN>/auth/api/callback` | `https://krini.example.org/auth/api/callback` |
 | `COMPUTE_ACCESS_REQUEST_URL` | no | URL | none: no link | `https://example.org/compute-access` |
@@ -32,10 +32,19 @@ has no `NEXT_PUBLIC_*` variables):
 [Running the image](deployment.md#running-the-image)); the login providers
 are described in [Login](login.md), the others below.
 
-Krini doesn't check its settings when it starts: a missing or invalid required setting shows only when a
-page needs it, e.g. as a login page without buttons, an empty list of
-services, or an error at the login or logout. After each change, go
-through [Checking a deployment](deployment.md#checking-a-deployment).
+Krini checks its settings when it starts (see `src/lib/settings.ts`):
+a missing `LOGIN_PROVIDERS`, `APP_ORIGIN` or `CLOUD_REGISTRY_URL`, or an
+invalid `OIDC_REDIRECT_URI`, is logged with the reason and Krini refuses
+to start; `LOGIN_PROVIDERS` without a single usable provider counts as
+missing. In production `APP_ORIGIN` must be `https` — `http` is accepted
+only for localhost, as Secure session cookies need https. Problems of single provider entries — a missing field, a
+duplicate `id`, an entry that isn't an object — are logged too, as
+warnings when another provider is usable, naming the provider `id` and
+the missing field, never `clientSecret`. Other warnings — an invalid
+`COMPUTE_ACCESS_REQUEST_URL`, or no provider with
+`computeGroups`/`adminGroups` — are logged but don't stop the start.
+After each change, still go through
+[Checking a deployment](deployment.md#checking-a-deployment).
 
 An example with all settings of `.env.example`, in a format that both
 `.env.local` and `docker run --env-file` accept. Don't quote values: Docker

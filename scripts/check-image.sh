@@ -3,7 +3,7 @@
 # `.github/workflows/ci.yml` and the `smoke` job of
 # `.github/workflows/release.yml`: the container runs as a non-root user
 # with a read-only root file system and a writable `/tmp`, serves the login
-# page without settings, redirects the start page, serves the workers of
+# page, redirects the start page, serves the workers of
 # the code editor, writes optimized images to `/tmp/next-cache` and has
 # LICENSE and NOTICE (see "Container image" in
 # `docs/operator-guide/deployment.md`). The optimized image is
@@ -19,8 +19,15 @@ if [[ $# -ne 1 || -z "$1" ]]; then
 fi
 image="$1"
 
-# a container of its own, removed on exit (never one of another name)
-app="$(docker run -d -p 127.0.0.1:3000:3000 --read-only --tmpfs /tmp "${image}")"
+# a container of its own, removed on exit (never one of another name);
+# minimal settings so that the start-up check passes (the provider's
+# issuer is never contacted: the login page lists providers without
+# discovering them)
+app="$(docker run -d -p 127.0.0.1:3000:3000 --read-only --tmpfs /tmp \
+  --env APP_ORIGIN=http://127.0.0.1:3000 \
+  --env CLOUD_REGISTRY_URL=https://registry.invalid/v1 \
+  --env 'LOGIN_PROVIDERS=[{"id":"smoke","issuer":"https://issuer.invalid","clientId":"smoke","clientSecret":"smoke","computeGroups":["compute"]}]' \
+  "${image}")"
 trap 'docker rm -f "${app}" >/dev/null 2>&1 || true' EXIT
 if [[ "$(docker exec "${app}" id -u)" == 0 ]]; then
   echo "::error::The container runs as root"
@@ -35,7 +42,7 @@ for file in LICENSE NOTICE; do
 done
 for _ in $(seq 30); do
   # the start page redirects to the dashboard; the login page is served
-  # without settings (200, not a redirect, which `curl -f` would also
+  # (200, not a redirect, which `curl -f` would also
   # accept); an optimized image is written to `.next/cache` (a link to
   # `/tmp`)
   login="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/auth/login || true)"

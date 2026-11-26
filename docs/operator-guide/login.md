@@ -61,8 +61,11 @@ fields:
 
 Krini ignores providers without one of the required fields, and providers
 with the `id` of an earlier one. If `LOGIN_PROVIDERS` isn't a valid JSON
-array, Krini has no providers. **It doesn't log either case**: if the login
-page shows no button, or not all of them, check the JSON (e.g. with
+array, Krini has no providers. **At start** Krini checks the setting and
+logs each problem — the provider `id` and the missing field, never the
+`clientSecret` — and refuses to start when no provider is valid (see
+[Configuration](configuration.md)). If the login page shows no button,
+or not all of them, check the JSON (e.g. with
 `jq . <<< "$LOGIN_PROVIDERS"`) and the required fields.
 
 Example for LS Login, with placeholders for the client and the groups:
