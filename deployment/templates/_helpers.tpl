@@ -178,8 +178,8 @@ must not set (Kubernetes would use the last one, silently).
 Security context from the values; call with a dict of the root context
 (`root`) and the context (`context`). On OpenShift, which assigns user and
 group IDs from the namespace's range (and rejects others under the default
-security context constraints) and sets the seccomp profile (some clusters,
-e.g., CSC Rahti, reject `RuntimeDefault`), these are omitted.
+security context constraints) and sets the seccomp profile (some OpenShift
+clusters reject `RuntimeDefault`), these are omitted.
 */}}
 {{- define "krini.securityContext" -}}
 {{- $context := .context | default dict -}}

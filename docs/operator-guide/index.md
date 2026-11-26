@@ -13,8 +13,7 @@ deployment needs:
 - a [Cloud Registry](https://cloud-registry.readthedocs.io/en/latest/)
   (or another GA4GH Service Registry) that lists the TES and WES services
   (see [Cloud Registry](deployment.md#cloud-registry));
-- an OpenID Connect login provider, e.g. [LS
-  Login](https://lifescience-ri.eu/ls-login/), with Krini registered as a
+- an OpenID Connect login provider, with Krini registered as a
   client (see [Login](login.md));
 - TES and WES services that accept tokens issued to Krini's client and
   allow Krini's origin in their CORS settings (see [Service
@@ -29,7 +28,7 @@ deployment needs:
    `APP_ORIGIN`.
 2. Register Krini with your login provider, with the redirect URI
    `https://krini.example.org/auth/api/callback` (see [Registering Krini
-   with LS Login](login.md#registering-krini-with-ls-login)).
+   with a login provider](login.md#registering-krini-with-a-login-provider)).
 3. Ask the operators of the TES and WES services to accept tokens issued
    to Krini's client ID and to allow `https://krini.example.org` in their
    CORS settings (see [Service
@@ -45,8 +44,7 @@ deployment needs:
     LOGIN_PROVIDERS=<login providers, see Login>
     ```
 
-    [Login](login.md#login-providers) has an example of `LOGIN_PROVIDERS`
-    for LS Login.
+    [Login](login.md#login-providers) has an example of `LOGIN_PROVIDERS`.
 
 5. [Verify](deployment.md#verifying-images) the image of the release,
    e.g. 0.1.0, and start it behind a reverse proxy that serves it over
@@ -72,8 +70,8 @@ deployment needs:
   upgrades.
 - [Configuration](configuration.md): all settings, which Krini reads from
   the environment when it starts.
-- [Login](login.md): login providers, registering Krini with LS Login,
-  access tiers, sessions and logout.
+- [Login](login.md): login providers, registering Krini with a login
+  provider, access tiers, sessions and logout.
 - [Upgrading](upgrading.md): moving to a newer version, and from the
   branch images or the Vite app to 0.1.0.
 

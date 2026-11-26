@@ -6,9 +6,9 @@
 # page, redirects the start page, serves the workers of
 # the code editor, writes optimized images to `/tmp/next-cache` and has
 # LICENSE and NOTICE (see "Container image" in
-# `docs/operator-guide/deployment.md`). The optimized image is
-# `public/ls-login-grey-wide.jpg` (shown on the login page): change it here
-# if it is renamed. Needs Docker and curl, and port 3000 on 127.0.0.1.
+# `docs/operator-guide/deployment.md`). The optimized image is Krini's own
+# `public/logo.png`: change it here if it is renamed. Needs Docker and
+# curl, and port 3000 on 127.0.0.1.
 #
 # Usage: scripts/check-image.sh <image>
 set -euo pipefail
@@ -57,7 +57,7 @@ for _ in $(seq 30); do
       echo "::error::The start page returned ${status}, expected a redirect (307)"
       exit 1
     fi
-    if ! curl -fs -o /dev/null "http://127.0.0.1:3000/_next/image?url=%2Fls-login-grey-wide.jpg&w=640&q=75"; then
+    if ! curl -fs -o /dev/null "http://127.0.0.1:3000/_next/image?url=%2Flogo.png&w=640&q=75"; then
       docker logs "${app}"
       echo "::error::The image optimizer failed"
       exit 1

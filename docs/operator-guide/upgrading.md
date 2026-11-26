@@ -52,7 +52,7 @@ settings of one LS Login client; 0.1.0 reads the login providers from
 
 | Before | 0.1.0 |
 | --- | --- |
-| `LS_LOGIN_URL` | `issuer` of the provider: `LS_LOGIN_URL` followed by `/oidc/`, e.g. `https://login.aai.lifescience-ri.eu/oidc/` |
+| `LS_LOGIN_URL` | `issuer` of the provider: `LS_LOGIN_URL` followed by `/oidc/`, e.g. `https://login.example.org/oidc/` |
 | `OIDC_CLIENT_ID` | `clientId` of the provider |
 | `OIDC_CLIENT_SECRET` | `clientSecret` of the provider |
 | `OIDC_SCOPE` (space-separated) | `scopes` of the provider (a JSON array) |
@@ -60,7 +60,9 @@ settings of one LS Login client; 0.1.0 reads the login providers from
 | `OIDC_REDIRECT_URI` | unchanged, now optional (default `<APP_ORIGIN>/auth/api/callback`) |
 
 Krini now reads the provider's endpoints from its discovery document
-instead of appending `/oidc/token` to `LS_LOGIN_URL`. Since krini#84,
+instead of appending `/oidc/token` to `LS_LOGIN_URL`. The image no longer
+ships a login provider's logo: a `logo` of `/ls-login-grey-wide.jpg` in
+`LOGIN_PROVIDERS` set an `https` URL instead. Since krini#84,
 `APP_ORIGIN` must be the public origin of Krini, as the login sends users
 back to it; register `<APP_ORIGIN>/` as post-logout redirect URI with the
 provider, too.
@@ -83,12 +85,12 @@ a new setup rather than an upgrade:
 | Static files served by Nginx on port `8081` | Next.js server on port `3000` (`PORT`) |
 | `VITE_HOST_URI`, built into the image (`.env.production`) | `APP_ORIGIN`, read when the container starts; `VITE_HOST_URI` is gone |
 | WES service built into the code | TES and WES services from the Cloud Registry (`CLOUD_REGISTRY_URL`) |
-| One LS Login client, built into the code, with the implicit flow in the browser | Login providers of `LOGIN_PROVIDERS` (see [Login](login.md)), with the authorization code flow and a client secret on Krini's server: register a client of your own |
+| One login provider client, built into the code, with the implicit flow in the browser | Login providers of `LOGIN_PROVIDERS` (see [Login](login.md)), with the authorization code flow and a client secret on Krini's server: register a client of your own |
 | Image built per deployment | One image for all deployments, `docker.io/elixircloud/krini:<version>` |
 
 Set all required settings of [Configuration](configuration.md#settings),
-register Krini with the login provider (see [Registering Krini with LS
-Login](login.md#registering-krini-with-ls-login)), point the port of your
+register Krini with the login provider (see [Registering Krini with a login
+provider](login.md#registering-krini-with-a-login-provider)), point the port of your
 service or route to `3000`, and set up the TES and WES services for Krini's
 origin (see [Service configuration](deployment.md#service-configuration)
 and [CORS configuration](deployment.md#cors-configuration)).
