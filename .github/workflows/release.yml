@@ -16,13 +16,18 @@
 # `docs/operator-guide/helm-chart.md`). Last, create the GitHub release
 # with the curated notes followed by GitHub's generated notes, with the
 # chart and its Sigstore bundle attached (`publish`, shared action
-# `elixir-cloud-aai/.github/actions/publish-release`).
-# `push` and `release-image` each need approval in the `release` environment
-# (required reviewer, Docker Hub secrets `DOCKERHUB_LOGIN` and
-# `DOCKERHUB_TOKEN`). Re-running all jobs builds, scans, signs and tags a new
-# digest (and packages the chart again), but stops before building if the
-# version tag exists (released images don't change); re-running failed jobs
-# reuses the digest and the chart of the earlier attempt. Once
+# `elixir-cloud-aai/.github/actions/publish-release`), and, independently
+# of it, tell Pubgrade about the tagged image (`notify`), if it is
+# configured. `push` and `release-image` each need approval in the
+# `release` environment (required reviewer, Docker Hub secrets
+# `DOCKERHUB_LOGIN` and `DOCKERHUB_TOKEN`), and so does `notify` if
+# Pubgrade is configured (secret `PUBGRADE_TOKEN`; `publish` doesn't wait
+# for it, and re-running a failed `notify` notifies the deployments
+# again, without a new release). Re-running all jobs
+# builds, scans, signs and tags a new digest (and packages the chart
+# again), but stops before building if the version tag exists (released
+# images don't change); re-running failed jobs reuses the digest and the
+# chart of the earlier attempt. Once
 # `release-image` has tagged the image, re-run only the failed jobs: a new
 # attempt of all jobs stops at the existing tag and supersedes the attempt
 # whose failed jobs could finish the release. `prepare` fails if a
@@ -614,3 +619,45 @@ jobs:
           assets: |
             dist/${{ needs.prepare.outputs.chart_file }}
             dist/${{ needs.prepare.outputs.chart_file }}.sigstore.json
+
+  # Registers the image at Pubgrade (publish mode, elixir-cloud-aai/Pubgrade#33)
+  # with Pubgrade's action `actions/notify`, which notifies the subscribed
+  # deployments, once `release-image` has tagged it; it doesn't wait for the
+  # GitHub release (`publish`). The action checks its inputs, masks the token
+  # and retries only requests that never reached Pubgrade (no connection), so
+  # that one run registers the build at most once; a failed run says so, and
+  # re-running this job sends it again. The token is a secret of the
+  # `release` environment, like the other release credentials, so this job
+  # needs an approval there, too. The job only runs if the variable
+  # `PUBGRADE_URL` is set for the repository: variables of an environment
+  # aren't visible to a job's `if:` (it is evaluated before the job enters
+  # the environment), and a check in a step would leave every release
+  # without Pubgrade waiting for an approval that serves nothing. The step
+  # fails if `PUBGRADE_REPOSITORY_ID` or `PUBGRADE_TOKEN` is missing or
+  # invalid. See "Pubgrade" in `docs/development/releasing.md` for where to
+  # set them
+  notify:
+    name: Notify Pubgrade
+    needs: [prepare, release-image]
+    if: vars.PUBGRADE_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions: {}
+    steps:
+      # The tag `release-image` pushed (`IMAGE_NAME:X.Y.Z`, resolved in
+      # the same environment), without `docker.io/`, the form Pubgrade and
+      # its sidecars expect (as in tesk-api)
+      - name: Name image
+        id: image
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: echo "ref=${IMAGE_NAME#docker.io/}:${VERSION}" >> "${GITHUB_OUTPUT}"
+      - name: Notify Pubgrade
+        uses: elixir-cloud-aai/Pubgrade/actions/notify@344a58adc1c871135f86c404eb33ed91011886ad # v0.3.0
+        with:
+          url: ${{ vars.PUBGRADE_URL }}
+          repository-id: ${{ vars.PUBGRADE_REPOSITORY_ID }}
+          token: ${{ secrets.PUBGRADE_TOKEN }}
+          image: ${{ steps.image.outputs.ref }}
+          git-tag: ${{ github.ref_name }}

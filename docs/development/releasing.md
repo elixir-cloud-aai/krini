@@ -159,7 +159,14 @@ deploys the release's image by default (`appVersion` is its tag).
     attached (it creates a draft, uploads them, and publishes it only then,
     as assets of immutable releases can't be added later; if that fails,
     the draft is deleted); versions below 1.0.0 and `-alpha`,
-    `-beta` and `-rc` versions are pre-releases. Releases aren't edited after
+    `-beta` and `-rc` versions are pre-releases. Only if the repository
+    variable `PUBGRADE_URL` is set (see [Pubgrade](#pubgrade)),
+    `Notify Pubgrade` registers the tagged image there once `Release image`
+    has passed (needs approval), without waiting for `Publish release`;
+    the run only completes, and "Re-run failed jobs" is only offered, once
+    it is approved or rejected (a rejected `Notify Pubgrade` asks for
+    approval again on that re-run: reject it again to skip it). Releases
+    aren't edited after
     publishing (by convention): fix mistakes in the notes of the next
     release. If a job fails, use "Re-run failed jobs", not "Re-run all
     jobs": once the image is tagged, a new attempt of all jobs stops at the
@@ -192,11 +199,54 @@ The repository needs, once:
   `ci.yml`); a ruleset for `main` that lets only maintainers update it and
   protects it against non-fast-forward pushes; a ruleset that lets only
   maintainers create `v*` tags and keeps them from being moved or deleted;
-  and immutable releases.
+  and immutable releases;
+- optionally the Pubgrade settings (see [Pubgrade](#pubgrade)).
 
 Tags and published releases and images can't be changed: if a release
 fails after its tag was pushed and re-running its failed jobs doesn't help,
 release the next patch version (with its own release-prep pull request).
+
+## Pubgrade
+
+After tagging the image (without waiting for the GitHub release), the
+release workflow registers it, with the release tag, at
+[Pubgrade](https://github.com/elixir-cloud-aai/Pubgrade) (`POST
+/repositories/{id}/builds`, through Pubgrade's action
+[`actions/notify`](https://github.com/elixir-cloud-aai/Pubgrade/tree/344a58adc1c871135f86c404eb33ed91011886ad/actions/notify);
+job `Notify Pubgrade`), which notifies the deployments that subscribed to
+upgrades, also for pre-releases, if they subscribed to those. The image is
+`elixircloud/krini:X.Y.Z` (the organization of `DOCKERHUB_ORG`, if set).
+The action masks the token and retries a request only if it never reached
+Pubgrade, so that one run registers the build at most once; re-running the
+job registers it again. This needs Pubgrade's publish mode
+([#33](https://github.com/elixir-cloud-aai/Pubgrade/issues/33)) and these
+settings:
+
+| Setting | Kind | Where | Meaning |
+| --- | --- | --- | --- |
+| `PUBGRADE_URL` | Variable | Repository | Base URL of the Pubgrade API, with `https://`. Switches the notification on. |
+| `PUBGRADE_REPOSITORY_ID` | Variable | Repository, or the `release` environment | The identifier from registering the repository in Pubgrade |
+| `PUBGRADE_TOKEN` | Secret | The `release` environment | The access token from registering the repository in Pubgrade |
+
+Without `PUBGRADE_URL`, the job `Notify Pubgrade` is skipped, so releases
+don't wait for its approval. Set `PUBGRADE_URL` for the repository, not in
+the `release` environment: a job's condition is evaluated before the job
+enters its environment, so a variable there doesn't switch the job on (and
+would override the repository's URL within the job). An organization
+variable would switch it on for every repository it is shared with, also
+those without a Pubgrade token. With `PUBGRADE_URL`, the job waits for an
+approval in the `release` environment, like `Push release image` and
+`Release image`, and fails if one of the other settings is missing or
+invalid: the identifier and the token may only hold letters, digits, `.`,
+`~` and `-` (as Pubgrade issues them). If only this job fails or is
+rejected, the image and the GitHub release are published all the same:
+fix the settings and re-run the failed job (this notifies the deployments
+again, without a new release), or leave it; don't release a new version
+for it. Unless it failed on an invalid setting or with "Could not reach
+Pubgrade (curl exit status 6)" or "(… 7)" (no connection), Pubgrade may
+have registered the build all the same: check the repository's builds
+(`GET /repositories/{id}/builds`) before re-running it, as re-running
+notifies the subscribed deployments again.
 
 ## Scheduled Scan
 
