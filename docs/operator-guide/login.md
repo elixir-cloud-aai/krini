@@ -1,12 +1,12 @@
 # Login
 
 Users log in with one of the OpenID Connect providers that you configure in
-`LOGIN_PROVIDERS`, e.g. [LS Login](https://lifescience-ri.eu/ls-login/) for
-ELIXIR On-Cloud. Krini then sends the user's access token from the browser
+`LOGIN_PROVIDERS`. Krini then sends the user's access token from the browser
 to the TES and WES services that the user selects, so the provider, Krini's
 client at the provider, and the services must fit together. This page
-describes the provider settings, how to register Krini with LS Login, the
-access tiers and the sessions; [Deployment](deployment.md#service-configuration)
+describes the provider settings, how to register Krini with a login
+provider, the access tiers and the sessions;
+[Deployment](deployment.md#service-configuration)
 describes what the TES and WES services need.
 
 ## How the login works
@@ -46,14 +46,14 @@ fields:
 
 | Field | Required | Description |
 | --- | --- | --- |
-| `id` | yes | Identifier of the provider, unique in the array, e.g. `ls-login` |
-| `issuer` | yes | OpenID Connect issuer URL, e.g. `https://login.aai.lifescience-ri.eu/oidc/` |
+| `id` | yes | Identifier of the provider, unique in the array, e.g. `example-login` |
+| `issuer` | yes | OpenID Connect issuer URL, e.g. `https://login.example.org/oidc/` |
 | `clientId` | yes | Client ID of Krini at the provider |
 | `clientSecret` | yes | Client secret of Krini at the provider |
 | `name` | no | Name on the login page; the `id` if not set |
-| `logo` | no | Logo on the login page: an `https` URL, or a path of a file in the image's `public/` directory, e.g. `/ls-login-grey-wide.jpg` |
-| `scopes` | no | Scopes to request; `["openid", "profile", "email", "offline_access"]` if not set. If you set them, include `openid` and `offline_access`, and the scope that releases the groups (e.g. `eduperson_entitlement` for LS Login) |
-| `groupsClaim` | no | Claim with the user's groups, for the [access tiers](#access-tiers), e.g. `eduperson_entitlement` |
+| `logo` | no | Logo on the login page: an `https` URL, or a path of a file in the image's `public/` directory |
+| `scopes` | no | Scopes to request; `["openid", "profile", "email", "offline_access"]` if not set. If you set them, include `openid` and `offline_access`, and the scope that releases the groups, if the provider needs one (see [Registering Krini with a login provider](#registering-krini-with-a-login-provider)) |
+| `groupsClaim` | no | Claim with the user's groups, for the [access tiers](#access-tiers), e.g. `groups` |
 | `groupsFromUserinfo` | no | Whether to read the groups from the user info (`true`, the default) or from the ID token (`false`) |
 | `computeGroups` | no | Groups whose members may run tasks and workflows |
 | `adminGroups` | no | Groups whose members are admins (and may run tasks and workflows) |
@@ -68,10 +68,15 @@ logs each problem — the provider `id` and the missing field, never the
 or not all of them, check the JSON (e.g. with
 `jq . <<< "$LOGIN_PROVIDERS"`) and the required fields.
 
-Example for LS Login, with placeholders for the client and the groups:
+The providers, `groupsClaim`, `computeGroups`, `adminGroups` and
+`COMPUTE_ACCESS_REQUEST_URL` are deployment configuration: Krini has no
+provider-specific defaults for them. Guides for a specific provider belong
+to the documentation of the deployment that uses it.
+
+Example, with placeholders for the client and the groups:
 
 ```env
-LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/ls-login-grey-wide.jpg","issuer":"https://login.aai.lifescience-ri.eu/oidc/","clientId":"<client ID>","clientSecret":"<client secret>","scopes":["openid","profile","email","eduperson_entitlement","offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["<compute group>"],"adminGroups":["<admin group>"]}]
+LOGIN_PROVIDERS=[{"id":"example-login","name":"Example Login","logo":"https://login.example.org/logo.png","issuer":"https://login.example.org/oidc/","clientId":"<client ID>","clientSecret":"<client secret>","scopes":["openid","profile","email","groups","offline_access"],"groupsClaim":"groups","computeGroups":["krini-compute"],"adminGroups":["krini-admins"]}]
 ```
 
 `LOGIN_PROVIDERS` holds the client secrets: pass it from a secret (e.g. a
@@ -79,11 +84,10 @@ Kubernetes Secret, see [Helm chart](helm-chart.md#login-providers)), never
 from a file in the repository or the image, and never as a client-side
 (`NEXT_PUBLIC_*`) variable. Restart Krini after changing it.
 
-## Registering Krini with LS Login
+## Registering Krini with a login provider
 
-Register Krini with [LS Login](https://lifescience-ri.eu/ls-login/) as a
-service (an OpenID Connect client) in the LS Login service registry. Other
-providers need the same settings under their own names.
+Register Krini as a service (an OpenID Connect client) at your login
+provider. Every provider needs the same client settings:
 
 - **Flow:** authorization code, with a client secret (confidential
   client), and PKCE with `S256`.
@@ -96,15 +100,17 @@ providers need the same settings under their own names.
 - **Post-logout redirect URI:** `<APP_ORIGIN>/`, e.g.
   `https://krini.example.org/` (see [Sessions and
   logout](#sessions-and-logout)).
-- **Scopes:** `openid`, `profile`, `email`, `eduperson_entitlement` and
-  `offline_access`. LS Login releases the groups (`eduperson_entitlement`)
-  only with their scope; `offline_access` needs the refresh token grant to
-  be enabled for the client.
+- **Scopes:** `openid`, `offline_access`, and the scope that releases the
+  groups, if the provider needs one. Some providers release their groups
+  only with a specific scope or claim — e.g. `eduperson_entitlement` in
+  eduPerson-based federations — and `groupsClaim` names the claim that
+  carries them. `offline_access` needs the refresh token grant to be
+  enabled for the client.
 - **Access tokens:** JWTs ([RFC 9068](https://datatracker.ietf.org/doc/html/rfc9068)),
   not opaque tokens: TES and WES services validate them themselves.
 
 Put the client ID and secret into `LOGIN_PROVIDERS` (see the example above)
-and keep its `scopes`. Then give the client ID to the operators of the TES
+and keep its `scopes` and `groupsClaim`. Then give the client ID to the operators of the TES
 and WES services that Krini should use, so that they accept tokens issued
 to it (see [Service configuration](deployment.md#service-configuration)).
 The Cloud Registry needs no settings for Krini: Krini only reads its public

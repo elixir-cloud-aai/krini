@@ -15,7 +15,7 @@ shows what a WES service supports (e.g. workflow languages and versions).
 
 ## Logging in
 
-Use **Login** to log in with LS Login. Krini then sends your access token
+Use **Login** to log in with your deployment's login provider. Krini then sends your access token
 to the TES and WES services you use, so that they know who you are;
 services that require login accept it only if they trust the deployment's
 client (see the

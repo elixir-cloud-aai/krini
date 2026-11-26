@@ -52,30 +52,34 @@ keeps quotes as part of the value (see
 [Deployment](deployment.md#environment-variables)):
 
 ```env
-# Login providers: a JSON array; each entry configures one OIDC provider
-# (endpoints are discovered via <issuer>/.well-known/openid-configuration)
-# One line only: env files can't carry a multiline value
-LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/ls-login-grey-wide.jpg","issuer":"issuer-url","clientId":"your-client-id","clientSecret":"your-client-secret","scopes":["openid","profile","email","eduperson_entitlement","offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["your-compute-group"],"adminGroups":["your-admin-group"]}]
+# Login providers: a JSON array; each entry configures one OIDC provider.
+# Endpoints are discovered via <issuer>/.well-known/openid-configuration.
+# Optional per-provider fields: name, logo, scopes (default
+# ["openid","profile","email","offline_access"]), groupsClaim,
+# groupsFromUserinfo (default true), computeGroups, adminGroups,
+# groupSubgroupSeparator.
+LOGIN_PROVIDERS=[{"id":"example-login","name":"Example Login","logo":"https://login.example.org/logo.png","issuer":"https://login.example.org/oidc/","clientId":"<client ID>","clientSecret":"<client secret>","scopes":["openid","profile","email","groups","offline_access"],"groupsClaim":"groups","computeGroups":["krini-compute"],"adminGroups":["krini-admins"]}]
 
-# Optional override of the callback URL (default: <APP_ORIGIN>/auth/api/callback)
-OIDC_REDIRECT_URI=http://localhost:3000/auth/api/callback
+# Optional override of the callback URL (default: <APP_ORIGIN>/auth/api/callback).
+# Must use the same origin as APP_ORIGIN: the session cookies are set for it.
+OIDC_REDIRECT_URI=
 
 # Where users without compute access can request it (shown in the UI)
 COMPUTE_ACCESS_REQUEST_URL=
 
-# Cloud Registry
-CLOUD_REGISTRY_URL=https://registry.elixir-cloud.dev/ga4gh/registry/v1
-
-# Application
+CLOUD_REGISTRY_URL=https://registry.example.org/ga4gh/registry/v1
 APP_ORIGIN=http://localhost:3000
-# Redirect requests at other hosts to APP_ORIGIN (default: true)
-REDIRECT_TO_APP_ORIGIN=true
 
-# Privacy notice (optional)
-PRIVACY_CONTROLLER=Example Institute, Example Street 1, Example City
-PRIVACY_CONTACT=privacy@example.org
-PRIVACY_NOTICE_URL=https://example.org/privacy
-PRIVACY_LOGIN_NOTICE_URL=https://login.example.org/privacy
+# Redirect requests at other hosts than that of APP_ORIGIN to it (default:
+# true; set to false to serve every host as is)
+REDIRECT_TO_APP_ORIGIN=
+
+# Privacy notice (optional): the operator, a contact, and links to the
+# deployment's and the login provider's privacy notices
+PRIVACY_CONTROLLER=
+PRIVACY_CONTACT=
+PRIVACY_NOTICE_URL=
+PRIVACY_LOGIN_NOTICE_URL=
 ```
 
 - `LOGIN_PROVIDERS`: the OpenID Connect providers that users log in with,

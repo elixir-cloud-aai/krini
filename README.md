@@ -19,8 +19,7 @@
 
 A virtual research environment for running and managing life science
 analyses, brought to you by [ELIXIR On-Cloud](https://elixir-on.cloud/).
-Users log in through a configurable OpenID Connect provider (LS Login for
-the ELIXIR On-Cloud deployment), find compute services in a [Cloud
+Users log in through a configurable OpenID Connect provider, find compute services in a [Cloud
 Registry](https://cloud-registry.readthedocs.io/en/latest/), run tasks on
 [GA4GH Task Execution Service
 (TES)](https://github.com/ga4gh/task-execution-schemas) and workflows on

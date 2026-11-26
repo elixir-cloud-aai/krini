@@ -83,7 +83,7 @@ login providers):
 ```env
 APP_ORIGIN=https://krini.example.org
 CLOUD_REGISTRY_URL=https://registry.example.org/ga4gh/registry/v1
-LOGIN_PROVIDERS=[{"id":"ls-login","name":"LS Login","logo":"/ls-login-grey-wide.jpg","issuer":"https://login.aai.lifescience-ri.eu/oidc/","clientId":"<client ID>","clientSecret":"<client secret>","scopes":["openid","profile","email","eduperson_entitlement","offline_access"],"groupsClaim":"eduperson_entitlement","computeGroups":["<compute group>"]}]
+LOGIN_PROVIDERS=[{"id":"example-login","name":"Example Login","logo":"https://login.example.org/logo.png","issuer":"https://login.example.org/oidc/","clientId":"<client ID>","clientSecret":"<client secret>","scopes":["openid","profile","email","groups","offline_access"],"groupsClaim":"groups","computeGroups":["krini-compute"]}]
 PRIVACY_CONTROLLER=Example Institute, Example Street 1, Example City
 PRIVACY_CONTACT=privacy@example.org
 ```
@@ -147,8 +147,8 @@ After starting Krini, or changing its settings, open these pages at
    providers](login.md#login-providers)).
 3. Log in: the provider asks for consent and sends you back to Krini. An
    error of the provider about the redirect URI means that the URI isn't
-   registered (see [Registering Krini with LS
-   Login](login.md#registering-krini-with-ls-login)). Krini's error page
+   registered (see [Registering Krini with a login
+   provider](login.md#registering-krini-with-a-login-provider)). Krini's error page
    after the login means that `APP_ORIGIN` or `OIDC_REDIRECT_URI` don't
    match the address that you opened, or that the provider's discovery
    document, token response or ID token failed Krini's checks.
@@ -257,9 +257,9 @@ The browser sends the user's access token to the selected service, in an
   authorization settings allow. Give the client IDs to the operators of
   the services; they aren't secret.
 - If the services authorize by group, the token or the user info must
-  carry the groups, e.g. `eduperson_entitlement` of LS Login (see
-  [Registering Krini with LS
-  Login](login.md#registering-krini-with-ls-login)).
+  carry the groups in the claim that `groupsClaim` names (see
+  [Registering Krini with a login
+  provider](login.md#registering-krini-with-a-login-provider)).
 
 ## CORS configuration
 

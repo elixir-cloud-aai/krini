@@ -158,7 +158,7 @@ krini:
   # `runAsNonRoot`, with a read-only root file system; temporary files go to
   # an `emptyDir` at `/tmp`. On OpenShift, `runAsUser`, `runAsGroup`,
   # `fsGroup` and `seccompProfile` are omitted, as OpenShift assigns them
-  # (and some clusters, such as CSC Rahti, reject `RuntimeDefault`)
+  # (and some OpenShift clusters reject `RuntimeDefault`)
   podSecurityContext:
     runAsNonRoot: true
     runAsUser: 1000

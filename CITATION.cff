@@ -7,8 +7,8 @@ message: >-
 title: Krini
 abstract: >-
   Krini is a virtual research environment for running and managing life
-  science analyses: users who log in with an OpenID Connect provider, such as
-  LS Login, find compute services in a Cloud Registry, run tasks on GA4GH
+  science analyses: users who log in with an OpenID Connect provider find
+  compute services in a Cloud Registry, run tasks on GA4GH
   Task Execution Service (TES) and workflows on GA4GH Workflow Execution
   Service (WES) instances, and follow their runs.
 type: software

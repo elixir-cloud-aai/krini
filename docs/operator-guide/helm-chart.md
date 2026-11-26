@@ -24,8 +24,8 @@ default; use it for development and testing only.
   OpenShift's router.
 - An OpenID Connect client at each login provider, with the redirect URI
   `https://<host name>/auth/api/callback`, the post-logout redirect URI
-  `https://<host name>/` and the scopes of [Registering Krini with LS
-  Login](login.md#registering-krini-with-ls-login), including the scope
+  `https://<host name>/` and the scopes of [Registering Krini with a login
+  provider](login.md#registering-krini-with-a-login-provider), including the scope
   with which the provider releases the claim with the user's groups
   (`groupsClaim`) for the [access tiers](login.md#access-tiers).
 - A Cloud Registry whose list of services (`GET /services`, without
