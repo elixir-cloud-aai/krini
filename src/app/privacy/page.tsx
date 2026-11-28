@@ -48,7 +48,7 @@ const COOKIES = [
         purpose:
             "a fingerprint (hash) of a refresh token that your login provider refused once, so that Krini can tell a renewal that another tab made at the same time from a session that has ended",
         lifetime:
-            "1 hour; deleted when your session is renewed or ends, or when you log out",
+            "at most 1 hour; usually deleted at the next renewal of your session, when it ends, or when you log out or in",
     },
     {
         name: "logout_marker",

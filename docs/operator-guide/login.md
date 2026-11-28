@@ -161,10 +161,25 @@ How Krini handles the provider's answer to a refresh (RFC 6749, section
 
 | Answer of the token endpoint | Krini |
 | --- | --- |
-| `400` with `invalid_grant` (refresh token expired, revoked or reused), or `401` other than `invalid_client` and `unauthorized_client` | The first time for a refresh token, keeps the session, as a concurrent refresh may have used the token, and records the token's SHA-256 hash in the cookie `refresh_rejected` (1 hour); the page tries again 5 seconds later, with the new refresh token if another refresh won. The second time for the same token, ends the session: deletes its cookies and sends the user to the login page |
+| `400` with `invalid_grant` (refresh token expired, revoked or reused), or `401` other than `invalid_client` and `unauthorized_client`, the first time for a refresh token | Keeps the session, as a concurrent refresh may have used the token (see below); the page tries again |
+| The same, the second time for the same refresh token | Ends the session: deletes its cookies and sends the user to the login page |
 | `invalid_client` or `unauthorized_client` (e.g. a rotated client secret), other errors, timeouts, an invalid token response | Keeps the session and logs the error (`OIDC refresh error: category=…, provider_error=…`); the page tries again with growing waits (5 seconds, doubling, at most 5 minutes). A new refresh token in an invalid token response is kept, as the provider may have revoked the old one |
 | An ID token for another `sub` or `iss` | Ends the session |
 | No ID token, while the session has none either (e.g. its cookie expired) | Ends the session, as nothing names the user any more |
+
+A provider that rotates refresh tokens rejects a refresh token that
+another refresh has just used, e.g. of a second tab in a browser without
+Web Locks. So that the refresh that lost this race doesn't end the
+session that the winner renewed, Krini records the first rejection of a
+refresh token in the browser, not on the pod: the cookie
+`refresh_rejected` holds the token's SHA-256 hash and the time for an
+hour. The page tries again after its usual wait (5 seconds at first,
+doubling with each failure), with the winner's refresh token if another
+refresh won. Only if the provider rejects the same refresh token again
+at least a minute after the first time (the longest the winner's answer
+may take) does the session end. A session that the provider ended thus
+ends in Krini about a minute later than the provider's first rejection;
+the access token stays valid until it expires either way.
 
 Visitors without a session, or whose refresh token is gone, are never
 sent anywhere; without a refresh token, the access token is used until it

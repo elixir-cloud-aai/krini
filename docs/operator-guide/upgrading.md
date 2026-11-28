@@ -20,10 +20,10 @@ restarts it.
    values may have changed, too.
 4. Go through [Checking a deployment](deployment.md#checking-a-deployment).
 
-Sessions survive an upgrade, as they are in cookies, and so does the
-record that tells a refresh that lost a race from a session that has
-ended (see [Pods](helm-chart.md#pods)), so the old and the new container
-can run side by side (e.g. during the rolling update of the Helm chart).
+Sessions survive an upgrade, as they are in cookies, also while the old
+and the new container run side by side (e.g. during the rolling update
+of the Helm chart; see [Pods](helm-chart.md#pods)), apart from the
+caveat for upgrades from 0.1.0 below.
 
 ## From 0.1.0 to the next release
 

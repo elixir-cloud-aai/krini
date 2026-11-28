@@ -418,10 +418,13 @@ login providers and the WES services.
   request. Even where two tabs refresh the same session at once (in
   browsers without Web Locks), Krini tells the refresh that lost the race
   from a session that has ended with a cookie, not with the memory of a
-  pod, so that the session stays whichever pods the two refreshes reach;
-  no sticky sessions are needed. With more than one, a PodDisruptionBudget (`krini.podDisruptionBudget`) lets node
-  drains evict one pod at a time (`maxUnavailable: 1`), or as set by
-  `minAvailable` or `maxUnavailable`.
+  pod, so the session stays whichever pods the two refreshes reach: no
+  sticky sessions are needed.
+
+  With more than one replica, a PodDisruptionBudget
+  (`krini.podDisruptionBudget`) lets node drains evict one pod at a time
+  (`maxUnavailable: 1`), or as set by `minAvailable` or
+  `maxUnavailable`.
 - `krini.resources`: requests and limits of the container (default:
   100m CPU and 256Mi memory requested, limits of 500m and 512Mi).
 - `krini.probePath` (default `/privacy`): the startup, readiness and

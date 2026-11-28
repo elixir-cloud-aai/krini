@@ -88,6 +88,12 @@ const sessionCookies = [
 const tokenHash = (token: string) =>
     createHash("sha256").update(token).digest("hex");
 
+/** `refresh_rejected` of a refresh token that was first rejected at a time
+ * (default: just over a minute ago, when no lost race can explain a
+ * further rejection any more) */
+const rejected = (token: string, at = now - 61 * 1000) =>
+    `${tokenHash(token)}:${at}`;
+
 /** Expect a response that ends the session, and its cookies */
 async function expectSessionEnded(response: Response, error: string) {
     expect(response.status).toBe(401);
@@ -173,7 +179,7 @@ describe("POST /auth/api/refresh", () => {
         // it only remembers, in the browser, which token was rejected
         expect(response.headers.getSetCookie()).toHaveLength(1);
         expect(cookieOf(response, "refresh_rejected")).toMatchObject({
-            value: tokenHash("rt-SECRET-1"),
+            value: `${tokenHash("rt-SECRET-1")}:${now}`,
             attributes: expect.arrayContaining([
                 "httponly",
                 "path=/",
@@ -183,7 +189,7 @@ describe("POST /auth/api/refresh", () => {
         });
     });
 
-    it("tells a refresh that lost on another pod to try again", async () => {
+    it("lets a refresh that lost the race succeed on retry, on any pod", async () => {
         // pod A: the winner rotates the refresh token
         const { response: won } = await refresh();
         expect(won.status).toBe(200);
@@ -203,7 +209,7 @@ describe("POST /auth/api/refresh", () => {
         // the retry carries the winner's refresh token, on any pod
         const { response: retried, post } = await refresh({
             refresh_token: "refresh-2",
-            refresh_rejected: tokenHash("rt-SECRET-1"),
+            refresh_rejected: rejected("rt-SECRET-1", now),
         });
         expect(retried.status).toBe(200);
         expect(
@@ -222,7 +228,7 @@ describe("POST /auth/api/refresh", () => {
         const { response, error } = await refresh(
             {
                 refresh_token: "rt-SECRET-1",
-                refresh_rejected: tokenHash("rt-SECRET-1"),
+                refresh_rejected: rejected("rt-SECRET-1"),
             },
             reply,
         );
@@ -234,19 +240,62 @@ describe("POST /auth/api/refresh", () => {
         const { response } = await refresh(
             {
                 refresh_token: "rt-SECRET-2",
-                refresh_rejected: tokenHash("rt-SECRET-1"),
+                refresh_rejected: rejected("rt-SECRET-1"),
             },
             httpError(400, { error: "invalid_grant" }),
         );
         expect(response.status).toBe(409);
         expect(cookieOf(response, "refresh_rejected")?.value).toBe(
-            tokenHash("rt-SECRET-2"),
+            `${tokenHash("rt-SECRET-2")}:${now}`,
         );
     });
 
-    it("leaves the rejection record alone when there is none", async () => {
+    it("keeps the session while the winner's answer may still be on its way", async () => {
+        // e.g. the retry of the loser, or a third tab, before the winner's
+        // cookies reached the browser
+        const first = now - 59 * 1000;
+        const { response } = await refresh(
+            {
+                refresh_token: "rt-SECRET-1",
+                refresh_rejected: rejected("rt-SECRET-1", first),
+            },
+            httpError(400, { error: "invalid_grant" }),
+        );
+        expect(response.status).toBe(409);
+        // the time of the first rejection stays
+        expect(response.headers.getSetCookie()).toEqual([]);
+    });
+
+    it.each([
+        ["without a time", tokenHash("rt-SECRET-1")],
+        ["with an invalid time", `${tokenHash("rt-SECRET-1")}:x`],
+        ["with a time that is not positive", `${tokenHash("rt-SECRET-1")}:0`],
+    ])("takes a record %s as none", async (_, record) => {
+        const { response } = await refresh(
+            { refresh_token: "rt-SECRET-1", refresh_rejected: record },
+            httpError(400, { error: "invalid_grant" }),
+        );
+        expect(response.status).toBe(409);
+        expect(cookieOf(response, "refresh_rejected")?.value).toBe(
+            `${tokenHash("rt-SECRET-1")}:${now}`,
+        );
+    });
+
+    it("deletes a rejection record that arrived after the request", async () => {
+        // the loser's 409 may reach the browser after this request left
         const { response } = await refresh();
-        expect(cookieOf(response, "refresh_rejected")).toBeUndefined();
+        expect(cookieOf(response, "refresh_rejected")?.value).toBe("");
+    });
+
+    it("sets a secure rejection record in production", async () => {
+        vi.stubEnv("NODE_ENV", "production");
+        const { response } = await refresh(
+            undefined,
+            httpError(400, { error: "invalid_grant" }),
+        );
+        expect(cookieOf(response, "refresh_rejected")?.attributes).toContain(
+            "secure",
+        );
     });
 
     it("keeps the refresh token when the response does not rotate it", async () => {
