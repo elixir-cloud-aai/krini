@@ -193,9 +193,9 @@ forms' pages, also without logging in (the buttons show only with compute
 access): put no secrets into them. Krini reads both settings at request
 time and leaves out entries that don't fit the forms (a missing or unknown
 field, a field of the wrong type, a broken rule, a line break in any field
-other than the parameters, a duplicate name, white space that the form
-would trim); a value that isn't a JSON array is ignored in favour of the
-built-in examples. Both are logged as warnings when Krini starts. Make
+other than the parameters, a duplicate name, a URL that doesn't parse,
+white space that the form would trim); a value that isn't a JSON array is
+ignored in favour of the built-in examples. Both are logged as warnings when Krini starts. Make
 sure that your examples run on the services that your registry lists.
 For example, a task and a workflow on one line each:
 

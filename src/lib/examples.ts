@@ -225,11 +225,25 @@ const zone: Check = (value, where) => {
     return problems;
 };
 
-/** An absolute path in the container, as the task form requires */
+/** An absolute path in the container, as the task form requires; the
+ * form checks the trimmed path but submits it as it is */
 const absolutePath: Check = (value, where) => {
     const problems = line(value, where);
-    if (problems.length === 0 && !(value as string).trim().startsWith("/"))
+    if (problems.length > 0) return problems;
+    const path = value as string;
+    if (!path.trim().startsWith("/"))
         problems.push(`${where} is not an absolute path`);
+    else if (path.trim() !== path)
+        problems.push(`${where} has white space around it`);
+    return problems;
+};
+
+/** A URL that parses, as the services expect (an example with another
+ * value would fail on submission) */
+const url: Check = (value, where) => {
+    const problems = trimmedLine(value, where);
+    if (problems.length === 0 && !URL.canParse(value as string))
+        problems.push(`${where} is not a URL`);
     return problems;
 };
 
@@ -343,21 +357,19 @@ const executor = shape({
 // submitted as it is; the types above must name the same fields
 const input = shape(
     {
-        url: optional(line),
+        url: optional(url),
         path: required(absolutePath),
         type: optional(fileType),
         // the form shows it in one input
         content: optional(line),
     },
     (value, where) =>
-        (value.url as string | undefined)?.trim() || value.content
-            ? []
-            : [`${where} has no url or content`],
+        value.url || value.content ? [] : [`${where} has no url or content`],
 );
 
 const output = shape(
     {
-        url: required(nonEmptyLine),
+        url: required(url),
         path: required(absolutePath),
         path_prefix: optional(line),
         type: optional(fileType),
@@ -392,7 +404,7 @@ const task = shape({
 
 // the fields of the workflow form; the types above must name the same
 const run = shape({
-    workflow_url: required(nonEmptyLine),
+    workflow_url: required(url),
     workflow_type: required(trimmedLine),
     workflow_type_version: required(trimmedLine),
     workflow_params: optional(object),

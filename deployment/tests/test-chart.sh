@@ -169,8 +169,9 @@ assert_eq "privacy login notice" "$(env_value PRIVACY_LOGIN_NOTICE_URL)" "https:
 assert_eq "secret key" "$(env_value LOGIN_PROVIDERS)" "secret:krini-login-providers/providers.json"
 render --set config.redirectToAppOrigin=false
 assert_eq "redirectToAppOrigin off" "$(env_value REDIRECT_TO_APP_ORIGIN)" "false"
+# Not set at all, so that a value of "null" can't pass as unset
 assert_eq "built-in examples by default" \
-  "$(env_value TASK_EXAMPLES),$(env_value WORKFLOW_EXAMPLES)" "null,null"
+  "$(get Deployment '[.spec.template.spec.containers[0].env[].name | select(test("_EXAMPLES$"))] | length')" "0"
 render --set-json 'config.taskExamples=[{"name":"Hello","task":{"executors":[{"image":"alpine","command":["echo","hello"]}]}}]' \
   --set-json 'config.workflowExamples=[]'
 assert_eq "taskExamples as JSON" "$(env_value TASK_EXAMPLES)" \

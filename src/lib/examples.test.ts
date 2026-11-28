@@ -207,6 +207,7 @@ describe("taskExamples", () => {
             "entry 1.task.executors[0].ignore_error is not true or false",
             "entry 1.task.executors[0] has shell, which the form doesn't take",
             "entry 1.task.executors[1] is not an object",
+            "entry 1.task.inputs[0].url is not a URL",
             "entry 1.task.inputs[0] has no path",
             "entry 1.task.inputs[0].type is not FILE or DIRECTORY",
             "entry 1.task.inputs[0].content is not a string without line breaks",
@@ -273,9 +274,39 @@ describe("taskExamples", () => {
         expect(problemsOf(problems)).toEqual([
             "entry 1.task.executors[0].command is empty",
             'entry 1.task.executors[0].env key " A" has white space around it',
-            "entry 1.task.inputs[0] has no url or content",
+            "entry 1.task.inputs[0].url is empty",
             "entry 1.task.resources.zones[0] has a comma",
             "entry 1.task.resources.zones[1] is empty",
+        ]);
+    });
+
+    it("refuses paths with white space and URLs that don't parse", () => {
+        const { examples, problems } = taskExamples({
+            TASK_EXAMPLES: JSON.stringify([
+                {
+                    name: "Paths",
+                    task: {
+                        executors: [
+                            {
+                                image: "a",
+                                command: ["b"],
+                                stdout: " /out",
+                                stderr: 1,
+                            },
+                        ],
+                        inputs: [{ path: "/in/a", url: "x" }],
+                        outputs: [{ url: "bucket/o", path: "/out/a " }],
+                    },
+                },
+            ]),
+        });
+        expect(examples).toEqual([]);
+        expect(problemsOf(problems)).toEqual([
+            "entry 1.task.executors[0].stdout has white space around it",
+            "entry 1.task.executors[0].stderr is not a string without line breaks",
+            "entry 1.task.inputs[0].url is not a URL",
+            "entry 1.task.outputs[0].url is not a URL",
+            "entry 1.task.outputs[0].path has white space around it",
         ]);
     });
 
@@ -357,13 +388,13 @@ describe("workflowExamples", () => {
         ]);
     });
 
-    it("refuses what the workflow form would trim or drop", () => {
+    it("refuses what the workflow form would trim, drop or refuse", () => {
         const { problems } = workflowExamples({
             WORKFLOW_EXAMPLES: JSON.stringify([
                 {
                     name: "Trimmed",
                     run: {
-                        workflow_url: "https://example.org/hello.cwl",
+                        workflow_url: "example.org/hello.cwl",
                         workflow_type: " CWL",
                         workflow_type_version: "v1.2 ",
                         tags: { project: "" },
@@ -372,6 +403,7 @@ describe("workflowExamples", () => {
             ]),
         });
         expect(problemsOf(problems)).toEqual([
+            "entry 1.run.workflow_url is not a URL",
             "entry 1.run.workflow_type has white space around it",
             "entry 1.run.workflow_type_version has white space around it",
             "entry 1.run.tags.project is empty",
