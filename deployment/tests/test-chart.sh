@@ -40,13 +40,13 @@ assert_eq() {
   fi
 }
 
-# Checks that rendering with the given arguments fails with a message
-# matching `pattern`
-assert_fails() {
-  local description="$1" pattern="$2" error
-  shift 2
+# Checks that rendering the chart at `path` with the given arguments fails
+# with a message matching `pattern`
+assert_fails_at() {
+  local path="$1" description="$2" pattern="$3" error
+  shift 3
   tests=$((tests + 1))
-  if error="$(helm template krini "${chart}" --namespace krini "$@" 2>&1 >/dev/null)"; then
+  if error="$(helm template krini "${path}" --namespace krini "$@" 2>&1 >/dev/null)"; then
     failures=$((failures + 1))
     printf 'FAIL: %s\n  rendering succeeded\n' "${description}"
   elif ! grep -qE "${pattern}" <<< "${error}"; then
@@ -56,9 +56,35 @@ assert_fails() {
   fi
 }
 
+# Checks that rendering the chart with the given arguments fails with a
+# message matching `pattern`
+assert_fails() {
+  assert_fails_at "${chart}" "$@"
+}
+
 # Value of an environment variable of the container (`null` if not set)
 env_value() {
   get Deployment ".spec.template.spec.containers[0].env[] | select(.name == \"$1\") | .value // \"secret:\" + .valueFrom.secretKeyRef.name + \"/\" + .valueFrom.secretKeyRef.key" | grep . || echo null
+}
+
+# Copies of the chart: without the schema (`schemaless`), and with Helm's
+# notes as a template (`notes`), which `helm template` doesn't render
+copies="$(mktemp -d)"
+trap 'rm -rf "${copies}"' EXIT
+cp -r "${chart}" "${copies}/schemaless"
+rm "${copies}/schemaless/values.schema.json"
+cp -r "${chart}" "${copies}/notes"
+{
+  echo '{{- define "krini.notesTest" -}}'
+  cat "${chart}/templates/NOTES.txt"
+  echo '{{- end -}}'
+} > "${copies}/notes/templates/_notes-test.tpl"
+echo 'notes: {{ include "krini.notesTest" . | toJson }}' > "${copies}/notes/templates/notes-test.yaml"
+
+# Prints Helm's notes, rendered with the CI values and the given arguments
+notes() {
+  helm template krini "${copies}/notes" --namespace krini -f "${values}" "$@" \
+    --show-only templates/notes-test.yaml | yq -r .notes
 }
 
 # --- Defaults (with the CI values) ---
@@ -239,6 +265,42 @@ assert_eq "ingress annotations" \
 render --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
   --set-json 'krini.ingress.annotations={"cert-manager.io/cluster-issuer":null}'
 assert_eq "ingress annotation removed" "$(get Ingress '.metadata.annotations // {} | tojson')" "{}"
+for kind in ClusterIssuer:cluster-issuer Issuer:issuer; do
+  render --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
+    --set krini.ingress.https.issuerKind="${kind%%:*}"
+  assert_eq "ingress issuerKind ${kind%%:*}" \
+    "$(get Ingress '.metadata.annotations | to_entries | map(.key + "=" + .value) | join(",")')" \
+    "cert-manager.io/${kind#*:}=letsencrypt-prod"
+  assert_eq "ingress TLS with issuerKind ${kind%%:*}" \
+    "$(get Ingress '.spec.tls[0] | .hosts[0] + "," + .secretName')" "krini.example.org,krini-tls"
+done
+render --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
+  --set krini.ingress.https.issuerKind=null
+assert_eq "ingress issuerKind null" \
+  "$(get Ingress '.metadata.annotations | keys | join(",")')" "cert-manager.io/cluster-issuer"
+render --set krini.ingress.https.issuerKind=Issuer
+assert_eq "ingress issuerKind without HTTPS" \
+  "$(get Ingress '[.metadata.annotations // {}, .spec.tls // "none"] | tojson')" '[{},"none"]'
+render --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
+  --set krini.ingress.https.issuerKind=Issuer \
+  --set-json 'krini.ingress.annotations={"cert-manager.io/issuer":null}'
+assert_eq "ingress Issuer annotation removed" "$(get Ingress '.metadata.annotations // {} | tojson')" "{}"
+render --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
+  --set krini.ingress.https.issuerKind=Issuer \
+  --set krini.ingress.annotations.cert-manager\\.io/issuer=other
+assert_eq "ingress Issuer annotation overridden" \
+  "$(get Ingress '.metadata.annotations | tojson')" '{"cert-manager.io/issuer":"other"}'
+render --set krini.ingress.https.enabled=true --set krini.ingress.https.existingSecret=krini-certificate
+assert_eq "ingress TLS from an existing Secret" \
+  "$(get Ingress '.spec.tls[0] | .hosts[0] + "," + .secretName')" "krini.example.org,krini-certificate"
+assert_eq "no cert-manager annotation with an existing Secret" \
+  "$(get Ingress '.metadata.annotations // {} | tojson')" "{}"
+render --set krini.ingress.https.enabled=true --set krini.ingress.https.existingSecret=krini-certificate \
+  --set krini.ingress.https.issuerKind=Issuer
+assert_eq "no Issuer annotation with an existing Secret" \
+  "$(get Ingress '[.metadata.annotations // {}, .spec.tls[0].secretName] | tojson')" '[{},"krini-certificate"]'
+render --set krini.ingress.https.existingSecret=krini-certificate
+assert_eq "existing Secret without HTTPS" "$(get Ingress '.spec.tls // "none"')" "none"
 render --set krini.ingress.enabled=false --set krini.httpRoute.enabled=true \
   --set-json 'krini.httpRoute.parentRefs=[{"name":"gateway","namespace":"gateway-system","sectionName":"https"}]'
 assert_eq "HTTPRoute" \
@@ -255,6 +317,19 @@ render --set krini.networkPolicy.enabled=true \
 assert_eq "NetworkPolicy" \
   "$(get NetworkPolicy '.spec | (.ingress[0].ports[0].port | tostring) + "," + .podSelector.matchLabels."app.kubernetes.io/component"')" \
   "3000,app"
+
+# --- Notes ---
+assert_eq "notes: Ingress without TLS on OpenShift" \
+  "$(notes --api-versions route.openshift.io/v1 | grep -c 'Ingress without TLS, which OpenShift serves without TLS')" "1"
+assert_eq "notes: Ingress with TLS on OpenShift" \
+  "$(notes --api-versions route.openshift.io/v1 --set krini.ingress.https.enabled=true \
+    --set krini.ingress.https.issuer=letsencrypt-prod --set krini.ingress.https.issuerKind=Issuer \
+    | grep -c 'without TLS' || true)" "0"
+assert_eq "notes: Ingress with an existing Secret on OpenShift" \
+  "$(notes --api-versions route.openshift.io/v1 --set krini.ingress.https.enabled=true \
+    --set krini.ingress.https.existingSecret=krini-certificate | grep -c 'without TLS' || true)" "0"
+assert_eq "notes: Ingress without TLS" \
+  "$(notes | grep -c 'The Ingress has no TLS')" "1"
 
 # --- Invalid values ---
 assert_fails "no registry" "cloudRegistryUrl" \
@@ -292,7 +367,31 @@ assert_fails "taskExamples not a list" "taskExamples" -f "${values}" \
   --set config.taskExamples=hello
 assert_fails "extraEnv for the examples" "WORKFLOW_EXAMPLES" -f "${values}" \
   --set-json 'extraEnv=[{"name":"WORKFLOW_EXAMPLES","value":"[]"}]'
-assert_fails "HTTPS without issuer" "https.issuer" -f "${values}" --set krini.ingress.https.enabled=true
+assert_fails "HTTPS without issuer" "https.issuer must be set" -f "${values}" --set krini.ingress.https.enabled=true
+for annotation in cert-manager\\.io/issuer=letsencrypt-prod cert-manager\\.io/cluster-issuer=letsencrypt-prod \
+  kubernetes\\.io/tls-acme=true; do
+  assert_fails "existing Secret with the annotation ${annotation//\\/}" \
+    "krini.ingress.https.existingSecret must not be set together with an annotation" -f "${values}" \
+    --set krini.ingress.https.enabled=true --set krini.ingress.https.existingSecret=krini-certificate \
+    --set-string "krini.ingress.annotations.${annotation}"
+done
+assert_fails "issuerKind not in the schema" "at '/krini/ingress/https/issuerKind'" -f "${values}" \
+  --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
+  --set krini.ingress.https.issuerKind=Issuers
+assert_fails "issuer and existing Secret" "either krini.ingress.https.issuer or krini.ingress.https.existingSecret" \
+  -f "${values}" --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
+  --set krini.ingress.https.existingSecret=krini-certificate
+assert_fails "both issuer annotations" "must not have both annotations cert-manager.io/issuer and cert-manager.io/cluster-issuer" \
+  -f "${values}" --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
+  --set krini.ingress.https.issuerKind=Issuer \
+  --set krini.ingress.annotations.cert-manager\\.io/cluster-issuer=other
+# Without the schema, the template rejects other kinds too
+for kind in Issuers issuer ""; do
+  assert_fails_at "${copies}/schemaless" "issuerKind '${kind}' without the schema" \
+    "krini.ingress.https.issuerKind must be ClusterIssuer or Issuer" -f "${values}" \
+    --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
+    --set-string krini.ingress.https.issuerKind="${kind}"
+done
 assert_fails "replicas" "replicas" -f "${values}" --set krini.replicas=0
 
 echo "${tests} tests, ${failures} failures"

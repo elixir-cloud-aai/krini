@@ -127,10 +127,22 @@ krini:
     # removes one of these
     annotations: {}
     https:
-      # Request a certificate from cert-manager (via `issuer`, the name of
-      # a ClusterIssuer of the cluster; required if enabled) and serve HTTPS
+      # Serve HTTPS, with a certificate requested from cert-manager (via
+      # `issuer`, of the kind `issuerKind`) or from `existingSecret`
       enabled: false
+      # Name of the cert-manager issuer; required if enabled, unless
+      # `existingSecret` is set
       issuer: ""
+      # Kind of `issuer`: `ClusterIssuer` (annotation
+      # `cert-manager.io/cluster-issuer`) or `Issuer`, a namespaced issuer in
+      # the release's namespace (`cert-manager.io/issuer`), e.g., on clusters
+      # where projects can't create cluster-scoped resources (see
+      # docs/operator-guide/helm-chart.md for OpenShift)
+      issuerKind: ClusterIssuer
+      # Name of an existing TLS Secret (`kubernetes.io/tls`) in the release's
+      # namespace with the certificate of `hostName`, instead of cert-manager:
+      # the chart then requests no certificate (set either `issuer` or this)
+      existingSecret: ""
   # Gateway API HTTPRoute (`gateway.networking.k8s.io/v1`) for `hostName`,
   # attached to an existing Gateway, whose listener terminates TLS;
   # requires `ingress.enabled: false`
