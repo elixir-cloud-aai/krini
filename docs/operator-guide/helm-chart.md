@@ -87,7 +87,9 @@ default; use it for development and testing only.
     [Image](#image)), so the values need no image tag.
     On OpenShift, add `krini: {ingress: {enabled: false}}`, so that
     the chart creates a Route with TLS instead of an Ingress (see
-    [Exposing Krini](#exposing-krini)).
+    [Exposing Krini](#exposing-krini)); for a host name outside the
+    router's domain, keep the Ingress with a certificate instead (see [Own
+    host name on OpenShift](#own-host-name-on-openshift)).
 
 4. Download the chart of the release that you deploy (here 0.1.0) from its
    GitHub release, with the [GitHub CLI](https://cli.github.com/) (or from
@@ -205,11 +207,26 @@ paths to it:
   they take precedence over the chart's, and `null` removes one of the
   chart's. The chart sets no annotations for particular controllers. By
   default, the Ingress has no TLS, so TLS must be terminated in front of
-  the cluster (e.g. by a load balancer); with `https.enabled: true`,
-  cert-manager issues a certificate via the ClusterIssuer `https.issuer`
-  (required then, e.g. `letsencrypt-prod`), and the Ingress serves HTTPS
-  with it (Secret `<release>-krini-tls`, or `krini-tls` for a release
-  named `krini`).
+  the cluster (e.g. by a load balancer); with `https.enabled: true`, the
+  Ingress serves HTTPS with a certificate either from cert-manager or from
+  a Secret of your own:
+    - cert-manager issues it via the issuer `https.issuer` (e.g.
+      `letsencrypt-prod`), a ClusterIssuer (annotation
+      `cert-manager.io/cluster-issuer`), or with `https.issuerKind:
+      Issuer` a namespaced Issuer in the release's namespace (annotation
+      `cert-manager.io/issuer`), and renews it; it is kept in the Secret
+      `<release>-krini-tls` (`krini-tls` for a release named `krini`).
+    - `https.existingSecret` names an existing TLS Secret
+      (`kubernetes.io/tls`) in the release's namespace with the
+      certificate of `hostName`, which you renew yourself; the chart then
+      requests no certificate (set either `https.issuer` or
+      `https.existingSecret`).
+
+    `https.issuerKind` is `ClusterIssuer` by default (also if `null`);
+    rendering fails for other kinds, and if `annotations` would give the
+    Ingress both `cert-manager.io/cluster-issuer` and
+    `cert-manager.io/issuer`, which cert-manager refuses.
+
 - **Gateway API HTTPRoute** (`krini.httpRoute`), attached to an existing
   Gateway whose listener terminates TLS, with the annotations of
   `krini.httpRoute.annotations`; the Ingress must be disabled:
@@ -234,6 +251,10 @@ paths to it:
   `krini.route.enabled: false` for a Route of your own. On OpenShift,
   disable the Ingress (`krini.ingress.enabled: false`), which is enabled
   by default: OpenShift turns a plain Ingress into a Route without TLS.
+  The Route has no certificate of its own, so the router serves its
+  default (wildcard) certificate; for a host name outside the router's
+  domain, use the Ingress with a certificate instead (see [Own host name
+  on OpenShift](#own-host-name-on-openshift)).
 
 Krini must be served over HTTPS: it sets secure cookies, and sends users
 back to `APP_ORIGIN` (`https://<hostName>`) after the login. If none of
@@ -245,6 +266,74 @@ existing links), it redirects their requests to `APP_ORIGIN`, where the
 login works; probes and `helm test` reach the pod and the Service at
 internal addresses, which are never redirected. `config.redirectToAppOrigin:
 false` switches the redirect off (see [Several
+addresses](deployment.md#several-addresses)).
+
+#### Own host name on OpenShift
+
+To serve a certificate of your own host name (e.g., from Let's Encrypt)
+instead of the router's wildcard certificate, use the chart's Ingress,
+which OpenShift turns into a Route. Where projects can't create
+cluster-scoped resources (and thus no ClusterIssuer), request the
+certificate from a namespaced cert-manager `Issuer` in the release's
+namespace, which `krini.ingress.https.issuerKind: Issuer` selects:
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: letsencrypt-prod
+  namespace: krini
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.org
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+    - http01:
+        ingress:
+          ingressClassName: openshift-default
+```
+
+```yaml
+krini:
+  ingress:
+    enabled: true
+    className: openshift-default
+    annotations:
+      route.openshift.io/termination: edge
+    https:
+      enabled: true
+      issuer: letsencrypt-prod
+      issuerKind: Issuer
+```
+
+The class `openshift-default` and the annotation
+`route.openshift.io/termination` are OpenShift's; the solver's
+`ingressClassName` must be the Ingress's `className`, or the HTTP-01
+challenge is not answered. cert-manager stores the certificate in the
+Secret that the Ingress names (`<release>-krini-tls`), and OpenShift
+copies it into the Route it creates for the Ingress, with edge
+termination, and renews it there with the Secret. The HTTP-01 challenge
+is answered by an Ingress of the solver in the same class, which
+OpenShift serves over plain HTTP; check the generated Route (`oc get
+route -o yaml`), e.g., that it redirects HTTP to HTTPS
+(`insecureEdgeTerminationPolicy`). The router's annotations (e.g., for
+timeouts) then go into `krini.ingress.annotations`, which OpenShift
+copies to the generated Route, as `krini.route.annotations` apply only to
+the chart's own Route. Helm's notes no longer warn about the Ingress on
+OpenShift once `krini.ingress.https.enabled` is true. With a certificate
+of your own instead of cert-manager, set `https.existingSecret` instead
+of `issuer` and `issuerKind`.
+
+The chart's Ingress serves `hostName` only: for a second host name
+(e.g., an old one), create a second Ingress outside the chart for that
+host, with the same class, the annotations above and
+`cert-manager.io/issuer: letsencrypt-prod`, to the chart's Service (named
+like the Deployment, port `http`), and a `tls` section with a Secret of
+its own, so that cert-manager issues and renews its certificate, too (a
+Route made by hand embeds its certificate, which nothing renews). Krini
+redirects the requests at that host to `APP_ORIGIN` (see [Several
 addresses](deployment.md#several-addresses)).
 
 ### Security
