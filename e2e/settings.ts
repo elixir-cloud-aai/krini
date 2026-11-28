@@ -24,6 +24,30 @@ const privacy = {
     loginNoticeUrl: "https://login.example.org/privacy",
 };
 
+/** Examples of the workflow form (`WORKFLOW_EXAMPLES`): one of a type of
+ * the mock WES service, and one of a type that it doesn't run; the task
+ * form has the built-in examples */
+const workflowExamples = [
+    {
+        name: "CWL hello",
+        description: "Says hello",
+        run: {
+            workflow_url: "https://example.org/workflows/hello.cwl",
+            workflow_type: "CWL",
+            workflow_type_version: "v1.2",
+            workflow_params: { message: "hello" },
+        },
+    },
+    {
+        name: "Nextflow hello",
+        run: {
+            workflow_url: "https://example.org/workflows/hello-nf",
+            workflow_type: "NFL",
+            workflow_type_version: "DSL2",
+        },
+    },
+];
+
 /** A request that the mock WES service received */
 type WesRequest = {
     method: string;
@@ -66,4 +90,5 @@ export {
     type RefreshMode,
     type TesRequest,
     type WesRequest,
+    workflowExamples,
 };

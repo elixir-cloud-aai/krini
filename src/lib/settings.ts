@@ -6,6 +6,7 @@
  * of showing errors page by page. Problems are reported without secrets:
  * a provider is named by its `id`, never by its `clientSecret`.
  */
+import { taskExamples, workflowExamples } from "./examples";
 import { getLoginProviders } from "./oidc/providers";
 
 export type SettingsProblem = {
@@ -231,6 +232,12 @@ export function validateSettings(): SettingsReport {
             problem: "is not a valid http(s) URL; the link is ignored",
         });
     }
+
+    // invalid examples are left out, or the built-in ones used
+    for (const problem of taskExamples().problems)
+        warnings.push({ setting: "TASK_EXAMPLES", problem });
+    for (const problem of workflowExamples().problems)
+        warnings.push({ setting: "WORKFLOW_EXAMPLES", problem });
 
     const providers = getLoginProviders();
     if (

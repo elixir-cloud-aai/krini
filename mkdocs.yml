@@ -69,7 +69,7 @@ nav:
   - Home: index.md
   - User guide:
       - user-guide/index.md
-      - Workflow examples: user-guide/workflow-examples.md
+      - Examples: user-guide/workflow-examples.md
   - Operator guide:
       - operator-guide/index.md
       - Deployment: operator-guide/deployment.md

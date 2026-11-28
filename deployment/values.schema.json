@@ -88,6 +88,16 @@
                             "description": "https URL of the login provider's privacy notice (PRIVACY_LOGIN_NOTICE_URL)"
                         }
                     }
+                },
+                "taskExamples": {
+                    "type": ["array", "null"],
+                    "items": { "type": "object" },
+                    "description": "Examples of the task form (TASK_EXAMPLES), passed as JSON; null for the built-in examples, [] for none"
+                },
+                "workflowExamples": {
+                    "type": ["array", "null"],
+                    "items": { "type": "object" },
+                    "description": "Examples of the workflow form (WORKFLOW_EXAMPLES), passed as JSON; null for the built-in examples, [] for none"
                 }
             }
         },
