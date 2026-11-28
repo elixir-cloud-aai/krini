@@ -44,12 +44,16 @@ afterEach(() => {
 /**
  * Build a refresh request from Krini's own pages
  * @param origin The request's `Origin` (null: none)
+ * @param headers Further headers
  * @returns The request
  */
-function request(origin: string | null = appOrigin) {
+function request(
+    origin: string | null = appOrigin,
+    headers: Record<string, string> = {},
+) {
     return new NextRequest(`${appOrigin}/auth/api/refresh`, {
         method: "POST",
-        headers: origin === null ? {} : { origin },
+        headers: origin === null ? headers : { origin, ...headers },
     });
 }
 
@@ -63,6 +67,7 @@ async function refresh(
         refresh_token: "rt-SECRET-1",
     },
     reply: unknown = tokens(),
+    headers: Record<string, string> = {},
 ) {
     setUp(cookies);
     mockOidcProvider();
@@ -71,7 +76,7 @@ async function refresh(
     else post.mockResolvedValue({ status: 200, data: reply });
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { POST } = await import("./route");
-    const response = await POST(request());
+    const response = await POST(request(appOrigin, headers));
     return { response, post, error };
 }
 
@@ -250,6 +255,26 @@ describe("POST /auth/api/refresh", () => {
         );
     });
 
+    it("ends the session at once for a client that took its turn", async () => {
+        // with Web Locks, no other refresh of the browser can have used
+        // the token, so the rejection is no lost race
+        const { response } = await refresh(
+            undefined,
+            httpError(400, { error: "invalid_grant" }),
+            { "krini-refresh-lock": "held" },
+        );
+        await expectSessionEnded(response, "Failed to refresh token");
+    });
+
+    it("takes another value of the lock header as no lock", async () => {
+        const { response } = await refresh(
+            undefined,
+            httpError(400, { error: "invalid_grant" }),
+            { "krini-refresh-lock": "yes" },
+        );
+        expect(response.status).toBe(409);
+    });
+
     it("keeps the session while the winner's answer may still be on its way", async () => {
         // e.g. the retry of the loser, or a third tab, before the winner's
         // cookies reached the browser
@@ -264,6 +289,17 @@ describe("POST /auth/api/refresh", () => {
         expect(response.status).toBe(409);
         // the time of the first rejection stays
         expect(response.headers.getSetCookie()).toEqual([]);
+    });
+
+    it("ends the session a minute after the first rejection, exactly", async () => {
+        const { response } = await refresh(
+            {
+                refresh_token: "rt-SECRET-1",
+                refresh_rejected: rejected("rt-SECRET-1", now - 60 * 1000),
+            },
+            httpError(400, { error: "invalid_grant" }),
+        );
+        await expectSessionEnded(response, "Failed to refresh token");
     });
 
     it.each([

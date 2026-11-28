@@ -25,6 +25,11 @@ export const RETRY_BASE_MS = 5 * 1000;
 export const RETRY_MAX_MS = 5 * 60 * 1000;
 /** Name of the Web Lock that refreshes and logouts hold */
 export const REFRESH_LOCK = "krini-session-refresh";
+/** Header of a refresh request whose page holds the refresh lock (value
+ * `held`): no other refresh of the browser can have used its refresh
+ * token, so the route ends the session at the provider's first rejection
+ * of it */
+export const REFRESH_LOCK_HEADER = "Krini-Refresh-Lock";
 
 /** The access token's expiry and lifetime (null: unknown), in ms */
 export type Expiry = { at: number; lifetime: number | null };
@@ -75,16 +80,19 @@ function marginOf(expiry: Expiry): number {
 /**
  * Sends `POST /auth/api/refresh`
  * @param fetchFn The fetch function
+ * @param locked Whether the page holds the refresh lock (Web Locks)
  * @returns The status and failure `code` of the response
  */
 export async function postRefresh(
     fetchFn: typeof fetch,
+    locked = false,
 ): Promise<RefreshResult> {
     let response: Response;
     try {
         response = await fetchFn("/auth/api/refresh", {
             method: "POST",
             credentials: "same-origin",
+            ...(locked ? { headers: { [REFRESH_LOCK_HEADER]: "held" } } : {}),
             // the lock is held meanwhile, and logouts wait for it
             signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
         });

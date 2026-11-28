@@ -23,31 +23,11 @@ test("a session that the provider ended leads to the login page once", async ({
     await setRefreshMode({ status: 400, error: "invalid_grant" });
     await expireAccessToken(page);
 
-    // the first rejection of the refresh token keeps the session, as a
-    // concurrent refresh may have used the token
+    // the page refreshes under the Web Lock, so no concurrent refresh can
+    // have used the token: the first rejection ends the session
     const first = page.waitForResponse((res) => isRefresh(res.url()));
     await page.goto("/dashboard/workflows");
-    expect((await first).status()).toBe(409);
-    // a minute later, no winner's answer can be on its way any more: move
-    // the first rejection back, and the retry (5 seconds later) gets the
-    // same rejection, which ends the session
-    const record = (await page.context().cookies()).find(
-        (val) => val.name === "refresh_rejected",
-    );
-    expect(record).toBeDefined();
-    // Next.js encodes the `:` of the value
-    const [key] = decodeURIComponent(record?.value ?? "").split(":");
-    // replaced rather than overwritten, so that no browser keeps both
-    await page.context().clearCookies({ name: "refresh_rejected" });
-    await page.context().addCookies([
-        {
-            name: "refresh_rejected",
-            value: `${key}:${Date.now() - 61 * 1000}`,
-            url: new URL(page.url()).origin,
-            httpOnly: true,
-            sameSite: "Lax",
-        },
-    ]);
+    expect((await first).status()).toBe(401);
     await page.waitForURL(/\/auth\/login$/);
     // the session's cookies are gone, so the dashboard is anonymous now
     const names = (await page.context().cookies()).map((val) => val.name);
@@ -64,9 +44,10 @@ test("concurrent refreshes keep the session when refresh tokens rotate", async (
     const token = await accessToken(page);
     await setRefreshMode({ rotate: true, delayMs: 500 });
 
-    // e.g. two tabs of a browser without Web Locks, whose refreshes may
-    // reach different pods: both send the same refresh token, the
-    // provider renews the session for one and rejects the other
+    // e.g. two tabs of a browser without Web Locks (no lock header), whose
+    // refreshes may reach different pods: both send the same refresh
+    // token, the provider renews the session for one and rejects the
+    // other
     const origin = new URL(page.url()).origin;
     const refresh = () =>
         page.request.post("/auth/api/refresh", { headers: { origin } });

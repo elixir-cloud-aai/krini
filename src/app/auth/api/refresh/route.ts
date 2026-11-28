@@ -19,6 +19,7 @@ import {
     type SessionTokens,
     setRefreshTokenCookie,
 } from "@/lib/session-cookies";
+import { REFRESH_LOCK_HEADER } from "@/lib/token-refresh";
 
 /** Lifetime of `refresh_rejected`, in seconds: longer than the client's
  * longest wait before it tries again (`RETRY_MAX_MS` of
@@ -40,9 +41,10 @@ const REFRESH_RACE_MS = 60 * 1000;
  *   deleted, so the client stops trying, and the access token, if any,
  *   stays until it expires;
  * - `concurrent_refresh` (409): the provider rejected the refresh token
- *   for the first time; another refresh of the session (e.g. of another
- *   tab, on any pod) may have used it just before, so the client tries
- *   again with the cookies it has then;
+ *   for the first time, or again within `REFRESH_RACE_MS` of the first;
+ *   another refresh of the session (e.g. of another tab, on any pod) may
+ *   have used it just before, so the client tries again with the cookies
+ *   it has then;
  * - `unavailable` (503): the provider or Krini's settings failed; the
  *   session stays, and the client tries again later.
  */
@@ -217,23 +219,30 @@ export async function POST(req: NextRequest) {
         // won. Only a rejection of the same token once the winner's answer
         // can no longer be on its way ends the session. The client's lock
         // (one refresh per browser at a time) keeps refreshes from racing
-        // at all where browsers have Web Locks.
+        // at all where browsers have Web Locks: a page that says it holds
+        // the lock gets no grace. The header needn't be trusted, as it
+        // only shortens the client's own session.
+        if (req.headers.get(REFRESH_LOCK_HEADER) === "held") {
+            return failure("session_ended", "Failed to refresh token");
+        }
         const key = refreshTokenKey(refreshToken);
         const firstRejection = firstRejectionOf(
             cookieStore.get(REFRESH_REJECTED)?.value,
             key,
         );
-        if (firstRejection !== null) {
-            if (Date.now() - firstRejection >= REFRESH_RACE_MS) {
-                return failure("session_ended", "Failed to refresh token");
-            }
-            return failure("concurrent_refresh", "Failed to refresh token");
+        if (
+            firstRejection !== null &&
+            Date.now() - firstRejection >= REFRESH_RACE_MS
+        ) {
+            return failure("session_ended", "Failed to refresh token");
         }
         const retry = failure("concurrent_refresh", "Failed to refresh token");
-        retry.cookies.set(REFRESH_REJECTED, `${key}:${Date.now()}`, {
-            ...baseCookieOptions(),
-            maxAge: REFRESH_REJECTED_MAX_AGE,
-        });
+        if (firstRejection === null) {
+            retry.cookies.set(REFRESH_REJECTED, `${key}:${Date.now()}`, {
+                ...baseCookieOptions(),
+                maxAge: REFRESH_REJECTED_MAX_AGE,
+            });
+        }
         return retry;
     }
 
