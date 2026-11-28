@@ -15,6 +15,8 @@ function setUp(overrides: Record<string, string | undefined> = {}) {
     vi.stubEnv("CLOUD_REGISTRY_URL", "https://registry.example.org/v1");
     vi.stubEnv("OIDC_REDIRECT_URI", undefined);
     vi.stubEnv("COMPUTE_ACCESS_REQUEST_URL", undefined);
+    vi.stubEnv("TASK_EXAMPLES", undefined);
+    vi.stubEnv("WORKFLOW_EXAMPLES", undefined);
     for (const [key, value] of Object.entries(overrides))
         vi.stubEnv(key, value);
 }
@@ -225,6 +227,25 @@ describe("validateSettings", () => {
             setting: "COMPUTE_ACCESS_REQUEST_URL",
             problem: "is not a valid http(s) URL; the link is ignored",
         });
+    });
+
+    it("warns on invalid TASK_EXAMPLES and WORKFLOW_EXAMPLES", () => {
+        setUp({
+            TASK_EXAMPLES: "{",
+            WORKFLOW_EXAMPLES: JSON.stringify([{ name: "No run" }]),
+        });
+        const { fatal, warnings } = validateSettings();
+        expect(fatal).toEqual([]);
+        expect(warnings).toEqual([
+            {
+                setting: "TASK_EXAMPLES",
+                problem: "is not valid JSON; the built-in examples are used",
+            },
+            {
+                setting: "WORKFLOW_EXAMPLES",
+                problem: "entry 1 has no run; the entry is left out",
+            },
+        ]);
     });
 
     it("warns when no provider has compute or admin groups", () => {

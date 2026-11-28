@@ -1,7 +1,11 @@
 "use client";
 import dynamic from "next/dynamic";
+import { useRef } from "react";
+import { ExampleButtons } from "@/components/shared/example-buttons";
 import { useTESProvider } from "@/hooks";
 import { withSelfHostedAce } from "@/lib/ace-workers";
+import { fillTaskForm } from "@/lib/example-forms";
+import type { TaskExample } from "@/lib/examples";
 
 const ECCClientGa4ghTesRunCreate = dynamic(
     () =>
@@ -18,8 +22,14 @@ const ECCClientGa4ghTesRunCreate = dynamic(
     },
 );
 
-export function ECCClientGa4ghTesCreateRunsClient() {
+type Props = {
+    /** Examples that fill the form (`TASK_EXAMPLES`) */
+    examples?: TaskExample[];
+};
+
+export function ECCClientGa4ghTesCreateRunsClient({ examples = [] }: Props) {
     const provider = useTESProvider();
+    const container = useRef<HTMLDivElement>(null);
 
     if (!provider) {
         return (
@@ -29,5 +39,23 @@ export function ECCClientGa4ghTesCreateRunsClient() {
         );
     }
 
-    return <ECCClientGa4ghTesRunCreate provider={provider} />;
+    return (
+        <div className="space-y-4">
+            <ExampleButtons
+                examples={examples}
+                form="task"
+                fill={(example) =>
+                    fillTaskForm(
+                        container.current?.querySelector(
+                            "ecc-client-ga4gh-tes-run-create",
+                        ) ?? null,
+                        example.task,
+                    )
+                }
+            />
+            <div ref={container}>
+                <ECCClientGa4ghTesRunCreate provider={provider} />
+            </div>
+        </div>
+    );
 }

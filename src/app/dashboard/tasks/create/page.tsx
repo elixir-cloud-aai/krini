@@ -1,13 +1,19 @@
 import { Eye } from "lucide-react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { ComputeGate } from "@/components/shared/compute-gate";
 import { Button } from "@/components/ui/button";
+import { taskExamples } from "@/lib/examples";
 import {
     ECCClientGa4ghTesCreateRunsClient,
     TESServerList,
 } from "../_components";
 
-function Page() {
+/** The form, with the deployment's examples, read at request time */
+async function Page() {
+    await connection();
+    const { examples } = taskExamples();
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center gap-4">
@@ -46,7 +52,7 @@ function Page() {
                 }
             >
                 <div className="overflow-hidden px-2">
-                    <ECCClientGa4ghTesCreateRunsClient />
+                    <ECCClientGa4ghTesCreateRunsClient examples={examples} />
                 </div>
             </ComputeGate>
         </div>

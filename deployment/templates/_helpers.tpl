@@ -141,6 +141,16 @@ settings are left out, so that Krini's defaults apply.
   value: {{ . | quote }}
 {{- end }}
 {{- end }}
+{{- /* lists as JSON, also an empty one (no examples); not set: Krini's
+built-in examples */}}
+{{- range $var := list
+  (list "TASK_EXAMPLES" $config.taskExamples)
+  (list "WORKFLOW_EXAMPLES" $config.workflowExamples) }}
+{{- if kindIs "slice" (index $var 1) }}
+- name: {{ index $var 0 }}
+  value: {{ index $var 1 | toJson | quote }}
+{{- end }}
+{{- end }}
 - name: LOGIN_PROVIDERS
   valueFrom:
     secretKeyRef:
@@ -156,7 +166,7 @@ Names of the environment variables that the chart sets, which `extraEnv`
 must not set (Kubernetes would use the last one, silently).
 */}}
 {{- define "krini.reservedEnv" -}}
-{{- toJson (list "CLOUD_REGISTRY_URL" "APP_ORIGIN" "REDIRECT_TO_APP_ORIGIN" "OIDC_REDIRECT_URI" "COMPUTE_ACCESS_REQUEST_URL" "PRIVACY_CONTROLLER" "PRIVACY_CONTACT" "PRIVACY_NOTICE_URL" "PRIVACY_LOGIN_NOTICE_URL" "LOGIN_PROVIDERS" "PORT") -}}
+{{- toJson (list "CLOUD_REGISTRY_URL" "APP_ORIGIN" "REDIRECT_TO_APP_ORIGIN" "OIDC_REDIRECT_URI" "COMPUTE_ACCESS_REQUEST_URL" "PRIVACY_CONTROLLER" "PRIVACY_CONTACT" "PRIVACY_NOTICE_URL" "PRIVACY_LOGIN_NOTICE_URL" "TASK_EXAMPLES" "WORKFLOW_EXAMPLES" "LOGIN_PROVIDERS" "PORT") -}}
 {{- end -}}
 
 {{/*

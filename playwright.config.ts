@@ -8,6 +8,7 @@ import {
     mockHttpsPort,
     mockURL,
     privacy,
+    workflowExamples,
 } from "./e2e/settings";
 
 // end-to-end tests (`e2e/`) against the mock services of
@@ -64,6 +65,7 @@ const appEnv = {
     PRIVACY_CONTACT: privacy.contact,
     PRIVACY_NOTICE_URL: privacy.noticeUrl,
     PRIVACY_LOGIN_NOTICE_URL: privacy.loginNoticeUrl,
+    WORKFLOW_EXAMPLES: JSON.stringify(workflowExamples),
 };
 
 /** The app: the image, or the build of the checkout */
