@@ -20,16 +20,20 @@ restarts it.
    values may have changed, too.
 4. Go through [Checking a deployment](deployment.md#checking-a-deployment).
 
-Sessions survive an upgrade, as they are in cookies. While the old and
-the new container run side by side (e.g. during the rolling update of the
-Helm chart), the tabs of a browser still refresh a session one at a time;
-only in browsers without Web Locks (or in tabs loaded from images older
-than 0.1.0, which don't take turns) can two tabs whose refreshes reach
-both containers end the session, and send the user to the login page (see
-[Pods](helm-chart.md#pods)). Keep each browser on one pod (sticky
-sessions) to avoid even that.
+Sessions survive an upgrade, as they are in cookies, also while the old
+and the new container run side by side (e.g. during the rolling update
+of the Helm chart; see [Pods](helm-chart.md#pods)), apart from the
+caveat for upgrades from 0.1.0 below.
 
 ## From 0.1.0 to the next release
+
+Krini no longer needs sticky sessions for more than one replica: it
+records refresh tokens that the provider rejected in a cookie
+(`refresh_rejected`) instead of the memory of each pod (see
+[Sessions and logout](login.md#sessions-and-logout)). While pods of 0.1.0
+still run (e.g. during the rolling update), a refresh that reaches one of
+them can still end the session in a browser without Web Locks, as
+before.
 
 Krini now redirects requests at other hosts than that of `APP_ORIGIN` to
 `APP_ORIGIN`, by default (see [Several

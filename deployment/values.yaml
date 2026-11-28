@@ -97,12 +97,9 @@ krini:
   startupProbe: {}
   readinessProbe: {}
   livenessProbe: {}
-  # Number of pods. Sessions are in cookies, and the tabs of a browser
-  # refresh a session one at a time, so any pod can serve any request;
-  # only in browsers without Web Locks can concurrent refreshes that reach
-  # different pods end the session, unless the ingress keeps each browser
-  # on one pod (sticky sessions; see docs/operator-guide/helm-chart.md,
-  # Pods)
+  # Number of pods. Sessions and the state of their refreshes are in
+  # cookies, so any pod can serve any request, without sticky sessions
+  # (see docs/operator-guide/helm-chart.md, Pods)
   replicas: 1
   # PodDisruptionBudget, so that voluntary disruptions (e.g., node drains)
   # evict at most `maxUnavailable` pods at once (1 if neither it nor

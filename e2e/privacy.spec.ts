@@ -3,7 +3,7 @@
  * shows the deployment's settings, and the cookies that Krini sets: none
  * for visitors, only the session's after login
  */
-import { expect, login, test } from "./fixtures";
+import { expect, login, setRefreshMode, test } from "./fixtures";
 import { privacy } from "./settings";
 
 /** Cookies of a session, as the notice lists them (`COOKIES` in
@@ -89,9 +89,17 @@ test("the notice lists exactly the cookies of the app", async ({ page }) => {
     // a login in progress, before the provider sends the browser back
     await page.request.get("/auth/api/login-redirect", { maxRedirects: 0 });
     await collect();
-    // a session, and its logout
+    // a session, a refresh token that the provider rejects once, and the
+    // session's logout
     await login(page);
     await collect();
+    await setRefreshMode({ status: 400, error: "invalid_grant" });
+    const rejected = await page.request.post("/auth/api/refresh", {
+        headers: { origin: new URL(page.url()).origin },
+    });
+    expect(rejected.status()).toBe(409);
+    await collect();
+    await setRefreshMode({});
     await page.getByRole("button", { name: /Alice Example/ }).click();
     await page.getByRole("menuitem", { name: "Logout" }).click();
     await expect(page.getByRole("button", { name: /Anonymous/ })).toBeVisible();

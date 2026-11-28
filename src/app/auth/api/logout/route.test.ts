@@ -30,6 +30,7 @@ const sessionCookies = [
     "refresh_token",
     "token_expires_at",
     "oidc_provider",
+    "refresh_rejected",
 ];
 
 describe("POST /auth/api/logout", () => {

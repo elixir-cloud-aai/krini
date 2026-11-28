@@ -148,8 +148,10 @@ most 30 days); without one, users log in again when the access token
 expires. The ID token, whose `sub` names the user, is kept as long as the
 session, as providers needn't send a new one on refresh; a new one must
 name the same user and issuer (OpenID Connect Core 12.2). The tabs of a
-browser take turns, so only one of them refreshes at a time (Web Locks;
-see [Pods](helm-chart.md#pods) for more than one replica). Refreshes are
+browser take turns, so only one of them refreshes at a time (Web Locks);
+where they can't, Krini tells a refresh that lost a race from a session
+that has ended on any pod (see below and [Pods](helm-chart.md#pods)).
+Refreshes are
 `POST` requests to `/auth/api/refresh`, which Krini, like the logout,
 accepts only with the `Origin` of `APP_ORIGIN`.
 
@@ -158,10 +160,27 @@ How Krini handles the provider's answer to a refresh (RFC 6749, section
 
 | Answer of the token endpoint | Krini |
 | --- | --- |
-| `400` with `invalid_grant` (refresh token expired, revoked or reused), or `401` other than `invalid_client` and `unauthorized_client` | Ends the session: deletes its cookies and sends the user to the login page |
+| `400` with `invalid_grant` (refresh token expired, revoked or reused), or `401` other than `invalid_client` and `unauthorized_client` | Ends the session: deletes its cookies and sends the user to the login page; in browsers without Web Locks only once no concurrent refresh can explain the rejection (see below) |
 | `invalid_client` or `unauthorized_client` (e.g. a rotated client secret), other errors, timeouts, an invalid token response | Keeps the session and logs the error (`OIDC refresh error: category=…, provider_error=…`); the page tries again with growing waits (5 seconds, doubling, at most 5 minutes). A new refresh token in an invalid token response is kept, as the provider may have revoked the old one |
 | An ID token for another `sub` or `iss` | Ends the session |
 | No ID token, while the session has none either (e.g. its cookie expired) | Ends the session, as nothing names the user any more |
+
+A provider that rotates refresh tokens rejects a refresh token that
+another refresh has just used. With Web Locks, no other refresh of the
+browser can have used it: the page says so in the header
+`Krini-Refresh-Lock: held`, and the first rejection ends the session.
+Without Web Locks (e.g. a second tab in an older browser, or a page
+served over plain HTTP), the rejection may come from the refresh that
+lost such a race, and must not end the session that the winner renewed.
+Krini then records the first rejection of a refresh token in the
+browser, not on the pod, so that it holds whichever pod answers: the
+cookie `refresh_rejected` holds the token's SHA-256 hash and the time
+for an hour, and the session stays. The page tries again after its
+usual wait (5 seconds at first, doubling with each failure), with the
+winner's refresh token if another refresh won. Only if the provider
+rejects the same refresh token again at least a minute after the first
+time (the longest the winner's answer may take) does the session end,
+after one to a few minutes; the access token may expire meanwhile.
 
 Visitors without a session, or whose refresh token is gone, are never
 sent anywhere; without a refresh token, the access token is used until it

@@ -16,7 +16,8 @@ export function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
 /** The page's one refresher; the browser APIs are used only when it runs */
 const refresher = createTokenRefresher({
     readExpiry: () => parseExpiry(getCookie("token_expires_at")),
-    refresh: () => postRefresh(fetch),
+    // the refresh runs under the lock if the browser has Web Locks
+    refresh: () => postRefresh(fetch, Boolean(globalThis.navigator?.locks)),
     onSessionEnded: () => {
         window.location.href = "/auth/login";
     },

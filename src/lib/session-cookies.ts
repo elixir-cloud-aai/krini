@@ -3,6 +3,10 @@ import type { NextResponse } from "next/server";
 export const THIRTY_DAYS_SECONDS = 30 * 24 * 60 * 60;
 const DEFAULT_ACCESS_TOKEN_MAX_AGE = 3600;
 
+/** Record `<hash>:<time in ms>` of the first rejection of the session's
+ * refresh token by the provider (see `src/app/auth/api/refresh/route.ts`) */
+export const REFRESH_REJECTED = "refresh_rejected";
+
 /** The cookies of a session, which end with it */
 export const SESSION_COOKIES = [
     "access_token",
@@ -10,6 +14,7 @@ export const SESSION_COOKIES = [
     "refresh_token",
     "token_expires_at",
     "oidc_provider",
+    REFRESH_REJECTED,
 ] as const;
 
 export type SessionTokens = {

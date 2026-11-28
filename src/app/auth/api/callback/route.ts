@@ -9,7 +9,11 @@ import {
     getRedirectUri,
     validateIdToken,
 } from "@/lib/oidc";
-import { applySessionCookies, LOGOUT_MARKER } from "@/lib/session-cookies";
+import {
+    applySessionCookies,
+    LOGOUT_MARKER,
+    REFRESH_REJECTED,
+} from "@/lib/session-cookies";
 
 function appUrl(path: string, request: NextRequest) {
     const appOrigin = process.env.APP_ORIGIN;
@@ -41,10 +45,12 @@ function redirectError(request: NextRequest, type: string, state?: string) {
     return response;
 }
 
-/** Ends the login transaction; the new session replaces the marker */
+/** Ends the login transaction; the new session replaces the marker and
+ * any record of a rejected refresh token of an earlier session */
 function expireLoginArtifacts(response: NextResponse, state: string) {
     response.cookies.delete(`authState-${state}`);
     response.cookies.delete(LOGOUT_MARKER);
+    response.cookies.delete(REFRESH_REJECTED);
 }
 
 /** Logs only the HTTP status and the provider's `error` field — never codes, secrets or tokens. */

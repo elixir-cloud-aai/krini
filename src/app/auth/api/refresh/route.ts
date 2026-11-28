@@ -12,13 +12,25 @@ import {
 import { rejectForeignOrigin } from "@/lib/request-origin";
 import {
     applySessionCookies,
+    baseCookieOptions,
     clearSessionCookies,
     hasLoggedOut,
+    REFRESH_REJECTED,
     type SessionTokens,
     setRefreshTokenCookie,
 } from "@/lib/session-cookies";
+import { REFRESH_LOCK_HEADER } from "@/lib/token-refresh";
 
-const REFRESH_SUCCESS_WINDOW_MS = 60 * 1000;
+/** Lifetime of `refresh_rejected`, in seconds: longer than the client's
+ * longest wait before it tries again (`RETRY_MAX_MS` of
+ * `src/lib/token-refresh.ts`) */
+const REFRESH_REJECTED_MAX_AGE = 60 * 60;
+
+/** How long after the first rejection of a refresh token a further one
+ * may still come from a lost race, in ms: the longest that the winner's
+ * answer may take to reach the browser (`REFRESH_TIMEOUT_MS` of
+ * `src/lib/token-refresh.ts`) */
+const REFRESH_RACE_MS = 60 * 1000;
 
 /**
  * Why a refresh failed, as `code` of the response, for the client
@@ -28,8 +40,11 @@ const REFRESH_SUCCESS_WINDOW_MS = 60 * 1000;
  * - `no_refresh_token` (401): nothing to renew; `token_expires_at` is
  *   deleted, so the client stops trying, and the access token, if any,
  *   stays until it expires;
- * - `concurrent_refresh` (409): another refresh of the session just
- *   succeeded, so the client tries again with its new cookies;
+ * - `concurrent_refresh` (409): the provider rejected the refresh token
+ *   for the first time, or again within `REFRESH_RACE_MS` of the first;
+ *   another refresh of the session (e.g. of another tab, on any pod) may
+ *   have used it just before, so the client tries again with the cookies
+ *   it has then;
  * - `unavailable` (503): the provider or Krini's settings failed; the
  *   session stays, and the client tries again later.
  */
@@ -64,36 +79,25 @@ function failure(code: RefreshFailure, error: string): NextResponse {
     return response;
 }
 
-/**
- * Hashes of refresh tokens that a refresh succeeded with recently. When the
- * provider rotates refresh tokens, concurrent refreshes of the same session
- * race: one wins and sets new cookies, the loser gets an `invalid_grant`
- * replay rejection. That rejection must not clear the cookies the winner
- * just established. The record is per process; the client's lock (one
- * refresh per browser at a time) keeps refreshes from racing at all.
- */
-const recentRefreshSuccess = new Map<string, number>();
-
-/** Key of a refresh token in `recentRefreshSuccess`: its SHA-256 hash */
+/** Key of a refresh token in `refresh_rejected`: its SHA-256 hash */
 function refreshTokenKey(token: string): string {
     return createHash("sha256").update(token).digest("hex");
 }
 
-/** Records a successful refresh, and forgets those outside the window */
-function noteRefreshSuccess(refreshToken: string): void {
-    const now = Date.now();
-    for (const [key, at] of recentRefreshSuccess) {
-        if (at <= now - REFRESH_SUCCESS_WINDOW_MS) {
-            recentRefreshSuccess.delete(key);
-        }
-    }
-    recentRefreshSuccess.set(refreshTokenKey(refreshToken), now);
-}
-
-/** Whether a refresh with this token succeeded within the window */
-function refreshSucceededRecently(refreshToken: string): boolean {
-    const at = recentRefreshSuccess.get(refreshTokenKey(refreshToken));
-    return at !== undefined && at > Date.now() - REFRESH_SUCCESS_WINDOW_MS;
+/**
+ * When the provider first rejected a refresh token, from `refresh_rejected`
+ * (`<key>:<time in ms>`)
+ * @param record The cookie's value, if any
+ * @param key The refresh token's key
+ * @returns The time, or null if the record is of another token, or invalid
+ */
+function firstRejectionOf(
+    record: string | undefined,
+    key: string,
+): number | null {
+    const [recordKey, at] = (record ?? "").split(":");
+    const time = Number(at);
+    return recordKey === key && Number.isFinite(time) && time > 0 ? time : null;
 }
 
 /** The provider's `error` field of a failed token request, if any */
@@ -204,10 +208,42 @@ export async function POST(req: NextRequest) {
         if (!refreshTokenRejected(err)) {
             return failure("unavailable", "Failed to refresh token");
         }
-        if (refreshSucceededRecently(refreshToken)) {
-            return failure("concurrent_refresh", "Failed to refresh token");
+        // When the provider rotates refresh tokens, concurrent refreshes
+        // of the same session race: one wins and sets new cookies, the
+        // loser gets a replay rejection, which must not clear the cookies
+        // the winner set. The record is in the browser, so that it holds
+        // whichever pod answers: the first rejection of a refresh token
+        // stores its hash and the time in `refresh_rejected` and keeps the
+        // session, so that the client tries again; the retry carries the
+        // winner's refresh token, or the same one again if no refresh
+        // won. Only a rejection of the same token once the winner's answer
+        // can no longer be on its way ends the session. The client's lock
+        // (one refresh per browser at a time) keeps refreshes from racing
+        // at all where browsers have Web Locks: a page that says it holds
+        // the lock gets no grace. The header needn't be trusted, as it
+        // only shortens the client's own session.
+        if (req.headers.get(REFRESH_LOCK_HEADER) === "held") {
+            return failure("session_ended", "Failed to refresh token");
         }
-        return failure("session_ended", "Failed to refresh token");
+        const key = refreshTokenKey(refreshToken);
+        const firstRejection = firstRejectionOf(
+            cookieStore.get(REFRESH_REJECTED)?.value,
+            key,
+        );
+        if (
+            firstRejection !== null &&
+            Date.now() - firstRejection >= REFRESH_RACE_MS
+        ) {
+            return failure("session_ended", "Failed to refresh token");
+        }
+        const retry = failure("concurrent_refresh", "Failed to refresh token");
+        if (firstRejection === null) {
+            retry.cookies.set(REFRESH_REJECTED, `${key}:${Date.now()}`, {
+                ...baseCookieOptions(),
+                maxAge: REFRESH_REJECTED_MAX_AGE,
+            });
+        }
+        return retry;
     }
 
     const data: unknown = response.data;
@@ -280,7 +316,9 @@ export async function POST(req: NextRequest) {
         provider.id,
         { keepRefreshToken: true },
     );
-    noteRefreshSuccess(refreshToken);
+    // always, as the record of a loser of a race may reach the browser
+    // after the request of this refresh left it
+    jsonResponse.cookies.delete(REFRESH_REJECTED);
 
     return jsonResponse;
 }

@@ -101,8 +101,13 @@ describe("GET /auth/api/callback", () => {
         expect(options?.validateStatus?.(200)).toBe(true);
         expect(options?.validateStatus?.(400)).toBe(false);
 
-        // the pending login and an earlier logout are expired on the response
-        for (const name of ["authState-s1", "logout_marker"])
+        // the pending login, an earlier logout and a rejected refresh
+        // token of an earlier session are expired on the response
+        for (const name of [
+            "authState-s1",
+            "logout_marker",
+            "refresh_rejected",
+        ])
             expect(cookieOf(response, name)?.value).toBe("");
 
         // tokens are for the server only

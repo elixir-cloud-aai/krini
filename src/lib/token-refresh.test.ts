@@ -7,6 +7,7 @@ import {
     parseExpiry,
     postRefresh,
     REFRESH_LOCK,
+    REFRESH_LOCK_HEADER,
     REFRESH_MARGIN_MS,
     RETRY_BASE_MS,
     RETRY_MAX_MS,
@@ -99,6 +100,17 @@ describe("postRefresh", () => {
     ])("returns only the status for a body with %s", async (_, body) => {
         const fetchFn = vi.fn(async () => new Response(body, { status: 200 }));
         expect(await postRefresh(fetchFn)).toEqual({ status: 200 });
+    });
+
+    it("says when the client holds the refresh lock", async () => {
+        const fetchFn = vi.fn(async () => new Response("{}", { status: 200 }));
+        await postRefresh(fetchFn, true);
+        expect(fetchFn).toHaveBeenCalledWith(
+            "/auth/api/refresh",
+            expect.objectContaining({
+                headers: { [REFRESH_LOCK_HEADER]: "held" },
+            }),
+        );
     });
 
     it("returns status 0 without a response", async () => {
