@@ -250,6 +250,35 @@ describe("taskExamples", () => {
         ]);
     });
 
+    it("refuses what the task form would trim, split or refuse", () => {
+        const { examples, problems } = taskExamples({
+            TASK_EXAMPLES: JSON.stringify([
+                {
+                    name: "Trimmed",
+                    task: {
+                        executors: [
+                            {
+                                image: "a",
+                                command: [" ", ""],
+                                env: { " A": "1" },
+                            },
+                        ],
+                        inputs: [{ path: "/in/a", url: "  " }],
+                        resources: { zones: ["eu-1,eu-2", " "] },
+                    },
+                },
+            ]),
+        });
+        expect(examples).toEqual([]);
+        expect(problemsOf(problems)).toEqual([
+            "entry 1.task.executors[0].command is empty",
+            'entry 1.task.executors[0].env key " A" has white space around it',
+            "entry 1.task.inputs[0] has no url or content",
+            "entry 1.task.resources.zones[0] has a comma",
+            "entry 1.task.resources.zones[1] is empty",
+        ]);
+    });
+
     it("refuses fields of the prototype", () => {
         const { problems } = taskExamples({
             TASK_EXAMPLES: `[{"name":"Proto","task":{"executors":[{"image":"a","command":["b"],"constructor":1,"__proto__":{}}]}}]`,
@@ -325,6 +354,27 @@ describe("workflowExamples", () => {
             "entry 1.run.workflow_engine_parameters is not an object",
             "entry 1.run has workflow_attachment, which the form doesn't take",
             "entry 2.run is not an object",
+        ]);
+    });
+
+    it("refuses what the workflow form would trim or drop", () => {
+        const { problems } = workflowExamples({
+            WORKFLOW_EXAMPLES: JSON.stringify([
+                {
+                    name: "Trimmed",
+                    run: {
+                        workflow_url: "https://example.org/hello.cwl",
+                        workflow_type: " CWL",
+                        workflow_type_version: "v1.2 ",
+                        tags: { project: "" },
+                    },
+                },
+            ]),
+        });
+        expect(problemsOf(problems)).toEqual([
+            "entry 1.run.workflow_type has white space around it",
+            "entry 1.run.workflow_type_version has white space around it",
+            "entry 1.run.tags.project is empty",
         ]);
     });
 });

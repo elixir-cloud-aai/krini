@@ -102,7 +102,7 @@ test.describe("members", () => {
 });
 
 test.describe("anonymous visitors", () => {
-    test("get no examples", async ({ page }) => {
+    test("see no example buttons", async ({ page }) => {
         await page.goto("/dashboard/tasks/create");
         await expect(page.getByText("with compute access")).toBeVisible();
         await expect(

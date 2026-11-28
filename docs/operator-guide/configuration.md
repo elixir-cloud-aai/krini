@@ -188,14 +188,16 @@ Each deployment can replace them with its own:
   type and version.
 
 Names must be unique within a setting. An empty array (`[]`) offers no
-examples. The examples reach the browser: put no secrets into them. Krini
-reads both settings at request time: entries that don't fit the forms (a
-missing or unknown field, a field of the wrong type, a broken rule, a line
-break in any field other than the parameters, a duplicate name) are left
-out with a warning in the server log, and a value that isn't
-a JSON array is ignored, with a warning, in favour of the built-in
-examples. Make sure that your examples run on the services that your
-registry lists. For example, a task and a workflow on one line each:
+examples. The examples reach the browser of anyone who can open the
+forms' pages, also without logging in (the buttons show only with compute
+access): put no secrets into them. Krini reads both settings at request
+time and leaves out entries that don't fit the forms (a missing or unknown
+field, a field of the wrong type, a broken rule, a line break in any field
+other than the parameters, a duplicate name, white space that the form
+would trim); a value that isn't a JSON array is ignored in favour of the
+built-in examples. Both are logged as warnings when Krini starts. Make
+sure that your examples run on the services that your registry lists.
+For example, a task and a workflow on one line each:
 
 ```env
 TASK_EXAMPLES=[{"name":"Hello world","description":"Prints a greeting","task":{"name":"hello","executors":[{"image":"alpine:3.22","command":["echo","Hello world"]}]}}]

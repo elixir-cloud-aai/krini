@@ -70,8 +70,22 @@ describe("taskForm", () => {
                         ignore_error: true,
                     },
                 ],
-                inputs: [{ path: "/in/a", url: "https://example.org/a" }],
-                outputs: [{ path: "/out/b", url: "s3://bucket/b" }],
+                inputs: [
+                    {
+                        path: "/in/a",
+                        url: "https://example.org/a",
+                        type: "FILE",
+                    },
+                    { path: "/in/b", content: "b" },
+                ],
+                outputs: [
+                    {
+                        path: "/out/*",
+                        url: "s3://bucket/b",
+                        path_prefix: "/out/",
+                        type: "DIRECTORY",
+                    },
+                ],
                 resources: {
                     cpu_cores: 2,
                     ram_gb: 0.5,
@@ -99,8 +113,19 @@ describe("taskForm", () => {
                     ignoreError: true,
                 },
             ],
-            inputs: [{ path: "/in/a", url: "https://example.org/a" }],
-            outputs: [{ path: "/out/b", url: "s3://bucket/b" }],
+            // the form's rows have the fields of the task
+            inputs: [
+                { path: "/in/a", url: "https://example.org/a", type: "FILE" },
+                { path: "/in/b", content: "b" },
+            ],
+            outputs: [
+                {
+                    path: "/out/*",
+                    url: "s3://bucket/b",
+                    path_prefix: "/out/",
+                    type: "DIRECTORY",
+                },
+            ],
             tags: [{ key: "project", value: "demo" }],
             volumes: [{ value: "/scratch" }],
             cpuCores: "2",

@@ -208,6 +208,23 @@ const nonEmptyLine: Check = (value, where) => {
     return problems;
 };
 
+/** Text of a single line, not empty and without surrounding white space,
+ * which the forms would trim off (keys, zones, workflow types) */
+const trimmedLine: Check = (value, where) => {
+    const problems = nonEmptyLine(value, where);
+    if (problems.length === 0 && (value as string).trim() !== value)
+        problems.push(`${where} has white space around it`);
+    return problems;
+};
+
+/** A zone: the task form shows the zones as one list, separated by commas */
+const zone: Check = (value, where) => {
+    const problems = trimmedLine(value, where);
+    if (problems.length === 0 && (value as string).includes(","))
+        problems.push(`${where} has a comma`);
+    return problems;
+};
+
 /** An absolute path in the container, as the task form requires */
 const absolutePath: Check = (value, where) => {
     const problems = line(value, where);
@@ -251,15 +268,22 @@ function list(item: Check, nonEmpty = false): Check {
     };
 }
 
-/** An object of single-line strings, with keys of one non-empty line:
- * the form shows a row of key and value per entry */
-const lines: Check = (value, where) =>
-    isRecord(value)
-        ? Object.entries(value).flatMap(([key, val]) => [
-              ...nonEmptyLine(key, `${where} key "${key}"`),
-              ...line(val, `${where}.${key}`),
-          ])
-        : [`${where} is not an object`];
+/**
+ * An object of single-line strings, with keys that the form keeps as they
+ * are: it shows a row of key and value per entry, and trims the keys
+ * @param value Check of a value
+ */
+function rows(value: Check = line): Check {
+    return (record, where) =>
+        isRecord(record)
+            ? Object.entries(record).flatMap(([key, val]) => [
+                  ...trimmedLine(key, `${where} key "${key}"`),
+                  ...value(val, `${where}.${key}`),
+              ])
+            : [`${where} is not an object`];
+}
+
+const lines = rows();
 
 /** Check of a field, and whether it's required */
 type Field = { check: Check; required?: boolean };
@@ -299,7 +323,13 @@ const required = (check: Check): Field => ({ check, required: true });
 
 const executor = shape({
     image: required(nonEmptyLine),
-    command: required(list(line, true)),
+    command: required((value, where) => {
+        const problems = list(line, true)(value, where);
+        // the form refuses a command of white space only
+        if (problems.length === 0 && (value as string[]).join("").trim() === "")
+            problems.push(`${where} is empty`);
+        return problems;
+    }),
     workdir: optional(line),
     stdin: optional(absolutePath),
     stdout: optional(absolutePath),
@@ -320,7 +350,9 @@ const input = shape(
         content: optional(line),
     },
     (value, where) =>
-        value.url || value.content ? [] : [`${where} has no url or content`],
+        (value.url as string | undefined)?.trim() || value.content
+            ? []
+            : [`${where} has no url or content`],
 );
 
 const output = shape(
@@ -348,7 +380,7 @@ const task = shape({
             cpu_cores: optional(integer),
             ram_gb: optional(number),
             disk_gb: optional(number),
-            zones: optional(list(line)),
+            zones: optional(list(zone)),
             preemptible: optional(flag),
             backend_parameters: optional(lines),
             backend_parameters_strict: optional(flag),
@@ -361,11 +393,12 @@ const task = shape({
 // the fields of the workflow form; the types above must name the same
 const run = shape({
     workflow_url: required(nonEmptyLine),
-    workflow_type: required(nonEmptyLine),
-    workflow_type_version: required(nonEmptyLine),
+    workflow_type: required(trimmedLine),
+    workflow_type_version: required(trimmedLine),
     workflow_params: optional(object),
     workflow_engine_parameters: optional(object),
-    tags: optional(lines),
+    // the form drops tags without a value
+    tags: optional(rows(trimmedLine)),
 });
 
 /**

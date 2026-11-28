@@ -102,10 +102,10 @@ calls real services.
   get no cookies and members only the session's, and submit the examples
   of the task and workflow forms ("Use an example": the built-in task
   examples, and the workflow examples of `WORKFLOW_EXAMPLES` in
-  `e2e/settings.ts`). The mock services in `e2e/mock/server.ts` play the login provider,
-  the registry and a WES service. The WES service runs over `https` with a
-  self-signed certificate, which `openssl` creates at start, so the tests
-  need `bun` and `openssl`. Playwright starts the mock services, builds the
+  `e2e/settings.ts`). The mock services in `e2e/mock/server.ts` play the
+  login provider, the registry and a WES service. The WES service runs
+  over `https` with a self-signed certificate, which `openssl` creates at
+  start, so the tests need `bun` and `openssl`. Playwright starts the mock services, builds the
   app and starts it. The ports are in `e2e/settings.ts`.
 
     ```bash
