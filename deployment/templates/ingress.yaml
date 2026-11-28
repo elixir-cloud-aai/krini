@@ -2,15 +2,37 @@
 Ingress for `hostName`, for any ingress controller: the chart sets no
 controller-specific annotations, which `krini.ingress.annotations` add. These
 take precedence over the annotation requesting a certificate from
-cert-manager (`krini.ingress.https`); `null` removes it.
+cert-manager (`krini.ingress.https`: the `issuer` of kind `issuerKind`, a
+ClusterIssuer by default or a namespaced Issuer); `null` removes it. With
+`https.existingSecret`, the Ingress serves the certificate of that Secret
+and requests none. Fails if `krini.ingress.https.issuerKind` is set to
+another kind (`null` means the default), if both `issuer` and
+`existingSecret` are set, and if the annotations name both a ClusterIssuer
+and an Issuer.
 */ -}}
 {{- $ingress := .Values.krini.ingress -}}
 {{- if $ingress.enabled -}}
 {{- $hostName := required "hostName must be set if krini.ingress.enabled" .Values.hostName -}}
 {{- $https := $ingress.https | default dict -}}
 {{- $annotations := dict -}}
+{{- $issuerKind := "ClusterIssuer" -}}
+{{- if not (kindIs "invalid" $https.issuerKind) -}}
+{{- $issuerKind = $https.issuerKind -}}
+{{- if not (has $issuerKind (list "ClusterIssuer" "Issuer")) -}}
+{{- fail (printf "krini.ingress.https.issuerKind must be ClusterIssuer or Issuer, not %q" (toString $issuerKind)) -}}
+{{- end -}}
+{{- end -}}
+{{- $secretName := printf "%s-tls" (include "krini.fullname" .) -}}
 {{- if $https.enabled -}}
-{{- $_ := set $annotations "cert-manager.io/cluster-issuer" (required "krini.ingress.https.issuer must be set if krini.ingress.https.enabled" $https.issuer) -}}
+{{- if $https.existingSecret -}}
+{{- if $https.issuer -}}
+{{- fail "krini.ingress.https: set either krini.ingress.https.issuer or krini.ingress.https.existingSecret, not both (the certificate comes either from cert-manager or from the existing Secret)" -}}
+{{- end -}}
+{{- $secretName = $https.existingSecret -}}
+{{- else -}}
+{{- $issuerAnnotation := ternary "cert-manager.io/issuer" "cert-manager.io/cluster-issuer" (eq $issuerKind "Issuer") -}}
+{{- $_ := set $annotations $issuerAnnotation (required "krini.ingress.https.issuer must be set if krini.ingress.https.enabled, unless krini.ingress.https.existingSecret is set" $https.issuer) -}}
+{{- end -}}
 {{- end -}}
 {{- range $name, $value := $ingress.annotations | default dict -}}
 {{- if kindIs "invalid" $value -}}
@@ -18,6 +40,9 @@ cert-manager (`krini.ingress.https`); `null` removes it.
 {{- else -}}
 {{- $_ := set $annotations $name $value -}}
 {{- end -}}
+{{- end -}}
+{{- if and (hasKey $annotations "cert-manager.io/issuer") (hasKey $annotations "cert-manager.io/cluster-issuer") -}}
+{{- fail "krini.ingress: the Ingress must not have both annotations cert-manager.io/issuer and cert-manager.io/cluster-issuer, which cert-manager refuses: set krini.ingress.https.issuerKind instead, or remove one with null in krini.ingress.annotations" -}}
 {{- end -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -48,6 +73,6 @@ spec:
   tls:
   - hosts:
     - {{ $hostName | quote }}
-    secretName: {{ printf "%s-tls" (include "krini.fullname" .) | quote }}
+    secretName: {{ $secretName | quote }}
   {{- end }}
 {{- end }}

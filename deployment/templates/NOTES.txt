@@ -5,11 +5,13 @@
 {{- $exposed := or $ingress $httpRoute (include "krini.routeEnabled" .) -}}
 Krini is being deployed as release {{ .Release.Name }} in namespace {{ .Release.Namespace }},
 with the image {{ include "krini.image" . }}.
-{{- if and $ingress (.Capabilities.APIVersions.Has "route.openshift.io/v1") }}
+{{- if and $ingress (not .Values.krini.ingress.https.enabled) (.Capabilities.APIVersions.Has "route.openshift.io/v1") }}
 
 WARNING: This cluster serves OpenShift Routes, but the chart created an
-Ingress, which OpenShift serves without TLS. Set krini.ingress.enabled to
-false to get a Route with TLS instead.
+Ingress without TLS, which OpenShift serves without TLS. Set
+krini.ingress.enabled to false to get a Route with TLS instead, or enable
+krini.ingress.https for a certificate of your own (see "Exposing Krini" in
+the operator guide).
 {{- else if and $ingress (not .Values.krini.ingress.https.enabled) }}
 
 NOTE: The Ingress has no TLS (krini.ingress.https.enabled is false), so TLS
