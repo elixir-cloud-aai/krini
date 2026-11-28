@@ -221,8 +221,13 @@ paths to it:
       certificate of `hostName`, which you renew yourself; the chart then
       requests no certificate (set either `https.issuer` or
       `https.existingSecret`; rendering also fails if `annotations` add a
-      cert-manager issuer annotation, as cert-manager would overwrite the
-      Secret).
+      cert-manager issuer annotation or `kubernetes.io/tls-acme`, as
+      cert-manager would overwrite the Secret). When you switch a release
+      from cert-manager to an existing Secret of the same name as before
+      (`<release>-krini-tls`), delete the Certificate that cert-manager
+      created for the Ingress (`kubectl delete certificate
+      <release>-krini-tls -n <namespace>`), which it would otherwise keep
+      renewing into that Secret; a Secret of another name is safe.
 
     `https.issuerKind` is `ClusterIssuer` by default (also if `null`);
     rendering fails for other kinds, and if `annotations` would give the

@@ -40,13 +40,13 @@ assert_eq() {
   fi
 }
 
-# Checks that rendering with the given arguments fails with a message
-# matching `pattern` (of the chart, or of the copy in `CHART`)
-assert_fails() {
-  local description="$1" pattern="$2" error
-  shift 2
+# Checks that rendering the chart at `path` with the given arguments fails
+# with a message matching `pattern`
+assert_fails_at() {
+  local path="$1" description="$2" pattern="$3" error
+  shift 3
   tests=$((tests + 1))
-  if error="$(helm template krini "${CHART:-${chart}}" --namespace krini "$@" 2>&1 >/dev/null)"; then
+  if error="$(helm template krini "${path}" --namespace krini "$@" 2>&1 >/dev/null)"; then
     failures=$((failures + 1))
     printf 'FAIL: %s\n  rendering succeeded\n' "${description}"
   elif ! grep -qE "${pattern}" <<< "${error}"; then
@@ -54,6 +54,12 @@ assert_fails() {
     printf 'FAIL: %s\n  expected an error matching: %s\n  actual: %s\n' \
       "${description}" "${pattern}" "${error}"
   fi
+}
+
+# Checks that rendering the chart with the given arguments fails with a
+# message matching `pattern`
+assert_fails() {
+  assert_fails_at "${chart}" "$@"
 }
 
 # Value of an environment variable of the container (`null` if not set)
@@ -351,11 +357,12 @@ assert_fails "extraEnv for the redirect" "REDIRECT_TO_APP_ORIGIN" -f "${values}"
 assert_fails "redirectToAppOrigin not a boolean" "redirectToAppOrigin" -f "${values}" \
   --set config.redirectToAppOrigin=no
 assert_fails "HTTPS without issuer" "https.issuer must be set" -f "${values}" --set krini.ingress.https.enabled=true
-for annotation in cert-manager\\.io/issuer cert-manager\\.io/cluster-issuer; do
+for annotation in cert-manager\\.io/issuer=letsencrypt-prod cert-manager\\.io/cluster-issuer=letsencrypt-prod \
+  kubernetes\\.io/tls-acme=true; do
   assert_fails "existing Secret with the annotation ${annotation//\\/}" \
     "krini.ingress.https.existingSecret must not be set together with an annotation" -f "${values}" \
     --set krini.ingress.https.enabled=true --set krini.ingress.https.existingSecret=krini-certificate \
-    --set "krini.ingress.annotations.${annotation}=letsencrypt-prod"
+    --set-string "krini.ingress.annotations.${annotation}"
 done
 assert_fails "issuerKind not in the schema" "at '/krini/ingress/https/issuerKind'" -f "${values}" \
   --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
@@ -369,7 +376,7 @@ assert_fails "both issuer annotations" "must not have both annotations cert-mana
   --set krini.ingress.annotations.cert-manager\\.io/cluster-issuer=other
 # Without the schema, the template rejects other kinds too
 for kind in Issuers issuer ""; do
-  CHART="${copies}/schemaless" assert_fails "issuerKind '${kind}' without the schema" \
+  assert_fails_at "${copies}/schemaless" "issuerKind '${kind}' without the schema" \
     "krini.ingress.https.issuerKind must be ClusterIssuer or Issuer" -f "${values}" \
     --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
     --set-string krini.ingress.https.issuerKind="${kind}"
