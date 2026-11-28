@@ -282,6 +282,10 @@ assert_eq "ingress TLS from an existing Secret" \
   "$(get Ingress '.spec.tls[0] | .hosts[0] + "," + .secretName')" "krini.example.org,krini-certificate"
 assert_eq "no cert-manager annotation with an existing Secret" \
   "$(get Ingress '.metadata.annotations // {} | tojson')" "{}"
+render --set krini.ingress.https.enabled=true --set krini.ingress.https.existingSecret=krini-certificate \
+  --set krini.ingress.https.issuerKind=Issuer
+assert_eq "no Issuer annotation with an existing Secret" \
+  "$(get Ingress '[.metadata.annotations // {}, .spec.tls[0].secretName] | tojson')" '[{},"krini-certificate"]'
 render --set krini.ingress.https.existingSecret=krini-certificate
 assert_eq "existing Secret without HTTPS" "$(get Ingress '.spec.tls // "none"')" "none"
 render --set krini.ingress.enabled=false --set krini.httpRoute.enabled=true \
@@ -308,6 +312,9 @@ assert_eq "notes: Ingress with TLS on OpenShift" \
   "$(notes --api-versions route.openshift.io/v1 --set krini.ingress.https.enabled=true \
     --set krini.ingress.https.issuer=letsencrypt-prod --set krini.ingress.https.issuerKind=Issuer \
     | grep -c 'without TLS' || true)" "0"
+assert_eq "notes: Ingress with an existing Secret on OpenShift" \
+  "$(notes --api-versions route.openshift.io/v1 --set krini.ingress.https.enabled=true \
+    --set krini.ingress.https.existingSecret=krini-certificate | grep -c 'without TLS' || true)" "0"
 assert_eq "notes: Ingress without TLS" \
   "$(notes | grep -c 'The Ingress has no TLS')" "1"
 
@@ -344,7 +351,13 @@ assert_fails "extraEnv for the redirect" "REDIRECT_TO_APP_ORIGIN" -f "${values}"
 assert_fails "redirectToAppOrigin not a boolean" "redirectToAppOrigin" -f "${values}" \
   --set config.redirectToAppOrigin=no
 assert_fails "HTTPS without issuer" "https.issuer must be set" -f "${values}" --set krini.ingress.https.enabled=true
-assert_fails "issuerKind not in the schema" "issuerKind" -f "${values}" \
+for annotation in cert-manager\\.io/issuer cert-manager\\.io/cluster-issuer; do
+  assert_fails "existing Secret with the annotation ${annotation//\\/}" \
+    "krini.ingress.https.existingSecret must not be set together with an annotation" -f "${values}" \
+    --set krini.ingress.https.enabled=true --set krini.ingress.https.existingSecret=krini-certificate \
+    --set "krini.ingress.annotations.${annotation}=letsencrypt-prod"
+done
+assert_fails "issuerKind not in the schema" "at '/krini/ingress/https/issuerKind'" -f "${values}" \
   --set krini.ingress.https.enabled=true --set krini.ingress.https.issuer=letsencrypt-prod \
   --set krini.ingress.https.issuerKind=Issuers
 assert_fails "issuer and existing Secret" "either krini.ingress.https.issuer or krini.ingress.https.existingSecret" \

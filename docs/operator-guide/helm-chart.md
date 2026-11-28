@@ -220,7 +220,9 @@ paths to it:
       (`kubernetes.io/tls`) in the release's namespace with the
       certificate of `hostName`, which you renew yourself; the chart then
       requests no certificate (set either `https.issuer` or
-      `https.existingSecret`).
+      `https.existingSecret`; rendering also fails if `annotations` add a
+      cert-manager issuer annotation, as cert-manager would overwrite the
+      Secret).
 
     `https.issuerKind` is `ClusterIssuer` by default (also if `null`);
     rendering fails for other kinds, and if `annotations` would give the
@@ -322,9 +324,26 @@ route -o yaml`), e.g., that it redirects HTTP to HTTPS
 timeouts) then go into `krini.ingress.annotations`, which OpenShift
 copies to the generated Route, as `krini.route.annotations` apply only to
 the chart's own Route. Helm's notes no longer warn about the Ingress on
-OpenShift once `krini.ingress.https.enabled` is true. With a certificate
-of your own instead of cert-manager, set `https.existingSecret` instead
-of `issuer` and `issuerKind`.
+OpenShift once `krini.ingress.https.enabled` is true.
+
+With a certificate of your own instead of cert-manager, create a TLS
+Secret with it in the release's namespace (e.g., `oc create secret tls
+krini-certificate --cert=tls.crt --key=tls.key -n krini`) and name it in
+`https.existingSecret` instead of `issuer`. OpenShift copies it into the
+Route too, but nothing renews it: replace the Secret before the
+certificate expires.
+
+```yaml
+krini:
+  ingress:
+    enabled: true
+    className: openshift-default
+    annotations:
+      route.openshift.io/termination: edge
+    https:
+      enabled: true
+      existingSecret: krini-certificate
+```
 
 The chart's Ingress serves `hostName` only: for a second host name
 (e.g., an old one), create a second Ingress outside the chart for that

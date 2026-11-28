@@ -7,8 +7,9 @@ ClusterIssuer by default or a namespaced Issuer); `null` removes it. With
 `https.existingSecret`, the Ingress serves the certificate of that Secret
 and requests none. Fails if `krini.ingress.https.issuerKind` is set to
 another kind (`null` means the default), if both `issuer` and
-`existingSecret` are set, and if the annotations name both a ClusterIssuer
-and an Issuer.
+`existingSecret` are set, if the annotations name both a ClusterIssuer and
+an Issuer, and if they name either with `existingSecret` (cert-manager
+would overwrite that Secret).
 */ -}}
 {{- $ingress := .Values.krini.ingress -}}
 {{- if $ingress.enabled -}}
@@ -43,6 +44,9 @@ and an Issuer.
 {{- end -}}
 {{- if and (hasKey $annotations "cert-manager.io/issuer") (hasKey $annotations "cert-manager.io/cluster-issuer") -}}
 {{- fail "krini.ingress: the Ingress must not have both annotations cert-manager.io/issuer and cert-manager.io/cluster-issuer, which cert-manager refuses: set krini.ingress.https.issuerKind instead, or remove one with null in krini.ingress.annotations" -}}
+{{- end -}}
+{{- if and $https.enabled $https.existingSecret (or (hasKey $annotations "cert-manager.io/issuer") (hasKey $annotations "cert-manager.io/cluster-issuer")) -}}
+{{- fail "krini.ingress.https.existingSecret must not be set together with an annotation cert-manager.io/issuer or cert-manager.io/cluster-issuer in krini.ingress.annotations: cert-manager would overwrite the existing Secret" -}}
 {{- end -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
