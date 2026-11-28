@@ -159,7 +159,7 @@ form with an example in one click ("Use an example"), and submit it without
 typing anything, e.g. in demonstrations and tutorials. Without settings,
 Krini offers built-in examples that run on the services of ELIXIR On-Cloud
 (proTES with TESK behind it for tasks, Conquest for workflows); see
-[Workflow examples](../user-guide/workflow-examples.md) for what they do.
+[Examples](../user-guide/workflow-examples.md) for what they do.
 Each deployment can replace them with its own:
 
 - `TASK_EXAMPLES`: a JSON array of objects with `name` (the label of the
@@ -167,23 +167,32 @@ Each deployment can replace them with its own:
   [TES task](https://ga4gh.github.io/task-execution-schemas/docs/) with
   the fields that the task form has: `name`, `description`, `executors`
   (`image`, `command`, `workdir`, `stdin`, `stdout`, `stderr`, `env`,
-  `ignore_error`), `inputs`, `outputs`, `resources`, `volumes` and `tags`.
+  `ignore_error`), `inputs` (`url`, `path`, `type`, `content`), `outputs`
+  (`url`, `path`, `path_prefix`, `type`), `resources`, `volumes` and
+  `tags`, under the form's rules: absolute paths for `stdin`, `stdout`,
+  `stderr` and the inputs' and outputs' `path`, a `url` or `content` for
+  each input, a `path_prefix` for an output whose path has wildcards, and
+  resources of at least 0.
 - `WORKFLOW_EXAMPLES`: a JSON array of objects with `name`, optional
   `description` and `run`, a
   [WES run request](https://ga4gh.github.io/workflow-execution-service-schemas/docs/)
   with the fields that the workflow form has: `workflow_url`,
   `workflow_type`, `workflow_type_version`, `workflow_params`,
   `workflow_engine_parameters` and `tags` (no attachments). The form
-  offers only the examples of the workflow types that the selected
-  service lists in its service info (the type matched regardless of case,
-  and submitted as the service spells it), or all if it lists none. The
-  version isn't checked: the form shows the service's versions next to it.
+  offers only the examples of the workflow types and versions that the
+  selected service lists in its service info (the type matched regardless
+  of case, and submitted as the service spells it), or all if it lists
+  none; an example of a type for which the service lists no versions is
+  offered whatever its version. The buttons wait until the form has
+  loaded the service info, which would otherwise overwrite the example's
+  type and version.
 
 Names must be unique within a setting. An empty array (`[]`) offers no
-examples. Krini reads both settings at request time: entries that don't fit
-the forms (a missing or unknown field, a field of the wrong type, a line
-break in a single-line field or in an argument of `command`, a duplicate
-name) are left out with a warning in the server log, and a value that isn't
+examples. The examples reach the browser: put no secrets into them. Krini
+reads both settings at request time: entries that don't fit the forms (a
+missing or unknown field, a field of the wrong type, a broken rule, a line
+break in any field other than the parameters, a duplicate name) are left
+out with a warning in the server log, and a value that isn't
 a JSON array is ignored, with a warning, in favour of the built-in
 examples. Make sure that your examples run on the services that your
 registry lists. For example, a task and a workflow on one line each:

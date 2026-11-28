@@ -1,4 +1,4 @@
-# Workflow examples
+# Examples
 
 Krini's built-in examples, which **Use an example** puts into the task and
 workflow forms: small, public and without inputs, so that they run without
@@ -33,7 +33,7 @@ It runs on any TES service that can pull images from Docker Hub. Its logs
 ## Workflows
 
 One example per workflow language that Conquest runs: Nextflow (`NFL`),
-Snakemake (`SMK`) and WDL. The form offers those of the languages that the
+Snakemake (`SMK`) and WDL. The form offers those of the languages and versions that the
 selected service lists in its service info.
 
 Conquest runs workflows from public GitHub repositories only, at a full

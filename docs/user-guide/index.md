@@ -39,9 +39,9 @@ Your name in the sidebar opens a menu with your e-mail address and
 To try Krini, use the buttons next to **Use an example:** above the task
 or workflow form: one click fills the form with a small example that needs
 no inputs, which you can submit as it is or change first. The workflow form
-offers only the examples of the workflow languages that the selected
+offers only the examples of the workflow languages and versions that the selected
 service runs. Your deployment may offer its own examples, or none.
-[Workflow examples](workflow-examples.md) describes the built-in ones.
+[Examples](workflow-examples.md) describes the built-in ones.
 
 ## Privacy
 

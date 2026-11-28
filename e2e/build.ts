@@ -1,6 +1,6 @@
 /**
  * @description builds the app for the end-to-end tests without the privacy
- * settings and the workflow examples, so that a privacy notice or examples
+ * settings and the examples, so that a privacy notice or examples
  * rendered at build time would fail the tests; `env -u` is Unix-only, hence
  * this wrapper
  */
@@ -11,6 +11,7 @@ for (const name of [
     "PRIVACY_CONTACT",
     "PRIVACY_NOTICE_URL",
     "PRIVACY_LOGIN_NOTICE_URL",
+    "TASK_EXAMPLES",
     "WORKFLOW_EXAMPLES",
 ]) {
     delete process.env[name];

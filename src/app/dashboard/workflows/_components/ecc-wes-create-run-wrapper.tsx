@@ -1,7 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useRef } from "react";
-import { toast } from "sonner";
 import { ExampleButtons } from "@/components/shared/example-buttons";
 import { useWESProvider } from "@/hooks";
 import { withSelfHostedAce } from "@/lib/ace-workers";
@@ -46,30 +45,28 @@ export function ECCClientGa4ghWesCreateRunsClient({ examples = [] }: Props) {
             </div>
         );
 
-    // only the examples of the workflow types that the service runs
+    // only the examples of the workflow types and versions that the
+    // service runs
     const offered = examplesForService(
         examples,
         servers.find((server) => server.url === selectedServer)?.serviceInfo
             ?.workflow_type_versions,
     );
 
-    const applyExample = (name: string) => {
-        const example = offered.find((val) => val.name === name);
-        const form =
-            container.current?.querySelector(
-                "ecc-client-ga4gh-wes-run-create",
-            ) ?? null;
-        if (!example) return;
-        if (!form) toast.info("The workflow form is still loading; try again.");
-        else if (!fillWorkflowForm(form, example.run))
-            toast.error(
-                "The workflow form couldn't be filled with the example.",
-            );
-    };
-
     return (
         <div className="space-y-4">
-            <ExampleButtons examples={offered} onUse={applyExample} />
+            <ExampleButtons
+                examples={offered}
+                form="workflow"
+                fill={(example) =>
+                    fillWorkflowForm(
+                        container.current?.querySelector(
+                            "ecc-client-ga4gh-wes-run-create",
+                        ) ?? null,
+                        example.run,
+                    )
+                }
+            />
             <div ref={container}>
                 <ECCClientGa4ghWesCreateRuns provider={wesProvider} />
             </div>

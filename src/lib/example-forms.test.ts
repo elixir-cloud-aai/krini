@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     examplesForService,
+    fillMessage,
     fillTaskForm,
     fillWorkflowForm,
     taskForm,
@@ -159,7 +160,7 @@ describe("fillTaskForm", () => {
             error: "Failed",
             success: "Submitted",
         };
-        expect(fillTaskForm(element(form), minimal)).toBe(true);
+        expect(fillTaskForm(element(form), minimal)).toBe("filled");
         expect(form.form).toEqual(taskForm(minimal));
         expect(form.error).toBeNull();
         expect(form.success).toBeNull();
@@ -167,14 +168,19 @@ describe("fillTaskForm", () => {
 
     it("sets only the state that the form has", () => {
         const form: Record<string, unknown> = { form: {} };
-        expect(fillTaskForm(element(form), minimal)).toBe(true);
+        expect(fillTaskForm(element(form), minimal)).toBe("filled");
         expect(Object.keys(form)).toEqual(["form"]);
     });
 
+    it("waits for the form", () => {
+        expect(fillTaskForm(null, minimal)).toBe("loading");
+    });
+
     it("refuses an element without the form's state", () => {
-        expect(fillTaskForm(null, minimal)).toBe(false);
-        expect(fillTaskForm(element({}), minimal)).toBe(false);
-        expect(fillTaskForm(element({ form: null }), minimal)).toBe(false);
+        expect(fillTaskForm(element({}), minimal)).toBe("unsupported");
+        expect(fillTaskForm(element({ form: null }), minimal)).toBe(
+            "unsupported",
+        );
     });
 });
 
@@ -186,10 +192,11 @@ describe("fillWorkflowForm", () => {
             formData: {},
             tags: [],
             attachedFiles: ["file"],
+            loading: false,
             error: "Failed",
             success: "Submitted",
         };
-        expect(fillWorkflowForm(element(form), run)).toBe(true);
+        expect(fillWorkflowForm(element(form), run)).toBe("filled");
         const state = workflowForm(run);
         expect(form.formData).toEqual(state.formData);
         expect(form.tags).toEqual(state.tags);
@@ -200,17 +207,52 @@ describe("fillWorkflowForm", () => {
 
     it("sets only the state that the form has", () => {
         const form: Record<string, unknown> = { formData: {}, tags: [] };
-        expect(fillWorkflowForm(element(form), run)).toBe(true);
+        expect(fillWorkflowForm(element(form), run)).toBe("filled");
         expect(Object.keys(form)).toEqual(["formData", "tags"]);
     });
 
+    it("waits for the form and its service info", () => {
+        expect(fillWorkflowForm(null, run)).toBe("loading");
+        // the service info would overwrite the type and version
+        const form: Record<string, unknown> = {
+            formData: {},
+            tags: [],
+            loading: true,
+        };
+        expect(fillWorkflowForm(element(form), run)).toBe("loading");
+        expect(form.formData).toEqual({});
+    });
+
     it("refuses an element without the form's state", () => {
-        expect(fillWorkflowForm(null, run)).toBe(false);
-        expect(fillWorkflowForm(element({ tags: [] }), run)).toBe(false);
+        expect(fillWorkflowForm(element({ tags: [] }), run)).toBe(
+            "unsupported",
+        );
         expect(
             fillWorkflowForm(element({ formData: null, tags: [] }), run),
-        ).toBe(false);
-        expect(fillWorkflowForm(element({ formData: {} }), run)).toBe(false);
+        ).toBe("unsupported");
+        expect(fillWorkflowForm(element({ formData: {} }), run)).toBe(
+            "unsupported",
+        );
+    });
+});
+
+describe("fillMessage", () => {
+    it("says nothing when the form was filled", () => {
+        expect(fillMessage("filled", "task")).toBeNull();
+    });
+
+    it("asks to try again while the form loads", () => {
+        expect(fillMessage("loading", "workflow")).toEqual({
+            kind: "info",
+            text: "The workflow form is still loading; try again.",
+        });
+    });
+
+    it("reports a form that can't be filled", () => {
+        expect(fillMessage("unsupported", "task")).toEqual({
+            kind: "error",
+            text: "The task form couldn't be filled with the example.",
+        });
     });
 });
 
@@ -240,5 +282,18 @@ describe("examplesForService", () => {
         expect(offered[0].run.workflow_type).toBe("smk");
         // the configured example is unchanged
         expect(examples[1].run.workflow_type).toBe("SMK");
+    });
+
+    it("offers only the examples of the service's versions", () => {
+        const offered = examplesForService(examples, {
+            NFL: { workflow_type_version: ["DSL2"] },
+            SMK: { workflow_type_version: ["7.32.4"] },
+            // no versions listed: any version
+            WDL: { workflow_type_version: [] },
+        });
+        expect(offered.map((val) => val.name)).toEqual(["Nextflow", "WDL"]);
+        expect(
+            examplesForService(examples, { WDL: {} }).map((val) => val.name),
+        ).toEqual(["WDL"]);
     });
 });

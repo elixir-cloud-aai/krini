@@ -14,6 +14,7 @@ const hello = {
     },
 };
 
+/** An example with every field of the task form */
 const fullTask = {
     name: "Everything",
     task: {
@@ -32,29 +33,22 @@ const fullTask = {
             },
         ],
         inputs: [
-            {
-                name: "a",
-                description: "Input a",
-                url: "https://example.org/a",
-                path: "/in/a",
-                type: "FILE",
-            },
-            { path: "/in/c", content: "line 1\nline 2" },
+            { url: "https://example.org/a", path: "/in/a", type: "FILE" },
+            { path: "/in/c", content: "one line" },
         ],
         outputs: [
             {
-                name: "b",
-                description: "Output b",
                 url: "s3://bucket/b",
                 path: "/out/*",
                 path_prefix: "/out/",
                 type: "DIRECTORY",
             },
+            { url: "s3://bucket/c", path: "/out/c" },
         ],
         resources: {
             cpu_cores: 1,
             ram_gb: 0.5,
-            disk_gb: 1,
+            disk_gb: 0,
             zones: ["zone-a"],
             preemptible: false,
             backend_parameters: { queue: "short" },
@@ -65,7 +59,8 @@ const fullTask = {
     },
 };
 
-const helloRun = {
+/** An example with every field of the workflow form */
+const fullRun = {
     name: "CWL",
     run: {
         workflow_url: "https://example.org/hello.cwl",
@@ -76,6 +71,11 @@ const helloRun = {
         tags: { project: "demo" },
     },
 };
+
+/** The problems of a setting, without the common suffix */
+function problemsOf(problems: string[]) {
+    return problems.map((val) => val.replace(/; the entry is left out$/, ""));
+}
 
 describe("taskExamples", () => {
     it("has the built-in examples without the setting", () => {
@@ -93,12 +93,18 @@ describe("taskExamples", () => {
         expect(taskExamples().examples).toEqual([hello]);
     });
 
-    it("built-in task is small and needs no inputs", () => {
+    it("built-in task is small, valid and needs no inputs", () => {
         const [example] = DEFAULT_TASK_EXAMPLES;
         expect(example.task.inputs).toBeUndefined();
         expect(example.task.executors).toHaveLength(1);
         // a public image of Docker Hub, at a fixed version
         expect(example.task.executors[0].image).toMatch(/^alpine:\d+\.\d+$/);
+        // the checks of the setting accept it
+        expect(
+            taskExamples({
+                TASK_EXAMPLES: JSON.stringify(DEFAULT_TASK_EXAMPLES),
+            }),
+        ).toEqual({ examples: DEFAULT_TASK_EXAMPLES, problems: [] });
     });
 
     it("reads examples of the deployment", () => {
@@ -133,7 +139,7 @@ describe("taskExamples", () => {
             TASK_EXAMPLES: JSON.stringify([
                 "hello",
                 null,
-                { name: "", task: hello.task },
+                { name: " ", task: hello.task },
                 { name: "No task" },
                 hello,
                 { ...hello, description: "Says hello again" },
@@ -143,7 +149,7 @@ describe("taskExamples", () => {
         expect(problems).toEqual([
             "entry 1 is not an object; the entry is left out",
             "entry 2 is not an object; the entry is left out",
-            "entry 3.name is not a non-empty string; the entry is left out",
+            "entry 3.name is empty; the entry is left out",
             "entry 4 has no task; the entry is left out",
             "entry 6 has the name of an earlier entry; the entry is left out",
         ]);
@@ -161,17 +167,22 @@ describe("taskExamples", () => {
                             {
                                 image: " ",
                                 command: ["echo", "a\nb", 1],
-                                env: { A: 1 },
+                                stdout: "out.txt",
+                                env: { A: 1, "": "empty" },
                                 ignore_error: "yes",
                                 shell: "sh",
                             },
                             "alpine",
                         ],
-                        inputs: [{ url: "x", type: "LINK", content: 1 }],
+                        inputs: [
+                            { url: "x", type: "LINK", content: "a\nb" },
+                            { path: "data/a", url: "https://example.org/a" },
+                        ],
                         outputs: "none",
                         resources: {
                             cpu_cores: 1.5,
                             ram_gb: "1",
+                            disk_gb: -1,
                             zones: "a",
                         },
                         volumes: [1],
@@ -184,22 +195,26 @@ describe("taskExamples", () => {
             ]),
         });
         expect(examples).toEqual([]);
-        expect(problems.map((val) => val.replace(/; the .*$/, ""))).toEqual([
+        expect(problemsOf(problems)).toEqual([
             "entry 1.name is not a string without line breaks",
             "entry 1.description is not a string without line breaks",
-            "entry 1.task.executors[0].image is not a non-empty string",
+            "entry 1.task.executors[0].image is empty",
             "entry 1.task.executors[0].command[1] is not a string without line breaks",
             "entry 1.task.executors[0].command[2] is not a string without line breaks",
+            "entry 1.task.executors[0].stdout is not an absolute path",
             "entry 1.task.executors[0].env.A is not a string without line breaks",
+            'entry 1.task.executors[0].env key "" is empty',
             "entry 1.task.executors[0].ignore_error is not true or false",
             "entry 1.task.executors[0] has shell, which the form doesn't take",
             "entry 1.task.executors[1] is not an object",
             "entry 1.task.inputs[0] has no path",
             "entry 1.task.inputs[0].type is not FILE or DIRECTORY",
-            "entry 1.task.inputs[0].content is not a string",
+            "entry 1.task.inputs[0].content is not a string without line breaks",
+            "entry 1.task.inputs[1].path is not an absolute path",
             "entry 1.task.outputs is not an array",
-            "entry 1.task.resources.cpu_cores is not an integer",
-            "entry 1.task.resources.ram_gb is not a number",
+            "entry 1.task.resources.cpu_cores is not an integer of at least 0",
+            "entry 1.task.resources.ram_gb is not a number of at least 0",
+            "entry 1.task.resources.disk_gb is not a number of at least 0",
             "entry 1.task.resources.zones is not an array",
             "entry 1.task.volumes[0] is not a string without line breaks",
             "entry 1.task.tags is not an object",
@@ -207,6 +222,41 @@ describe("taskExamples", () => {
             "entry 2.task.executors is empty",
             "entry 3.task.executors[0] has no command",
             "entry 4.task.executors is not an array",
+        ]);
+    });
+
+    it("applies the task form's rules of inputs and outputs", () => {
+        const task = (inputs: unknown[], outputs: unknown[]) => ({
+            name: `${JSON.stringify(inputs)}${JSON.stringify(outputs)}`,
+            task: { ...hello.task, inputs, outputs },
+        });
+        const { examples, problems } = taskExamples({
+            TASK_EXAMPLES: JSON.stringify([
+                task([{ path: "/in/a" }], []),
+                task([], [{ url: "s3://b/o", path: "/out/*.txt" }]),
+                task(
+                    [],
+                    [{ url: "s3://b/o", path: "/out/[ab]", path_prefix: " " }],
+                ),
+                task([], [{ url: " ", path: "/out/a" }]),
+            ]),
+        });
+        expect(examples).toEqual([]);
+        expect(problemsOf(problems)).toEqual([
+            "entry 1.task.inputs[0] has no url or content",
+            "entry 2.task.outputs[0] has a wildcard path but no path_prefix",
+            "entry 3.task.outputs[0] has a wildcard path but no path_prefix",
+            "entry 4.task.outputs[0].url is empty",
+        ]);
+    });
+
+    it("refuses fields of the prototype", () => {
+        const { problems } = taskExamples({
+            TASK_EXAMPLES: `[{"name":"Proto","task":{"executors":[{"image":"a","command":["b"],"constructor":1,"__proto__":{}}]}}]`,
+        });
+        expect(problemsOf(problems)).toEqual([
+            "entry 1.task.executors[0] has constructor, which the form doesn't take",
+            "entry 1.task.executors[0] has __proto__, which the form doesn't take",
         ]);
     });
 });
@@ -224,7 +274,7 @@ describe("workflowExamples", () => {
         expect(workflowExamples().examples).toEqual([]);
     });
 
-    it("built-in workflows are pinned GitHub repositories", () => {
+    it("built-in workflows are valid, pinned GitHub repositories", () => {
         // Conquest runs only public GitHub repositories at a full commit
         expect(
             DEFAULT_WORKFLOW_EXAMPLES.map((val) => val.run.workflow_type),
@@ -237,12 +287,17 @@ describe("workflowExamples", () => {
                 /^[0-9a-f]{40}$/,
             );
         }
+        expect(
+            workflowExamples({
+                WORKFLOW_EXAMPLES: JSON.stringify(DEFAULT_WORKFLOW_EXAMPLES),
+            }),
+        ).toEqual({ examples: DEFAULT_WORKFLOW_EXAMPLES, problems: [] });
     });
 
     it("reads examples of the deployment", () => {
         expect(
-            workflowExamples({ WORKFLOW_EXAMPLES: JSON.stringify([helloRun]) }),
-        ).toEqual({ examples: [helloRun], problems: [] });
+            workflowExamples({ WORKFLOW_EXAMPLES: JSON.stringify([fullRun]) }),
+        ).toEqual({ examples: [fullRun], problems: [] });
     });
 
     it("names each problem of a run", () => {
@@ -262,9 +317,8 @@ describe("workflowExamples", () => {
             ]),
         });
         expect(examples).toEqual([]);
-        expect(problems.map((val) => val.replace(/; the .*$/, ""))).toEqual([
-            "entry 1.run.workflow_url is not a non-empty string",
-            "entry 1.run.workflow_type is not a non-empty string",
+        expect(problemsOf(problems)).toEqual([
+            "entry 1.run.workflow_url is empty",
             "entry 1.run.workflow_type is not a string without line breaks",
             "entry 1.run has no workflow_type_version",
             "entry 1.run.workflow_params is not an object",

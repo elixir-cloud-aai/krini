@@ -8,7 +8,7 @@
  * `form`, the WES form's `formData` and `tags`, which are Lit states, so
  * the forms render them at once. The shapes below are those of the
  * components' versions in `package.json`; `fillTaskForm` and
- * `fillWorkflowForm` return false if an element lacks them (e.g. after an
+ * `fillWorkflowForm` report it if an element lacks them (e.g. after an
  * update of the components), and the end-to-end tests (`e2e/examples.spec.ts`)
  * fail when the forms don't take an example any more.
  */
@@ -145,18 +145,27 @@ function clearMessages(element: Record<string, unknown>) {
 }
 
 /**
+ * Result of filling a form: `filled`; `loading` if the form isn't there
+ * yet or still loads what it needs (it would overwrite the example);
+ * `unsupported` if the element lacks the state (another version of the
+ * components)
+ */
+type FillResult = "filled" | "loading" | "unsupported";
+
+/**
  * Fill the TES form with a task
  * @param element The form (`ecc-client-ga4gh-tes-run-create`), if found
  * @param task The task
  * @returns Whether the form took the task
  */
-function fillTaskForm(element: Element | null, task: TesTask): boolean {
+function fillTaskForm(element: Element | null, task: TesTask): FillResult {
     const form = element as unknown as Record<string, unknown> | null;
-    if (!form || typeof form.form !== "object" || form.form === null)
-        return false;
+    if (!form) return "loading";
+    if (typeof form.form !== "object" || form.form === null)
+        return "unsupported";
     form.form = taskForm(task);
     clearMessages(form);
-    return true;
+    return "filled";
 }
 
 /**
@@ -165,48 +174,84 @@ function fillTaskForm(element: Element | null, task: TesTask): boolean {
  * @param run The run request
  * @returns Whether the form took the request
  */
-function fillWorkflowForm(element: Element | null, run: WesRun): boolean {
+function fillWorkflowForm(element: Element | null, run: WesRun): FillResult {
     const form = element as unknown as Record<string, unknown> | null;
+    if (!form) return "loading";
     if (
-        !form ||
         typeof form.formData !== "object" ||
         form.formData === null ||
         !Array.isArray(form.tags)
     )
-        return false;
+        return "unsupported";
+    // the service info, once loaded, sets the type and version
+    if (form.loading === true) return "loading";
     const state = workflowForm(run);
     form.formData = state.formData;
     form.tags = state.tags;
     if (Array.isArray(form.attachedFiles)) form.attachedFiles = [];
     clearMessages(form);
-    return true;
+    return "filled";
 }
 
 /**
- * The examples that a WES service can run: those of its workflow types,
- * with the type as the service spells it (types match regardless of
- * case); all if the service lists no types (e.g. without service info)
+ * The message for a result of filling a form
+ * @param result The result
+ * @param form What the form creates: `task` or `workflow`
+ * @returns The message and its kind, or null if the form was filled
+ */
+function fillMessage(
+    result: FillResult,
+    form: "task" | "workflow",
+): { kind: "info" | "error"; text: string } | null {
+    if (result === "loading")
+        return {
+            kind: "info",
+            text: `The ${form} form is still loading; try again.`,
+        };
+    if (result === "unsupported")
+        return {
+            kind: "error",
+            text: `The ${form} form couldn't be filled with the example.`,
+        };
+    return null;
+}
+
+/**
+ * The examples that a WES service can run: those of its workflow types and
+ * versions, with the type as the service spells it (types match
+ * regardless of case); all if the service lists no types (e.g. without
+ * service info), and those of any version if it lists none for a type
  * @param examples The examples
  * @param types The service's `workflow_type_versions`, if known
  * @returns The examples to offer
  */
 function examplesForService(
     examples: WorkflowExample[],
-    types: Record<string, unknown> | null | undefined,
+    types:
+        | Record<string, { workflow_type_version?: string[] }>
+        | null
+        | undefined,
 ): WorkflowExample[] {
     const names = Object.keys(types ?? {});
     if (names.length === 0) return examples;
     return examples.flatMap((example) => {
         const wanted = example.run.workflow_type.toLowerCase();
         const name = names.find((val) => val.toLowerCase() === wanted);
-        return name === undefined
-            ? []
-            : [{ ...example, run: { ...example.run, workflow_type: name } }];
+        if (name === undefined) return [];
+        const versions = types?.[name]?.workflow_type_version ?? [];
+        if (
+            versions.length > 0 &&
+            !versions.includes(example.run.workflow_type_version)
+        )
+            return [];
+        return [{ ...example, run: { ...example.run, workflow_type: name } }];
     });
 }
 
 export {
     examplesForService,
+    type FillResult,
+    fillMessage,
     fillTaskForm,
     fillWorkflowForm,
     type TesForm,

@@ -11,8 +11,11 @@
  * workflows); `[]` offers none.
  *
  * The task and the run use the field names of the TES and WES APIs. Only
- * what the forms can show is accepted: the forms' own fields, as listed
- * below; anything else is reported and the example left out.
+ * what the forms can show and submit is accepted: the forms' own fields,
+ * under the task form's own rules (e.g. absolute paths); anything else is
+ * reported and the example left out. The types and the checks below name
+ * the same fields: change them together (the unit tests run the built-in
+ * examples and one with every field through the checks).
  */
 
 /** An executor of a TES task, as the task form takes it */
@@ -30,8 +33,6 @@ type TesExecutor = {
 
 /** An input of a TES task */
 type TesInput = {
-    name?: string;
-    description?: string;
     url?: string;
     path: string;
     type?: "FILE" | "DIRECTORY";
@@ -40,8 +41,6 @@ type TesInput = {
 
 /** An output of a TES task */
 type TesOutput = {
-    name?: string;
-    description?: string;
     url: string;
     path: string;
     path_prefix?: string;
@@ -195,30 +194,40 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-const text: Check = (value, where) =>
-    typeof value === "string" ? [] : [`${where} is not a string`];
-
-const nonEmptyText: Check = (value, where) =>
-    typeof value === "string" && value.trim() !== ""
-        ? []
-        : [`${where} is not a non-empty string`];
-
 /** Text of a single line: the forms show it in one input */
 const line: Check = (value, where) =>
     typeof value === "string" && !/[\r\n]/.test(value)
         ? []
         : [`${where} is not a string without line breaks`];
 
+/** Text of a single line, not only white space */
+const nonEmptyLine: Check = (value, where) => {
+    const problems = line(value, where);
+    if (problems.length === 0 && (value as string).trim() === "")
+        problems.push(`${where} is empty`);
+    return problems;
+};
+
+/** An absolute path in the container, as the task form requires */
+const absolutePath: Check = (value, where) => {
+    const problems = line(value, where);
+    if (problems.length === 0 && !(value as string).trim().startsWith("/"))
+        problems.push(`${where} is not an absolute path`);
+    return problems;
+};
+
 const flag: Check = (value, where) =>
     typeof value === "boolean" ? [] : [`${where} is not true or false`];
 
 const number: Check = (value, where) =>
-    typeof value === "number" && Number.isFinite(value)
+    typeof value === "number" && Number.isFinite(value) && value >= 0
         ? []
-        : [`${where} is not a number`];
+        : [`${where} is not a number of at least 0`];
 
 const integer: Check = (value, where) =>
-    Number.isInteger(value) ? [] : [`${where} is not an integer`];
+    Number.isInteger(value) && (value as number) >= 0
+        ? []
+        : [`${where} is not an integer of at least 0`];
 
 const fileType: Check = (value, where) =>
     value === "FILE" || value === "DIRECTORY"
@@ -230,7 +239,7 @@ const object: Check = (value, where) =>
     isRecord(value) ? [] : [`${where} is not an object`];
 
 /**
- * A non-empty array of values that `item` accepts
+ * An array of values that `item` accepts
  * @param item Check of an item
  * @param nonEmpty Whether the array needs at least one item
  */
@@ -242,23 +251,32 @@ function list(item: Check, nonEmpty = false): Check {
     };
 }
 
-/** An object of single-line strings */
+/** An object of single-line strings, with keys of one non-empty line:
+ * the form shows a row of key and value per entry */
 const lines: Check = (value, where) =>
     isRecord(value)
-        ? Object.entries(value).flatMap(([key, val]) =>
-              line(val, `${where}.${key}`),
-          )
+        ? Object.entries(value).flatMap(([key, val]) => [
+              ...nonEmptyLine(key, `${where} key "${key}"`),
+              ...line(val, `${where}.${key}`),
+          ])
         : [`${where} is not an object`];
+
+/** Check of a field, and whether it's required */
+type Field = { check: Check; required?: boolean };
 
 /**
  * An object with the given fields, and no others
- * @param fields Check of each field, and whether it's required
+ * @param fields Check of each field
+ * @param rule Check of the whole object, if its fields are valid
  */
-function shape(fields: Record<string, [Check, boolean]>): Check {
+function shape(
+    fields: Record<string, Field>,
+    rule?: (value: Record<string, unknown>, where: string) => string[],
+): Check {
     return (value, where) => {
         if (!isRecord(value)) return [`${where} is not an object`];
         const problems: string[] = [];
-        for (const [name, [check, required]] of Object.entries(fields)) {
+        for (const [name, { check, required }] of Object.entries(fields)) {
             if (value[name] === undefined) {
                 if (required) problems.push(`${where} has no ${name}`);
             } else {
@@ -266,82 +284,88 @@ function shape(fields: Record<string, [Check, boolean]>): Check {
             }
         }
         for (const name of Object.keys(value)) {
-            if (!(name in fields))
+            if (!Object.hasOwn(fields, name))
                 problems.push(
                     `${where} has ${name}, which the form doesn't take`,
                 );
         }
+        if (problems.length === 0 && rule) problems.push(...rule(value, where));
         return problems;
     };
 }
 
+const optional = (check: Check): Field => ({ check });
+const required = (check: Check): Field => ({ check, required: true });
+
 const executor = shape({
-    image: [(v, w) => [...nonEmptyText(v, w), ...line(v, w)], true],
-    command: [list(line, true), true],
-    workdir: [line, false],
-    stdin: [line, false],
-    stdout: [line, false],
-    stderr: [line, false],
-    env: [lines, false],
-    ignore_error: [flag, false],
+    image: required(nonEmptyLine),
+    command: required(list(line, true)),
+    workdir: optional(line),
+    stdin: optional(absolutePath),
+    stdout: optional(absolutePath),
+    stderr: optional(absolutePath),
+    env: optional(lines),
+    ignore_error: optional(flag),
 });
+
+// the fields and rules of the task form (`validate` of
+// `ecc-client-ga4gh-tes-run-create`): an example that passes them can be
+// submitted as it is; the types above must name the same fields
+const input = shape(
+    {
+        url: optional(line),
+        path: required(absolutePath),
+        type: optional(fileType),
+        // the form shows it in one input
+        content: optional(line),
+    },
+    (value, where) =>
+        value.url || value.content ? [] : [`${where} has no url or content`],
+);
+
+const output = shape(
+    {
+        url: required(nonEmptyLine),
+        path: required(absolutePath),
+        path_prefix: optional(line),
+        type: optional(fileType),
+    },
+    (value, where) =>
+        /[*?[]/.test(value.path as string) &&
+        !(value.path_prefix as string | undefined)?.trim()
+            ? [`${where} has a wildcard path but no path_prefix`]
+            : [],
+);
 
 const task = shape({
-    name: [line, false],
-    description: [line, false],
-    executors: [list(executor, true), true],
-    inputs: [
-        list(
-            shape({
-                name: [line, false],
-                description: [line, false],
-                url: [line, false],
-                path: [line, true],
-                type: [fileType, false],
-                content: [text, false],
-            }),
-        ),
-        false,
-    ],
-    outputs: [
-        list(
-            shape({
-                name: [line, false],
-                description: [line, false],
-                url: [line, true],
-                path: [line, true],
-                path_prefix: [line, false],
-                type: [fileType, false],
-            }),
-        ),
-        false,
-    ],
-    resources: [
+    name: optional(line),
+    description: optional(line),
+    executors: required(list(executor, true)),
+    inputs: optional(list(input)),
+    outputs: optional(list(output)),
+    resources: optional(
         shape({
-            cpu_cores: [integer, false],
-            ram_gb: [number, false],
-            disk_gb: [number, false],
-            zones: [list(line), false],
-            preemptible: [flag, false],
-            backend_parameters: [lines, false],
-            backend_parameters_strict: [flag, false],
+            cpu_cores: optional(integer),
+            ram_gb: optional(number),
+            disk_gb: optional(number),
+            zones: optional(list(line)),
+            preemptible: optional(flag),
+            backend_parameters: optional(lines),
+            backend_parameters_strict: optional(flag),
         }),
-        false,
-    ],
-    volumes: [list(line), false],
-    tags: [lines, false],
+    ),
+    volumes: optional(list(line)),
+    tags: optional(lines),
 });
 
+// the fields of the workflow form; the types above must name the same
 const run = shape({
-    workflow_url: [(v, w) => [...nonEmptyText(v, w), ...line(v, w)], true],
-    workflow_type: [(v, w) => [...nonEmptyText(v, w), ...line(v, w)], true],
-    workflow_type_version: [
-        (v, w) => [...nonEmptyText(v, w), ...line(v, w)],
-        true,
-    ],
-    workflow_params: [object, false],
-    workflow_engine_parameters: [object, false],
-    tags: [lines, false],
+    workflow_url: required(nonEmptyLine),
+    workflow_type: required(nonEmptyLine),
+    workflow_type_version: required(nonEmptyLine),
+    workflow_params: optional(object),
+    workflow_engine_parameters: optional(object),
+    tags: optional(lines),
 });
 
 /**
@@ -376,9 +400,9 @@ function readExamples<T>(
 
     const [field, check] = body;
     const entry = shape({
-        name: [(v, w) => [...nonEmptyText(v, w), ...line(v, w)], true],
-        description: [line, false],
-        [field]: [check, true],
+        name: required(nonEmptyLine),
+        description: optional(line),
+        [field]: required(check),
     });
     const examples: T[] = [];
     const problems: string[] = [];
@@ -388,7 +412,7 @@ function readExamples<T>(
         const where = `entry ${index + 1}`;
         const found = entry(val, where);
         if (found.length === 0) {
-            // a valid entry has a name
+            // only now `val` is known to be an object with a name
             const { name } = val as { name: string };
             if (names.has(name))
                 found.push(`${where} has the name of an earlier entry`);

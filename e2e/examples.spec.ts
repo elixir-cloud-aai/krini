@@ -108,5 +108,13 @@ test.describe("anonymous visitors", () => {
         await expect(
             page.getByRole("button", { name: DEFAULT_TASK_EXAMPLES[0].name }),
         ).toHaveCount(0);
+
+        await page.goto("/dashboard/workflows/create");
+        await page.getByRole("combobox").click();
+        await page.getByRole("option", { name: /Mock WES/ }).click();
+        await expect(page.getByText("with compute access")).toBeVisible();
+        await expect(
+            page.getByRole("button", { name: workflowExamples[0].name }),
+        ).toHaveCount(0);
     });
 });
