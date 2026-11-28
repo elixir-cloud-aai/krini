@@ -44,6 +44,13 @@ const COOKIES = [
             "as long as your session, up to 30 days; deleted when you log out",
     },
     {
+        name: "refresh_rejected",
+        purpose:
+            "a fingerprint (hash) of a refresh token that your login provider refused once, so that Krini can tell a renewal that another tab made at the same time from a session that has ended",
+        lifetime:
+            "1 hour; deleted when your session is renewed or ends, or when you log out",
+    },
+    {
         name: "logout_marker",
         purpose:
             "records your logout, so that Krini refuses any session cookies that a renewal still in progress sets again",

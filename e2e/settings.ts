@@ -41,6 +41,9 @@ type RefreshMode = {
     error?: string;
     /** Wait before answering, in ms */
     delayMs?: number;
+    /** Revoke each refresh token once a refresh used it, as providers
+     * that rotate refresh tokens do */
+    rotate?: boolean;
 };
 
 /** A request that the mock TES service received */

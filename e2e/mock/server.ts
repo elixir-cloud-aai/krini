@@ -16,7 +16,8 @@
  *   clear the requests that the WES and TES services received;
  * - `/mock/refresh` to set how the provider answers refresh token grants
  *   (`RefreshMode` in `e2e/settings.ts`): an error status and `error`,
- *   and a delay; `/mock/reset` restores normal answers.
+ *   a delay, and the rotation of refresh tokens; `/mock/reset` restores
+ *   normal answers.
  *
  * The registry and the login provider listen on `MOCK_HTTP_PORT`, the WES
  * and TES services on `MOCK_HTTPS_PORT`. The certificate goes to `MOCK_CERT_DIR`;
@@ -153,7 +154,8 @@ const codes = new Map<
 >();
 /** Access tokens that the provider issued */
 const accessTokens = new Set<string>();
-/** Refresh tokens that the app revoked at logout */
+/** Refresh tokens that the app revoked at logout, or that a refresh used
+ * while refresh tokens rotate */
 const revokedRefreshTokens = new Set<string>();
 /** How the provider answers refresh token grants (`/mock/refresh`) */
 let refreshMode: RefreshMode = {};
@@ -286,12 +288,14 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
             return send(res, 200, issueTokens(login.nonce));
         }
         if (grant === "refresh_token") {
-            const { delayMs, status, error } = refreshMode;
+            const { delayMs, status, error, rotate } = refreshMode;
             if (delayMs)
                 await new Promise((resolve) => setTimeout(resolve, delayMs));
             if (status) return send(res, status, { error });
-            if (revokedRefreshTokens.has(form.get("refresh_token") ?? ""))
+            const used = form.get("refresh_token") ?? "";
+            if (revokedRefreshTokens.has(used))
                 return send(res, 400, { error: "invalid_grant" });
+            if (rotate) revokedRefreshTokens.add(used);
             return send(res, 200, issueTokens());
         }
         return send(res, 400, { error: "unsupported_grant_type" });

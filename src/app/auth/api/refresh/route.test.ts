@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { issuer, mockOidcProvider, signIdToken } from "@/test/oidc";
@@ -7,7 +8,6 @@ import {
     cookieStore,
     http,
     httpError,
-    jar,
     networkError,
     setUp,
 } from "@/test/routes";
@@ -81,7 +81,12 @@ const sessionCookies = [
     "refresh_token",
     "token_expires_at",
     "oidc_provider",
+    "refresh_rejected",
 ];
+
+/** The value of `refresh_rejected` for a refresh token: its SHA-256 hash */
+const tokenHash = (token: string) =>
+    createHash("sha256").update(token).digest("hex");
 
 /** Expect a response that ends the session, and its cookies */
 async function expectSessionEnded(response: Response, error: string) {
@@ -152,60 +157,96 @@ describe("POST /auth/api/refresh", () => {
         expect(response.status).toBe(500);
     });
 
-    it("does not end the session when a concurrent refresh already succeeded", async () => {
-        setUp({ refresh_token: "rt-SECRET-1" });
-        mockOidcProvider();
-        const post = vi.spyOn(await http(), "post");
-        post.mockResolvedValueOnce({ status: 200, data: tokens() });
-        post.mockRejectedValueOnce(httpError(400, { error: "invalid_grant" }));
-        vi.spyOn(console, "error").mockImplementation(() => {});
-        const { POST } = await import("./route");
-
-        // two tabs refresh the same session; the provider rotates the
-        // refresh token, so the second request is a replay rejection
-        expect((await POST(request())).status).toBe(200);
-        const replay = await POST(request());
-        expect(replay.status).toBe(409);
-        expect(await replay.json()).toMatchObject({
+    it("does not end the session at the first rejection of a refresh token", async () => {
+        const { response } = await refresh(
+            undefined,
+            httpError(400, { error: "invalid_grant" }),
+        );
+        // another tab may have refreshed the session with the same token,
+        // on any pod: the client tries again with the cookies it has then
+        expect(response.status).toBe(409);
+        expect(await response.json()).toEqual({
+            error: "Failed to refresh token",
             code: "concurrent_refresh",
         });
-        // the losing response must not undo the winner's session cookies
-        expect(replay.headers.getSetCookie()).toEqual([]);
+        // the losing response must not undo the winner's session cookies;
+        // it only remembers, in the browser, which token was rejected
+        expect(response.headers.getSetCookie()).toHaveLength(1);
+        expect(cookieOf(response, "refresh_rejected")).toMatchObject({
+            value: tokenHash("rt-SECRET-1"),
+            attributes: expect.arrayContaining([
+                "httponly",
+                "path=/",
+                "samesite=lax",
+                "max-age=3600",
+            ]),
+        });
     });
 
-    it("still ends the session once the success record expires", async () => {
-        setUp({ refresh_token: "rt-SECRET-1" });
-        mockOidcProvider();
-        const post = vi.spyOn(await http(), "post");
-        post.mockResolvedValueOnce({ status: 200, data: tokens() });
-        vi.spyOn(console, "error").mockImplementation(() => {});
-        const { POST } = await import("./route");
-        await POST(request());
+    it("tells a refresh that lost on another pod to try again", async () => {
+        // pod A: the winner rotates the refresh token
+        const { response: won } = await refresh();
+        expect(won.status).toBe(200);
 
-        vi.setSystemTime(now + 61 * 1000);
-        post.mockRejectedValueOnce(httpError(400, { error: "invalid_grant" }));
-        await expectSessionEnded(
-            await POST(request()),
-            "Failed to refresh token",
+        // pod B (fresh modules, so no memory of pod A) gets the same,
+        // now rotated, refresh token from a second tab
+        const { response: lost } = await refresh(
+            undefined,
+            httpError(400, { error: "invalid_grant" }),
+        );
+        expect(lost.status).toBe(409);
+        for (const name of sessionCookies.filter(
+            (name) => name !== "refresh_rejected",
+        ))
+            expect(cookieOf(lost, name)).toBeUndefined();
+
+        // the retry carries the winner's refresh token, on any pod
+        const { response: retried, post } = await refresh({
+            refresh_token: "refresh-2",
+            refresh_rejected: tokenHash("rt-SECRET-1"),
+        });
+        expect(retried.status).toBe(200);
+        expect(
+            Object.fromEntries(post.mock.calls[0][1] as URLSearchParams)
+                .refresh_token,
+        ).toBe("refresh-2");
+        // the record of the old rejection goes
+        expect(cookieOf(retried, "refresh_rejected")?.value).toBe("");
+    });
+
+    it.each([
+        ["400 invalid_grant", httpError(400, { error: "invalid_grant" })],
+        ["401 without an error field", httpError(401)],
+        ["401 invalid_token", httpError(401, { error: "invalid_token" })],
+    ])("ends the session when the provider answers %s again for the same token", async (_, reply) => {
+        const { response, error } = await refresh(
+            {
+                refresh_token: "rt-SECRET-1",
+                refresh_rejected: tokenHash("rt-SECRET-1"),
+            },
+            reply,
+        );
+        await expectSessionEnded(response, "Failed to refresh token");
+        expect(error.mock.calls[0][0]).toMatch(/category=upstream_40[01]/);
+    });
+
+    it("gives a newer refresh token its own first rejection", async () => {
+        const { response } = await refresh(
+            {
+                refresh_token: "rt-SECRET-2",
+                refresh_rejected: tokenHash("rt-SECRET-1"),
+            },
+            httpError(400, { error: "invalid_grant" }),
+        );
+        expect(response.status).toBe(409);
+        expect(cookieOf(response, "refresh_rejected")?.value).toBe(
+            tokenHash("rt-SECRET-2"),
         );
     });
 
-    it("keeps recent successes while sweeping expired ones", async () => {
-        setUp({ refresh_token: "rt-1" });
-        mockOidcProvider();
-        const post = vi.spyOn(await http(), "post");
-        post.mockResolvedValue({ status: 200, data: tokens() });
-        const { POST } = await import("./route");
-        expect((await POST(request())).status).toBe(200);
-
-        // a second session's success inside the window is kept
-        vi.setSystemTime(now + 30 * 1000);
-        jar.set("refresh_token", { name: "refresh_token", value: "rt-2" });
-        expect((await POST(request())).status).toBe(200);
-
-        // later, the first session's expired entry is swept
-        vi.setSystemTime(now + 61 * 1000);
-        expect((await POST(request())).status).toBe(200);
+    it("leaves the rejection record alone when there is none", async () => {
+        const { response } = await refresh();
+        expect(cookieOf(response, "refresh_rejected")).toBeUndefined();
     });
 
     it("keeps the refresh token when the response does not rotate it", async () => {
@@ -498,16 +539,6 @@ describe("POST /auth/api/refresh", () => {
         expect(error.mock.calls[0][0]).toContain(
             "provider_error=invalid_grant",
         );
-    });
-
-    it.each([
-        ["400 invalid_grant", httpError(400, { error: "invalid_grant" })],
-        ["401 without an error field", httpError(401)],
-        ["401 invalid_token", httpError(401, { error: "invalid_token" })],
-    ])("ends the session when the provider answers %s", async (_, reply) => {
-        const { response, error } = await refresh(undefined, reply);
-        await expectSessionEnded(response, "Failed to refresh token");
-        expect(error.mock.calls[0][0]).toMatch(/category=upstream_40[01]/);
     });
 
     it.each([

@@ -1,7 +1,8 @@
 /**
  * @description the session's refresh with the mock provider's failure
- * modes: a session the provider ended, a provider outage, a stale expiry
- * of a visitor, and a refresh in flight during a logout
+ * modes: a session the provider ended, concurrent refreshes with rotated
+ * refresh tokens, a provider outage, a stale expiry of a visitor, and a
+ * refresh in flight during a logout
  */
 import {
     accessToken,
@@ -22,7 +23,12 @@ test("a session that the provider ended leads to the login page once", async ({
     await setRefreshMode({ status: 400, error: "invalid_grant" });
     await expireAccessToken(page);
 
+    // the first rejection of the refresh token keeps the session, as a
+    // concurrent refresh may have used the token; the retry (5 seconds
+    // later) gets the same rejection, which ends the session
+    const first = page.waitForResponse((res) => isRefresh(res.url()));
     await page.goto("/dashboard/workflows");
+    expect((await first).status()).toBe(409);
     await page.waitForURL(/\/auth\/login$/);
     // the session's cookies are gone, so the dashboard is anonymous now
     const names = (await page.context().cookies()).map((val) => val.name);
@@ -30,6 +36,32 @@ test("a session that the provider ended leads to the login page once", async ({
     await page.goto("/dashboard/workflows");
     await expect(page.getByRole("button", { name: /Anonymous/ })).toBeVisible();
     await expect(page).toHaveURL(/\/dashboard\/workflows$/);
+});
+
+test("concurrent refreshes keep the session when refresh tokens rotate", async ({
+    page,
+}) => {
+    await login(page);
+    const token = await accessToken(page);
+    await setRefreshMode({ rotate: true, delayMs: 500 });
+
+    // e.g. two tabs of a browser without Web Locks, whose refreshes may
+    // reach different pods: both send the same refresh token, the
+    // provider renews the session for one and rejects the other
+    const origin = new URL(page.url()).origin;
+    const refresh = () =>
+        page.request.post("/auth/api/refresh", { headers: { origin } });
+    const statuses = (await Promise.all([refresh(), refresh()]))
+        .map((res) => res.status())
+        .sort();
+    expect(statuses).toEqual([200, 409]);
+
+    // the session stays, with the winner's tokens, and renews again
+    expect(await accessToken(page)).not.toBe(token);
+    expect((await page.request.get("/auth/api/token")).status()).toBe(200);
+    expect((await refresh()).status()).toBe(200);
+    const names = (await page.context().cookies()).map((val) => val.name);
+    expect(names).not.toContain("refresh_rejected");
 });
 
 test("a provider outage keeps the session, and the refresh is retried", async ({
