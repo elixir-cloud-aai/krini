@@ -25,6 +25,8 @@ has no `NEXT_PUBLIC_*` variables):
 | `PRIVACY_CONTACT` | no | Email address or `https` URL | none | `privacy@example.org` |
 | `PRIVACY_NOTICE_URL` | no | `https` URL | none | `https://example.org/privacy` |
 | `PRIVACY_LOGIN_NOTICE_URL` | no | `https` URL | none | `https://login.example.org/privacy` |
+| `TASK_EXAMPLES` | no | JSON array of examples of the task form, on one line (see [Examples](#examples)) | the built-in example; `[]`: none | `[{"name":"Hello","task":{"executors":[{"image":"alpine:3.22","command":["echo","hello"]}]}}]` |
+| `WORKFLOW_EXAMPLES` | no | JSON array of examples of the workflow form, on one line (see [Examples](#examples)) | the built-in examples; `[]`: none | `[{"name":"CWL","run":{"workflow_url":"https://example.org/hello.cwl","workflow_type":"CWL","workflow_type_version":"v1.2"}}]` |
 | `PORT` | no | Port number | `3000` | `8080` |
 | `LISTEN_HOSTNAME` | no | Address of the interface to listen on | `0.0.0.0` (all IPv4 interfaces) | `::` |
 
@@ -41,8 +43,9 @@ only for localhost, as Secure session cookies need https. Problems of single pro
 duplicate `id`, an entry that isn't an object — are logged too, as
 warnings when another provider is usable, naming the provider `id` and
 the missing field, never `clientSecret`. Other warnings — an invalid
-`COMPUTE_ACCESS_REQUEST_URL`, or no provider with
-`computeGroups`/`adminGroups` — are logged but don't stop the start.
+`COMPUTE_ACCESS_REQUEST_URL`, no provider with
+`computeGroups`/`adminGroups`, or invalid `TASK_EXAMPLES` or
+`WORKFLOW_EXAMPLES` — are logged but don't stop the start.
 After each change, still go through
 [Checking a deployment](deployment.md#checking-a-deployment).
 
@@ -125,7 +128,8 @@ Never expose `clientSecret` values to client-side code: Krini uses no
 the browser loads; never put a secret into one. Some settings are public by
 design and do reach the browser: the login page shows each provider's `id`,
 `name` and `logo`, and the login redirect carries `clientId`, the redirect
-URI and scopes, and the privacy notice shows the `PRIVACY_*` values.
+URI and scopes, the privacy notice shows the `PRIVACY_*` values, and the
+task and workflow forms get `TASK_EXAMPLES` and `WORKFLOW_EXAMPLES`.
 `clientSecret` is only sent from Krini's server to the login provider.
 
 ## Privacy notice
@@ -147,6 +151,53 @@ the server log.
   if it has one.
 - `PRIVACY_LOGIN_NOTICE_URL`: `https` URL of the login provider's privacy
   notice.
+
+## Examples
+
+Members (users with compute access) can fill the task and the workflow
+form with an example in one click ("Use an example"), and submit it without
+typing anything, e.g. in demonstrations and tutorials. Without settings,
+Krini offers built-in examples that run on the services of ELIXIR On-Cloud
+(proTES with TESK behind it for tasks, Conquest for workflows); see
+[Workflow examples](../user-guide/workflow-examples.md) for what they do.
+Each deployment can replace them with its own:
+
+- `TASK_EXAMPLES`: a JSON array of objects with `name` (the label of the
+  button), optional `description` (its tooltip) and `task`, a
+  [TES task](https://ga4gh.github.io/task-execution-schemas/docs/) with
+  the fields that the task form has: `name`, `description`, `executors`
+  (`image`, `command`, `workdir`, `stdin`, `stdout`, `stderr`, `env`,
+  `ignore_error`), `inputs`, `outputs`, `resources`, `volumes` and `tags`.
+- `WORKFLOW_EXAMPLES`: a JSON array of objects with `name`, optional
+  `description` and `run`, a
+  [WES run request](https://ga4gh.github.io/workflow-execution-service-schemas/docs/)
+  with the fields that the workflow form has: `workflow_url`,
+  `workflow_type`, `workflow_type_version`, `workflow_params`,
+  `workflow_engine_parameters` and `tags` (no attachments). The form
+  offers only the examples of the workflow types that the selected
+  service lists in its service info (the type matched regardless of case,
+  and submitted as the service spells it), or all if it lists none. The
+  version isn't checked: the form shows the service's versions next to it.
+
+Names must be unique within a setting. An empty array (`[]`) offers no
+examples. Krini reads both settings at request time: entries that don't fit
+the forms (a missing or unknown field, a field of the wrong type, a line
+break in a single-line field or in an argument of `command`, a duplicate
+name) are left out with a warning in the server log, and a value that isn't
+a JSON array is ignored, with a warning, in favour of the built-in
+examples. Make sure that your examples run on the services that your
+registry lists. For example, a task and a workflow on one line each:
+
+```env
+TASK_EXAMPLES=[{"name":"Hello world","description":"Prints a greeting","task":{"name":"hello","executors":[{"image":"alpine:3.22","command":["echo","Hello world"]}]}}]
+WORKFLOW_EXAMPLES=[{"name":"Nextflow","run":{"workflow_url":"https://github.com/nextflow-io/hello","workflow_type":"NFL","workflow_type_version":"DSL2","workflow_engine_parameters":{"revision":"3c2cdc9823c2b4636e5e3e73e223878099ff5dc9"}}}]
+```
+
+The forms are Cloud Components without a public property for initial
+values yet: Krini sets their internal state (see
+`src/lib/example-forms.ts`). If a new version of the components doesn't
+take it any more, "Use an example" shows an error instead of filling the
+form, and Krini's end-to-end tests fail.
 
 ## Env files
 

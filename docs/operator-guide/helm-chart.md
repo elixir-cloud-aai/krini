@@ -145,6 +145,8 @@ upgrade`.
 | `config.privacy.contact` | `PRIVACY_CONTACT` | not set |
 | `config.privacy.noticeUrl` | `PRIVACY_NOTICE_URL` | not set |
 | `config.privacy.loginNoticeUrl` | `PRIVACY_LOGIN_NOTICE_URL` | not set |
+| `config.taskExamples` | `TASK_EXAMPLES` | not set (`null`): Krini's built-in example; a list, also `[]`, is passed as JSON |
+| `config.workflowExamples` | `WORKFLOW_EXAMPLES` | not set (`null`): Krini's built-in examples; a list, also `[]`, is passed as JSON |
 | `loginProviders.existingSecret` | `LOGIN_PROVIDERS` | none; required: the Secret with the login providers |
 | `loginProviders.secretKey` | — | `login-providers`: the key of the Secret |
 | `extraEnv` | any | `[]`: further variables, as Kubernetes `EnvVar`s |
@@ -153,6 +155,23 @@ The `config` values reach the browser or are public by design (see
 [Configuration](configuration.md#settings)): never put a secret into them.
 Secrets go into Secrets, which `loginProviders` and `extraEnv`
 (`valueFrom.secretKeyRef`) refer to.
+
+The examples of the task and workflow forms (see
+[Examples](configuration.md#examples)) are lists in YAML, e.g. one task and
+no workflows:
+
+```yaml
+config:
+  taskExamples:
+    - name: Hello world
+      description: Prints a greeting
+      task:
+        name: hello
+        executors:
+          - image: alpine:3.22
+            command: [echo, Hello world]
+  workflowExamples: []
+```
 
 `extraEnv` sets variables that the chart has no value for, e.g.
 `LISTEN_HOSTNAME` for IPv6-only clusters:
