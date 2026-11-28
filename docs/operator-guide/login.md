@@ -148,8 +148,11 @@ most 30 days); without one, users log in again when the access token
 expires. The ID token, whose `sub` names the user, is kept as long as the
 session, as providers needn't send a new one on refresh; a new one must
 name the same user and issuer (OpenID Connect Core 12.2). The tabs of a
-browser take turns, so only one of them refreshes at a time (Web Locks;
-see [Pods](helm-chart.md#pods) for more than one replica). Refreshes are
+browser take turns, so only one of them refreshes at a time (Web Locks).
+Where they can't, and two refreshes use the same refresh token, a
+provider that rotates refresh tokens rejects the second one; Krini then
+keeps the session, and the page tries again with the new cookies, on any
+pod (see [Pods](helm-chart.md#pods)). Refreshes are
 `POST` requests to `/auth/api/refresh`, which Krini, like the logout,
 accepts only with the `Origin` of `APP_ORIGIN`.
 
@@ -158,7 +161,7 @@ How Krini handles the provider's answer to a refresh (RFC 6749, section
 
 | Answer of the token endpoint | Krini |
 | --- | --- |
-| `400` with `invalid_grant` (refresh token expired, revoked or reused), or `401` other than `invalid_client` and `unauthorized_client` | Ends the session: deletes its cookies and sends the user to the login page |
+| `400` with `invalid_grant` (refresh token expired, revoked or reused), or `401` other than `invalid_client` and `unauthorized_client` | The first time for a refresh token, keeps the session, as a concurrent refresh may have used the token, and records the token's SHA-256 hash in the cookie `refresh_rejected` (1 hour); the page tries again 5 seconds later, with the new refresh token if another refresh won. The second time for the same token, ends the session: deletes its cookies and sends the user to the login page |
 | `invalid_client` or `unauthorized_client` (e.g. a rotated client secret), other errors, timeouts, an invalid token response | Keeps the session and logs the error (`OIDC refresh error: category=…, provider_error=…`); the page tries again with growing waits (5 seconds, doubling, at most 5 minutes). A new refresh token in an invalid token response is kept, as the provider may have revoked the old one |
 | An ID token for another `sub` or `iss` | Ends the session |
 | No ID token, while the session has none either (e.g. its cookie expired) | Ends the session, as nothing names the user any more |

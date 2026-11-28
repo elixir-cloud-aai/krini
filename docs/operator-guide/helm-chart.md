@@ -415,13 +415,11 @@ login providers and the WES services.
   same effect as two replicas): sessions are in cookies, and the tabs of a
   browser refresh a session one at a time (see [Sessions and
   logout](login.md#sessions-and-logout)), so any pod can serve any
-  request. Only in browsers without Web Locks can two tabs refresh the
-  same session at once; each pod remembers the refresh tokens it has just
-  used only in memory, to tell such a refresh from a replay, so if the two
-  refreshes reach different pods and the provider rotates refresh tokens,
-  the session ends and the user is sent to the login page. Sticky sessions
-  (e.g. cookie-based affinity of the ingress controller) avoid even that.
-  With more than one, a PodDisruptionBudget (`krini.podDisruptionBudget`) lets node
+  request. Even where two tabs refresh the same session at once (in
+  browsers without Web Locks), Krini tells the refresh that lost the race
+  from a session that has ended with a cookie, not with the memory of a
+  pod, so that the session stays whichever pods the two refreshes reach;
+  no sticky sessions are needed. With more than one, a PodDisruptionBudget (`krini.podDisruptionBudget`) lets node
   drains evict one pod at a time (`maxUnavailable: 1`), or as set by
   `minAvailable` or `maxUnavailable`.
 - `krini.resources`: requests and limits of the container (default:
