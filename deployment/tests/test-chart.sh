@@ -143,6 +143,13 @@ assert_eq "privacy login notice" "$(env_value PRIVACY_LOGIN_NOTICE_URL)" "https:
 assert_eq "secret key" "$(env_value LOGIN_PROVIDERS)" "secret:krini-login-providers/providers.json"
 render --set config.redirectToAppOrigin=false
 assert_eq "redirectToAppOrigin off" "$(env_value REDIRECT_TO_APP_ORIGIN)" "false"
+assert_eq "built-in examples by default" \
+  "$(env_value TASK_EXAMPLES),$(env_value WORKFLOW_EXAMPLES)" "null,null"
+render --set-json 'config.taskExamples=[{"name":"Hello","task":{"executors":[{"image":"alpine","command":["echo","hello"]}]}}]' \
+  --set-json 'config.workflowExamples=[]'
+assert_eq "taskExamples as JSON" "$(env_value TASK_EXAMPLES)" \
+  '[{"name":"Hello","task":{"executors":[{"command":["echo","hello"],"image":"alpine"}]}}]'
+assert_eq "no workflow examples" "$(env_value WORKFLOW_EXAMPLES)" "[]"
 render --set-json 'extraEnv=[{"name":"LISTEN_HOSTNAME","value":"::"}]'
 assert_eq "extraEnv" "$(env_value LISTEN_HOSTNAME)" "::"
 render --set hostName= --set config.appOrigin=https://portal.example.org --set krini.ingress.enabled=false
@@ -281,6 +288,10 @@ assert_fails "extraEnv for the redirect" "REDIRECT_TO_APP_ORIGIN" -f "${values}"
   --set-json 'extraEnv=[{"name":"REDIRECT_TO_APP_ORIGIN","value":"false"}]'
 assert_fails "redirectToAppOrigin not a boolean" "redirectToAppOrigin" -f "${values}" \
   --set config.redirectToAppOrigin=no
+assert_fails "taskExamples not a list" "taskExamples" -f "${values}" \
+  --set config.taskExamples=hello
+assert_fails "extraEnv for the examples" "WORKFLOW_EXAMPLES" -f "${values}" \
+  --set-json 'extraEnv=[{"name":"WORKFLOW_EXAMPLES","value":"[]"}]'
 assert_fails "HTTPS without issuer" "https.issuer" -f "${values}" --set krini.ingress.https.enabled=true
 assert_fails "replicas" "replicas" -f "${values}" --set krini.replicas=0
 

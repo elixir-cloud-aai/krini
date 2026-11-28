@@ -51,6 +51,14 @@ config:
     # `https` URL of the login provider's privacy notice
     # (`PRIVACY_LOGIN_NOTICE_URL`)
     loginNoticeUrl: ""
+  # Examples that fill the task form (`TASK_EXAMPLES`), as a list of
+  # objects with `name`, `description` and `task` (see
+  # docs/operator-guide/configuration.md, Examples); passed as JSON. Not
+  # set: Krini's built-in examples; `[]`: none
+  taskExamples: null
+  # Examples that fill the workflow form (`WORKFLOW_EXAMPLES`), as a list
+  # of objects with `name`, `description` and `run`; as `taskExamples`
+  workflowExamples: null
 
 # The login providers (`LOGIN_PROVIDERS`, a JSON array with each provider's
 # `clientSecret`), from a key of an existing Secret: the chart never holds
